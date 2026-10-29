@@ -59,7 +59,7 @@ final class TrainPositionEngineTests: XCTestCase {
             from: GeoPoint(latitude: 41.34921585, longitude: 2.10724192),
             to: GeoPoint(latitude: 41.35375440, longitude: 2.10724192)
         )
-        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Sud", seconds: Int(segmentMeters / 9.2 / 4))
+        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Sud", seconds: Int(segmentMeters / 9.2 / 4), rawText: "x")
         let positions = engine.positions(lineCode: "1", arrivals: [arrival])
 
         let position = try XCTUnwrap(positions.first)
