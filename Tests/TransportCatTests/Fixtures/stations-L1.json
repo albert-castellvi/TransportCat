@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ID_ESTACIO": 81,
+        "CODI_ESTACIO": 111,
+        "NOM_ESTACIO": "Hospital de Bellvitge",
+        "ORDRE_ESTACIO": 1,
+        "CODI_LINIA": 1,
+        "NOM_LINIA": "L1",
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
+        "COLOR_LINIA": "CE1126"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.10724192, 41.34467731] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ID_ESTACIO": 33,
+        "CODI_ESTACIO": 112,
+        "NOM_ESTACIO": "Bellvitge",
+        "ORDRE_ESTACIO": 2,
+        "CODI_LINIA": 1,
+        "NOM_LINIA": "L1",
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
+        "COLOR_LINIA": "CE1126"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.110917, 41.35097554] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ID_ESTACIO": 34,
+        "CODI_ESTACIO": 113,
+        "NOM_ESTACIO": "Av. Carrilet",
+        "ORDRE_ESTACIO": 3,
+        "CODI_LINIA": 1,
+        "NOM_LINIA": "L1",
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
+        "COLOR_LINIA": "CE1126"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.115342, 41.357513] }
+    }
+  ]
+}

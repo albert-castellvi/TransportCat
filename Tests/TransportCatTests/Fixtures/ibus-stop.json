@@ -1,0 +1,9 @@
+{
+  "data": {
+    "ibus": [
+      { "min": "2", "text_ca": "2 min", "dest": "Fondo" },
+      { "min": 5, "text_ca": "5 min", "dest": "Fondo" },
+      { "min": "Aprox.", "text_ca": "Aprox.", "dest": "Fondo" }
+    ]
+  }
+}

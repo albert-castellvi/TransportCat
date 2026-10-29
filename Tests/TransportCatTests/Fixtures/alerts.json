@@ -1,0 +1,24 @@
+{
+  "data": {
+    "alerts": [
+      {
+        "id": "alert-001",
+        "disruption_dates": [
+          { "begin_date": 1793272800000, "end_date": 1796351400000 }
+        ],
+        "entities": [
+          { "line_code": "2", "line_name": "L2", "station_name": "La Pau" },
+          { "line_code": "2", "line_name": "L2", "station_name": "Verneda" }
+        ]
+      },
+      {
+        "disruption_dates": [
+          { "begin_date": 1793272800000 }
+        ],
+        "entities": [
+          { "line_code": 1, "station_name": "Clot" }
+        ]
+      }
+    ]
+  }
+}
