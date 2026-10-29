@@ -44,7 +44,7 @@ final class TMBClientTests: XCTestCase {
         super.tearDown()
     }
 
-    private func stub(status: Int = 200, body: @autoclosure () throws -> Data) {
+    private func stub(status: Int = 200, body: @escaping () throws -> Data) {
         MockURLProtocol.requestHandler = { request in
             let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
             return (response, try body())
@@ -52,7 +52,7 @@ final class TMBClientTests: XCTestCase {
     }
 
     func testStationsRequestSucceedsAndDecodes() async throws {
-        stub(body: try Fixtures.data("stations-L1"))
+        stub(body: { try Fixtures.data("stations-L1") })
         let stations = try await client.stations(lineCode: "1")
         XCTAssertEqual(stations.count, 3)
     }
@@ -83,7 +83,7 @@ final class TMBClientTests: XCTestCase {
     }
 
     func testHTTPErrorSurfacesAsTMBError() async {
-        stub(status: 403, body: Data())
+        stub(status: 403, body: { Data() })
         do {
             _ = try await client.stations(lineCode: "1")
             XCTFail("Expected httpStatus error")

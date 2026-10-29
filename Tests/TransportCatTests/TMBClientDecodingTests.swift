@@ -75,8 +75,10 @@ final class TMBClientDecodingTests: XCTestCase {
         XCTAssertEqual(alerts[0].id, "alert-001")
         XCTAssertEqual(alerts[0].lineCodes, ["2"])
         XCTAssertEqual(alerts[0].stationNames, ["La Pau", "Verneda"])
-        XCTAssertEqual(alerts[0].beginDate?.timeIntervalSince1970, 1793272800.0, accuracy: 0.001)
-        XCTAssertEqual(alerts[0].endDate?.timeIntervalSince1970, 1796351400.0, accuracy: 0.001)
+        let begin = try XCTUnwrap(alerts[0].beginDate)
+        let end = try XCTUnwrap(alerts[0].endDate)
+        XCTAssertEqual(begin.timeIntervalSince1970, 1793272800.0, accuracy: 0.001)
+        XCTAssertEqual(end.timeIntervalSince1970, 1796351400.0, accuracy: 0.001)
         // Second alert: numeric line code and no end date, missing id.
         XCTAssertEqual(alerts[1].lineCodes, ["1"])
         XCTAssertNil(alerts[1].endDate)
