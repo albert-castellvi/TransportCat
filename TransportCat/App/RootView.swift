@@ -1,17 +1,24 @@
 import SwiftUI
 
-/// Temporary root view. Replaced by the full tab navigation in the UI task.
+/// Root tab navigation: live map, line diagram and service alerts.
 struct RootView: View {
+    @StateObject private var app = AppModel.shared
+
     var body: some View {
         TabView {
-            Text("Mapa")
+            MapScreen()
                 .tabItem {
                     Label("Mapa", systemImage: "map")
                 }
-            Text("Xarxa")
+            DiagramScreen()
                 .tabItem {
                     Label("Xarxa", systemImage: "tram.fill")
                 }
+            AlertsScreen()
+                .tabItem {
+                    Label("Avisos", systemImage: "exclamationmark.triangle")
+                }
         }
+        .environmentObject(app)
     }
 }

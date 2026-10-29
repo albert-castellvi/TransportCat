@@ -34,5 +34,8 @@
 	<string>$(TMB_APP_ID)</string>
 	<key>TMBAppKey</key>
 	<string>$(TMB_APP_KEY)</string>
+	<!-- Sentry DSN, injected at build time. Empty = crash reporting off. -->
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
 </dict>
 </plist>

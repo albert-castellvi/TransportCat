@@ -31,6 +31,8 @@ settings:
     # local override); they are never committed with real values.
     TMB_APP_ID: ""
     TMB_APP_KEY: ""
+    # Sentry DSN injected at build time; empty means crash reporting is off.
+    SENTRY_DSN: ""
 
 packages:
   # sentry-cocoa: crash reporting and handled errors. Major version pinned.
