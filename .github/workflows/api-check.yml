@@ -1,7 +1,7 @@
-# One-shot diagnostic: verifies the TMB public API credentials stored in the
-# `release` environment work against the four endpoints the app consumes.
-# Manual dispatch only; prints HTTP status, byte counts and a small sample of
-# each response — never a credential (GitHub masks them anyway).
+# One-shot diagnostic: probes TMB public API endpoint variants with the
+# credentials stored in the `release` environment. Manual dispatch only;
+# prints HTTP status, byte counts and a small sample of each response —
+# never a credential (GitHub masks them anyway).
 
 name: TMB API check
 
@@ -20,10 +20,28 @@ jobs:
           TMB_APP_ID: ${{ secrets.TMB_APP_ID }}
           TMB_APP_KEY: ${{ secrets.TMB_APP_KEY }}
         run: |
-          set -euo pipefail
-          for ep in "transit/linies/metro/1/estacions" "transit/linies/metro/1/tram" "ibus/lines/1/stops/111" "alerts/metro/channels/WEB"; do
-            code="$(curl -s -o /tmp/out.json -w '%{http_code}' "https://api.tmb.cat/v1/$ep?app_id=$TMB_APP_ID&app_key=$TMB_APP_KEY")"
+          set -uo pipefail
+          probe() {
+            local label="$1"; shift
+            local path="$1"; shift
+            local code bytes
+            code="$(curl -s -o /tmp/out.json -w '%{http_code}' "https://api.tmb.cat/v1/$path?app_id=$TMB_APP_ID&app_key=$TMB_APP_KEY")"
             bytes="$(wc -c < /tmp/out.json | tr -d ' ')"
-            echo "== $ep -> HTTP $code ($bytes bytes)"
-            head -c 240 /tmp/out.json | tr -d '\n'; echo; echo
-          done
+            echo "== $label [$path] -> HTTP $code ($bytes bytes)"
+            [ "$code" = "200" ] && head -c 200 /tmp/out.json | tr -d '\n' && echo
+          }
+          # Line geometry candidates
+          probe tram1 "transit/linies/metro/1/tram"
+          probe trams1 "transit/linies/metro/1/trams"
+          probe itin1 "transit/linies/metro/1/itineraris"
+          probe recorregut "transit/linies/metro/1/recorregut"
+          probe trazado "transit/linies/metro/1/trazado"
+          # iBus stop code candidates for Hospital de Bellvitge (L1)
+          probe ibus-line-stop-111 "ibus/lines/1/stops/111"
+          probe ibus-line-stop-6660111 "ibus/lines/1/stops/6660111"
+          probe ibus-stop-111 "ibus/stops/111"
+          probe ibus-stop-6660111 "ibus/stops/6660111"
+          probe ibus-metro-line-1 "ibus/lines/metro/1/stops/111"
+          # Baselines that already worked
+          probe estacions "transit/linies/metro/1/estacions"
+          probe alerts "alerts/metro/channels/WEB"
