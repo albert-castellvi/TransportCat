@@ -1,0 +1,153 @@
+{
+  "timestamp": 1793299485854,
+  "linies": [
+    {
+      "codi_linia": 94,
+      "nom_linia": "L9N",
+      "nom_familia": "Metro",
+      "codi_familia": 1,
+      "color_linia": "FB712B",
+      "estacions": [
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 932,
+          "linies_trajectes": [
+            {
+              "codi_linia": 104,
+              "nom_linia": "L10N",
+              "color_linia": "00A6D6",
+              "codi_trajecte": "1041",
+              "desti_trajecte": "Gorg",
+              "propers_trens": []
+            },
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0941",
+              "desti_trajecte": "Can Zam",
+              "propers_trens": []
+            }
+          ]
+        },
+        {
+          "codi_via": 2,
+          "id_sentit": 2,
+          "codi_estacio": 932,
+          "linies_trajectes": [
+            {
+              "codi_linia": 104,
+              "nom_linia": "L10N",
+              "color_linia": "00A6D6",
+              "codi_trajecte": "1042",
+              "desti_trajecte": "La Sagrera",
+              "propers_trens": []
+            },
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0942",
+              "desti_trajecte": "La Sagrera",
+              "propers_trens": []
+            }
+          ]
+        },
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 940,
+          "linies_trajectes": [
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0941",
+              "desti_trajecte": "Can Zam",
+              "propers_trens": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "codi_linia": 104,
+      "nom_linia": "L10N",
+      "nom_familia": "Metro",
+      "codi_familia": 1,
+      "color_linia": "00A6D6",
+      "estacions": [
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 932,
+          "linies_trajectes": [
+            {
+              "codi_linia": 104,
+              "nom_linia": "L10N",
+              "color_linia": "00A6D6",
+              "codi_trajecte": "1041",
+              "desti_trajecte": "Gorg",
+              "propers_trens": []
+            },
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0941",
+              "desti_trajecte": "Can Zam",
+              "propers_trens": []
+            }
+          ]
+        },
+        {
+          "codi_via": 2,
+          "id_sentit": 2,
+          "codi_estacio": 932,
+          "linies_trajectes": [
+            {
+              "codi_linia": 104,
+              "nom_linia": "L10N",
+              "color_linia": "00A6D6",
+              "codi_trajecte": "1042",
+              "desti_trajecte": "La Sagrera",
+              "propers_trens": []
+            },
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0942",
+              "desti_trajecte": "La Sagrera",
+              "propers_trens": []
+            }
+          ]
+        },
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 933,
+          "linies_trajectes": [
+            {
+              "codi_linia": 104,
+              "nom_linia": "L10N",
+              "color_linia": "00A6D6",
+              "codi_trajecte": "1041",
+              "desti_trajecte": "Gorg",
+              "propers_trens": []
+            },
+            {
+              "codi_linia": 94,
+              "nom_linia": "L9N",
+              "color_linia": "FB712B",
+              "codi_trajecte": "0941",
+              "desti_trajecte": "Can Zam",
+              "propers_trens": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

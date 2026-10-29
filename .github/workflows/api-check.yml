@@ -24,24 +24,32 @@ jobs:
           probe() {
             local label="$1"; shift
             local path="$1"; shift
-            local code bytes
-            code="$(curl -s -o /tmp/out.json -w '%{http_code}' "https://api.tmb.cat/v1/$path?app_id=$TMB_APP_ID&app_key=$TMB_APP_KEY")"
+            local code bytes sep
+            # Paths may carry their own query (i-Metro `estacions`), so append
+            # the credentials with `&` when a `?` is already present.
+            sep='?'
+            case "$path" in
+              *\?*) sep='&' ;;
+            esac
+            code="$(curl -s -o /tmp/out.json -w '%{http_code}' "https://api.tmb.cat/v1/$path${sep}app_id=$TMB_APP_ID&app_key=$TMB_APP_KEY")"
             bytes="$(wc -c < /tmp/out.json | tr -d ' ')"
             echo "== $label [$path] -> HTTP $code ($bytes bytes)"
-            [ "$code" = "200" ] && head -c 200 /tmp/out.json | tr -d '\n' && echo
+            if [ "$code" = "200" ]; then
+              head -c 200 /tmp/out.json | tr -d '\n'; echo
+            fi
           }
-          # Line geometry candidates
-          probe tram1 "transit/linies/metro/1/tram"
-          probe trams1 "transit/linies/metro/1/trams"
-          probe itin1 "transit/linies/metro/1/itineraris"
-          probe recorregut "transit/linies/metro/1/recorregut"
-          probe trazado "transit/linies/metro/1/trazado"
-          # iBus stop code candidates for Hospital de Bellvitge (L1)
-          probe ibus-line-stop-111 "ibus/lines/1/stops/111"
-          probe ibus-line-stop-6660111 "ibus/lines/1/stops/6660111"
-          probe ibus-stop-111 "ibus/stops/111"
-          probe ibus-stop-6660111 "ibus/stops/6660111"
-          probe ibus-metro-line-1 "ibus/lines/metro/1/stops/111"
-          # Baselines that already worked
-          probe estacions "transit/linies/metro/1/estacions"
+          # Line geometry, stations and route records (L1)
+          probe linia-1 "transit/linies/metro/1"
+          jq -c '{features: (.features | length), geometry: [.features[].geometry.type]}' /tmp/out.json || true
+          probe linia-1-filter "transit/linies/metro?filter=CODI_LINIA=1"
+          jq -c '{features: (.features | length), geometry: [.features[].geometry.type]}' /tmp/out.json || true
+          probe estacions-1 "transit/linies/metro/1/estacions"
+          codes="$(jq -r '[.features[].properties.CODI_ESTACIO] | join(",")' /tmp/out.json || true)"
+          echo "L1 station codes: $codes"
+          probe recs-1 "transit/linies/metro/1/recs"
+          # i-Metro live arrivals: two L1 stations, then the whole line in one request
+          probe imetro-l1 "itransit/metro/estacions?estacions=111,112"
+          probe imetro-l1-all "itransit/metro/estacions?estacions=$codes"
+          jq -c '[.linies[] | {codi_linia, nom_linia, estacions: [.estacions[].codi_estacio] | unique | length}]' /tmp/out.json || true
+          # Service alerts baseline
           probe alerts "alerts/metro/channels/WEB"

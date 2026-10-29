@@ -2,10 +2,10 @@ import Foundation
 
 /// A metro station on a specific line, decoded from the TMB transit GeoJSON.
 ///
-/// The TMB properties differ per line family: main lines (L1–L5, L11) carry
-/// rich properties (ID_ESTACIO, accessibility, colors), while L9/L10/FM
-/// features only carry CODI_ESTACIO, NOM_ESTACIO, ORDRE_ESTACIO and
-/// CODI_LINIA. Everything beyond those is optional.
+/// All 11 lines return the same property set (25 keys, including `ID_ESTACIO`
+/// and `NOM_TIPUS_ACCESSIBILITAT`), so nothing here is dropped per line family.
+/// The two derived fields stay optional because the schema does not guarantee
+/// them, and an absent property must never fail the decode.
 struct Station: Identifiable, Hashable {
     let code: Int
     let name: String
@@ -13,9 +13,11 @@ struct Station: Identifiable, Hashable {
     let lineCode: String
     let latitude: Double
     let longitude: Double
-    /// TMB numeric station id (missing on L9/L10/FM features).
+    /// TMB numeric `ID_ESTACIO` (present on every line today, optional in the
+    /// schema).
     let id: Int?
-    /// Whether the station is marked accessible (missing on L9/L10/FM).
+    /// `NOM_TIPUS_ACCESSIBILITAT == "Accessible"` (present on every line today,
+    /// optional in the schema).
     let accessible: Bool?
 }
 

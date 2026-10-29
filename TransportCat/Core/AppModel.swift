@@ -43,7 +43,7 @@ final class AppModel: ObservableObject {
 }
 
 /// State of the currently selected line: topology (loaded once) plus a
-/// polling cycle of iBus arrivals that feeds the position engine.
+/// polling cycle of i-Metro arrivals that feeds the position engine.
 @MainActor
 final class LineState: ObservableObject {
     let line: MetroLine
@@ -56,12 +56,12 @@ final class LineState: ObservableObject {
     @Published private(set) var isPolling = false
     @Published private(set) var errorMessage: String?
 
-    /// Poll cycle for iBus arrivals, in seconds. 20 s keeps the request
+    /// Poll cycle for i-Metro arrivals, in seconds. 20 s keeps the request
     /// volume per visible line modest while staying visibly live.
     static let pollIntervalSeconds: UInt64 = 20
 
     private let client: TMBClient
-    private var engine: TrainPositionEngine?
+    private(set) var engine: TrainPositionEngine?
 
     init(line: MetroLine, client: TMBClient) {
         self.line = line
@@ -85,16 +85,25 @@ final class LineState: ObservableObject {
         }
     }
 
-    private func loadTopology() async {
+    /// Loads the line topology: stations (required) and the line geometry
+    /// (best effort). A failing geometry falls back to a straight polyline
+    /// through the stations so the map, the diagram and the trains still
+    /// render, and is not reported as an error.
+    func loadTopology() async {
         isLoadingTopology = true
         defer { isLoadingTopology = false }
         do {
-            async let stationsTask = client.stations(lineCode: line.code)
-            async let geometryTask = client.lineGeometry(lineCode: line.code)
-            let (loadedStations, loadedGeometry) = try await (stationsTask, geometryTask)
+            let loadedStations = try await client.stations(lineCode: line.code)
             stations = loadedStations
+            let fetchedGeometry = try? await client.lineGeometry(lineCode: line.code)
+            var loadedGeometry = fetchedGeometry
+            if loadedGeometry?.points.isEmpty ?? true {
+                loadedGeometry = Self.stationsPolyline(from: loadedStations)
+            }
             geometry = loadedGeometry
-            engine = TrainPositionEngine.make(stations: loadedStations, geometry: loadedGeometry)
+            engine = loadedGeometry.flatMap {
+                TrainPositionEngine.make(stations: loadedStations, geometry: $0)
+            }
             errorMessage = engine == nil && loadedStations.count >= 2
                 ? "No s'ha pogut projectar la línia sobre la seva geometria."
                 : nil
@@ -103,23 +112,28 @@ final class LineState: ObservableObject {
         }
     }
 
-    /// Polls arrivals for every station of the line concurrently and
-    /// recomputes train positions. Failures per stop are tolerated: a stop
-    /// that errors just keeps its previous arrivals.
+    /// Coarse fallback route when the geometry request fails: the stations
+    /// joined in `ORDRE_ESTACIO` order. Enough for the polyline overlay and
+    /// for the engine, which projects stations onto the polyline.
+    private static func stationsPolyline(from stations: [Station]) -> LineGeometry? {
+        let points = stations
+            .sorted { $0.orderInLine < $1.orderInLine }
+            .map { GeoPoint(latitude: $0.latitude, longitude: $0.longitude) }
+        return points.isEmpty ? nil : LineGeometry(points: points)
+    }
+
+    /// Requests arrivals for the whole line in one call and recomputes train
+    /// positions. Failures are tolerated: a stop missing from the response
+    /// just keeps its previous arrivals.
     func pollArrivals() async {
         guard !stations.isEmpty else { return }
         isPolling = true
         defer { isPolling = false }
 
-        await withTaskGroup(of: (Int, [Arrival]).self) { group in
-            for station in stations {
-                group.addTask {
-                    let arrivals = (try? await self.client.arrivals(lineCode: self.line.code, stopCode: station.code)) ?? []
-                    return (station.code, arrivals)
-                }
-            }
+        let stationCodes = stations.map(\.code)
+        if let fetched = try? await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes) {
             var updated = arrivalsByStop
-            for await (code, arrivals) in group where !arrivals.isEmpty {
+            for (code, arrivals) in fetched where !arrivals.isEmpty {
                 updated[code] = arrivals
             }
             arrivalsByStop = updated

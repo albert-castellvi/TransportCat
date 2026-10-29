@@ -3,9 +3,10 @@ import Foundation
 /// Client for the public TMB API (https://api.tmb.cat/v1).
 ///
 /// All requests append `app_id` and `app_key` query parameters. Parsing is
-/// deliberately tolerant: TMB property shapes differ between line families
-/// (L1–L5/L11 are rich, L9/L10/FM are minimal) and iBus mixes numeric and
-/// textual countdowns, so unknown/missing fields never fail the decode.
+/// deliberately tolerant: optional fields the schema allows to be absent never
+/// fail the decode (in practice all 11 lines return the same station
+/// properties), and i-Metro reports absolute timestamps instead of countdowns,
+/// which the parser converts against the response time.
 final class TMBClient {
     private let session: URLSession
     private let credentials: TMBCredentials
@@ -30,17 +31,21 @@ final class TMBClient {
     }
 
     /// Physical route of one line as an ordered polyline.
-    /// GET /transit/linies/metro/{code}/tram (GeoJSON LineString/MultiLineString)
+    /// GET /transit/linies/metro/{code} (GeoJSON FeatureCollection whose
+    /// geometry is the line's MultiLineString)
     func lineGeometry(lineCode: String) async throws -> LineGeometry {
-        let data = try await get(path: "transit/linies/metro/\(lineCode)/tram")
+        let data = try await get(path: "transit/linies/metro/\(lineCode)")
         return try GeoJSONParser.geometry(from: data)
     }
 
-    /// Live arrivals at one stop of one line.
-    /// GET /ibus/lines/{lineCode}/stops/{stopCode}
-    func arrivals(lineCode: String, stopCode: Int) async throws -> [Arrival] {
-        let data = try await get(path: "ibus/lines/\(lineCode)/stops/\(stopCode)")
-        return try IBusParser.arrivals(from: data, lineCode: lineCode, stationCode: stopCode)
+    /// Live train arrivals for one or more stations of one line.
+    /// GET /itransit/metro/estacions?estacions={comma-separated station codes}
+    /// Returns arrivals grouped by station code; a station without trains in
+    /// the response is simply absent from the result.
+    func metroArrivals(lineCode: String, stationCodes: [Int]) async throws -> [Int: [Arrival]] {
+        let codes = stationCodes.map(String.init).joined(separator: ",")
+        let data = try await get(path: "itransit/metro/estacions?estacions=\(codes)")
+        return try MetroParser.arrivals(from: data, lineCode: lineCode)
     }
 
     /// Current metro service alerts.
@@ -56,10 +61,12 @@ final class TMBClient {
         guard var components = URLComponents(string: "\(Self.baseURL)/\(path)") else {
             throw TMBError.invalidURL
         }
-        components.queryItems = [
-            URLQueryItem(name: "app_id", value: credentials.appId),
-            URLQueryItem(name: "app_key", value: credentials.appKey),
-        ]
+        // Some paths carry their own query (i-Metro `estacions`), so keep the
+        // existing items and append the credentials after them.
+        var queryItems = components.queryItems ?? []
+        queryItems.append(URLQueryItem(name: "app_id", value: credentials.appId))
+        queryItems.append(URLQueryItem(name: "app_key", value: credentials.appKey))
+        components.queryItems = queryItems
         guard let url = components.url else { throw TMBError.invalidURL }
 
         let (data, response) = try await session.data(from: url)

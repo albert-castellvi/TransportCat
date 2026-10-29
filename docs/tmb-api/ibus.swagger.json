@@ -1,0 +1,193 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API TMB - i-Bus",
+    "version": "v1",
+    "description": "# Introducció\nEl servei de i-Bus ofereix en temps real els propers temps de pas de les línies que pasaran per una parada de Bus. Cal tenir en consideració que les dades son una previsió basada en la última localització coneguda de l'autobus amb una precisió màxima de minut.\n\nAquest servei substitueix una [versió anterior](https://developer.tmb.cat/api-docs/v1/ibus_legacy), que tot i estar disponible, es recomana no utilitzar, ja que a futur desapareixerà.\n\n# Format de resposta\nRetorna totes les línies que passen per una parada amb les seves properes arribades:\n\n```json\n{\n  \"timestamp\": 1744273964116,  // timestamp en que s'ha realitzat la consulta\n  \"parades\": [\n    {\n      \"codi_parada\": \"108\",\n      \"nom_parada\": \"Pl Espanya - FGC\",\n      \"linies_trajectes\": [   // per cada trajecte d'una línia que passa per la parada\n        {\n          \"id_operador\": 2,\n          \"transit_namespace\": \"bus\",\t// \"bus\"=línia operada per TMB, \"amb\"=línia operada per altres operadors de l'AMB\n          \"codi_linia\": \"212\",\n          \"nom_linia\": \"H12\",\n          \"id_sentit\": 2,\t// 1 = Anada, 2 = Tornada\n          \"codi_trajecte\": \"2121\",\n          \"desti_trajecte\": Gornal\",\n          \"propers_busos\": [\n            {\n              \"temps_arribada\": 1744274012000, // timestamp absolut del moment previst d'arribada\n              \"id_bus\": 3673\t// identificador de l'autobús\n            },\n            {\n              \"temps_arribada\": 1744274863000,\n              \"id_bus\": 8531\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n```\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n```\nhttps://api.tmb.cat/v1/itransit/bus/parades/2775?app_id=<your_app_id>&app_key=<your_app_key>\n```\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/itransit",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Metodes",
+      "x-displayName": "Llista de mètodes"
+    }
+  ],
+  "paths": {
+    "/bus/parades/{codi_parada}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiParada"
+          },
+          {
+            "$ref": "#/parameters/AppId"
+          },
+          {
+            "$ref": "#/parameters/AppKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta amb les línies i properes arribades a la parada",
+            "schema": {
+              "$ref": "#/definitions/RespostaPrevisioParada"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "description": "Previsió de pas dels propers busos de totes les línies que passen per una parada.",
+        "operationId": "previsioParada",
+        "summary": "Previsió de temps de pas per parada",
+        "tags": [
+          "Metodes"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "RespostaPrevisioParada": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "timestamp",
+          "description": "Marca temporal en mil·lisegons en que s'ha fet la consulta",
+          "example": 1746450527000
+        },
+        "parades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PrevisioParada"
+          }
+        }
+      }
+    },
+    "PrevisioParada": {
+      "type": "object",
+      "properties": {
+        "codi_parada": {
+          "description": "codi identificador de la parada",
+          "type": "string",
+          "example": "108"
+        },
+        "nom_parada": {
+          "description": "nom de la parada",
+          "type": "string",
+          "example": "Pl Espanya - FGC"
+        },
+        "linies_trajectes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LiniaTrajecte"
+          }
+        }
+      }
+    },
+    "LiniaTrajecte": {
+      "type": "object",
+      "properties": {
+        "id_operador": {
+          "type": "integer",
+          "description": "identificador intern del operador de la línia",
+          "example": 2
+        },
+        "transit_namespace": {
+          "type": "string",
+          "description": "permet segmentar les línies de diferents àmbits/operadors",
+          "example": "bus"
+        },
+        "codi_linia": {
+          "type": "string",
+          "description": "identificador únic de la línia dins un mateix \"transit_namespace\"",
+          "example": "216"
+        },
+        "nom_linia": {
+          "type": "string",
+          "description": "nom de la línia",
+          "example": "H16"
+        },
+        "id_sentit": {
+          "type": "integer",
+          "description": "identificador del sentit del trajecte dins la línia (1=Anada, 2=Tornada)",
+          "example": 2
+        },
+        "codi_trajecte": {
+          "type": "string",
+          "description": "identificador del trajecte dins la línia (múltiples recorreguts)",
+          "example": "2161"
+        },
+        "desti_trajecte": {
+          "type": "string",
+          "description": "descripció de la destinació del trajecte"
+        },
+        "propers_busos": {
+          "type": "array",
+          "description": "llistat dels propers busos que arribaran a la parada",
+          "items": {
+            "$ref": "#/definitions/ProperBus"
+          }
+        }
+      }
+    },
+    "ProperBus": {
+      "type": "object",
+      "properties": {
+        "temps_arribada": {
+          "type": "integer",
+          "format": "timestamp",
+          "description": "moment en el que està previst que el autobus arribi a la parada",
+          "example": 1744274012000
+        },
+        "id_bus": {
+          "type": "integer",
+          "description": "identificador de l'autobús (si està disponible)",
+          "example": 3673
+        }
+      }
+    }
+  },
+  "parameters": {
+    "AppId": {
+      "description": "Id de la app",
+      "in": "query",
+      "name": "app_id",
+      "required": true,
+      "type": "string",
+      "x-example": "app_id_value"
+    },
+    "AppKey": {
+      "description": "Key de la app",
+      "in": "query",
+      "name": "app_key",
+      "required": true,
+      "type": "string",
+      "x-example": "app_key_value"
+    },
+    "CodiParada": {
+      "description": "Codi parada",
+      "in": "path",
+      "name": "codi_parada",
+      "required": true,
+      "type": "string",
+      "x-example": 108
+    }
+  },
+  "responses": {
+    "ErrorAuth": {
+      "description": "Error en autorització",
+      "schema": {
+        "type": "string",
+        "default": "Authentication failed"
+      }
+    }
+  }
+}

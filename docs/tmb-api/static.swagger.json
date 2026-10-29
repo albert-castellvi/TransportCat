@@ -1,0 +1,33 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API TMB - Static",
+    "version": "v1",
+    "description": "\n# Introducció\nAquest servei permet descarregar diferents conjunts de dades, relatives al servei de transport públic: línies, parades, estacions...\n\n\n# GTFS\nAquest servei permet descarregar un fitxer .zip que segueix la especificacio estàndard <a href=\"https://developers.google.com/transit/gtfs/\" target=\"blank\">GTFS</a>.\n\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n```\nhttps://api.tmb.cat/v1/static/datasets/gtfs.zip?app_id=<your_app_id>&app_key=<your_app_key>\n```\n\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/static/datasets",
+  "schemes": [
+    "https"
+  ],
+  "produces": [
+    "application/zip"
+  ],
+  "paths": {
+    "/gtfs.zip": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resultat correcte",
+            "schema": {
+              "type": "file"
+            }
+          }
+        },
+        "description": "Descàrrega de dades de trànsit de TMB en format GTFS",
+        "operationId": "gtfs",
+        "summary": "Descàrrega GTFS"
+      }
+    }
+  }
+}

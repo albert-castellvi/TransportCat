@@ -1,0 +1,13 @@
+{
+  "timestamp": 1793299488390,
+  "linies": [
+    {
+      "codi_linia": 99,
+      "nom_linia": "FM",
+      "nom_familia": "Metro-Funicular",
+      "codi_familia": 2,
+      "color_linia": "004C38",
+      "estacions": []
+    }
+  ]
+}

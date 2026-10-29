@@ -4,7 +4,7 @@ import Foundation
 /// (`/v1/alerts/metro/channels/WEB`).
 struct ServiceAlert: Identifiable, Hashable {
     let id: String
-    /// Affected line codes, normalized to strings ("2", "9N", ...).
+    /// Affected line codes, normalized to strings ("2", "94", ...).
     let lineCodes: [String]
     /// Affected station names as listed by TMB.
     let stationNames: [String]

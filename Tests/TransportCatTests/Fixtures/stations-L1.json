@@ -1,47 +1,132 @@
 {
   "type": "FeatureCollection",
+  "totalFeatures": 3,
+  "numberMatched": 3,
+  "numberReturned": 3,
+  "timeStamp": "2026-10-29T18:29:48.821Z",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::4326"
+    }
+  },
   "features": [
     {
       "type": "Feature",
+      "id": "ESTACIONS_LINIA.fid-4adcea27_1a188eb8f86_-56a1",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.10724192,
+          41.34467731
+        ]
+      },
+      "geometry_name": "GEOMETRY",
       "properties": {
+        "ID_ESTACIO_LINIA": 167,
+        "CODI_ESTACIO_LINIA": 111,
+        "ID_GRUP_ESTACIO": 111,
+        "CODI_GRUP_ESTACIO": 6660111,
         "ID_ESTACIO": 81,
         "CODI_ESTACIO": 111,
         "NOM_ESTACIO": "Hospital de Bellvitge",
         "ORDRE_ESTACIO": 1,
+        "ID_LINIA": 4,
         "CODI_LINIA": 1,
         "NOM_LINIA": "L1",
+        "ORDRE_LINIA": 1,
+        "ID_TIPUS_SERVEI": 1,
+        "DESC_SERVEI": "Hospital de Bellvitge - Fondo",
+        "ORIGEN_SERVEI": "Hospital de Bellvitge",
+        "DESTI_SERVEI": "Fondo",
+        "ID_TIPUS_ACCESSIBILITAT": 1,
         "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
-        "COLOR_LINIA": "CE1126"
-      },
-      "geometry": { "type": "Point", "coordinates": [2.10724192, 41.34467731] }
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA_INAUGURACIO": "1989-10-17Z",
+        "DATA": "2026-10-28Z",
+        "COLOR_LINIA": "CE1126",
+        "PICTO": "L1",
+        "PICTO_GRUP": "L1"
+      }
     },
     {
       "type": "Feature",
+      "id": "ESTACIONS_LINIA.fid-4adcea27_1a188eb8f86_-56ab",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.110917,
+          41.35097554
+        ]
+      },
+      "geometry_name": "GEOMETRY",
       "properties": {
+        "ID_ESTACIO_LINIA": 119,
+        "CODI_ESTACIO_LINIA": 112,
+        "ID_GRUP_ESTACIO": 112,
+        "CODI_GRUP_ESTACIO": 6660112,
         "ID_ESTACIO": 33,
         "CODI_ESTACIO": 112,
         "NOM_ESTACIO": "Bellvitge",
         "ORDRE_ESTACIO": 2,
+        "ID_LINIA": 4,
         "CODI_LINIA": 1,
         "NOM_LINIA": "L1",
+        "ORDRE_LINIA": 1,
+        "ID_TIPUS_SERVEI": 1,
+        "DESC_SERVEI": "Hospital de Bellvitge - Fondo",
+        "ORIGEN_SERVEI": "Hospital de Bellvitge",
+        "DESTI_SERVEI": "Fondo",
+        "ID_TIPUS_ACCESSIBILITAT": 1,
         "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
-        "COLOR_LINIA": "CE1126"
-      },
-      "geometry": { "type": "Point", "coordinates": [2.110917, 41.35097554] }
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA_INAUGURACIO": "1989-10-17Z",
+        "DATA": "2026-10-28Z",
+        "COLOR_LINIA": "CE1126",
+        "PICTO": "L1",
+        "PICTO_GRUP": "L1"
+      }
     },
     {
       "type": "Feature",
+      "id": "ESTACIONS_LINIA.fid-4adcea27_1a188eb8f86_-56b5",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.10263153,
+          41.35855331
+        ]
+      },
+      "geometry_name": "GEOMETRY",
       "properties": {
+        "ID_ESTACIO_LINIA": 120,
+        "CODI_ESTACIO_LINIA": 113,
+        "ID_GRUP_ESTACIO": 113,
+        "CODI_GRUP_ESTACIO": 6660113,
         "ID_ESTACIO": 34,
         "CODI_ESTACIO": 113,
         "NOM_ESTACIO": "Av. Carrilet",
         "ORDRE_ESTACIO": 3,
+        "ID_LINIA": 4,
         "CODI_LINIA": 1,
         "NOM_LINIA": "L1",
+        "ORDRE_LINIA": 1,
+        "ID_TIPUS_SERVEI": 1,
+        "DESC_SERVEI": "Hospital de Bellvitge - Fondo",
+        "ORIGEN_SERVEI": "Hospital de Bellvitge",
+        "DESTI_SERVEI": "Fondo",
+        "ID_TIPUS_ACCESSIBILITAT": 1,
         "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
-        "COLOR_LINIA": "CE1126"
-      },
-      "geometry": { "type": "Point", "coordinates": [2.115342, 41.357513] }
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA_INAUGURACIO": "1987-04-23Z",
+        "DATA": "2026-10-28Z",
+        "COLOR_LINIA": "CE1126",
+        "PICTO": "L1",
+        "PICTO_GRUP": "L1"
+      }
     }
   ]
 }

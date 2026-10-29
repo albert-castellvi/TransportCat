@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "totalFeatures": 1,
+  "numberMatched": 1,
+  "numberReturned": 1,
+  "timeStamp": "2026-10-29T18:24:35.684Z",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::4326"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "LINIES_METRO.fid--3568b862_1a188e094f2_-1253",
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              2.09846443,
+              41.34213332
+            ],
+            [
+              2.10047039,
+              41.34162018
+            ],
+            [
+              2.10137053,
+              41.34147109
+            ],
+            [
+              2.1022644,
+              41.34154957
+            ],
+            [
+              2.10292525,
+              41.34178589
+            ]
+          ]
+        ]
+      },
+      "geometry_name": "GEOMETRY",
+      "properties": {
+        "ID_LINIA": 4,
+        "CODI_LINIA": 1,
+        "NOM_LINIA": "L1",
+        "DESC_LINIA": "Hospital de Bellvitge - Fondo",
+        "ORIGEN_LINIA": "Hospital de Bellvitge",
+        "DESTI_LINIA": "Fondo",
+        "NUM_PAQUETS": 1,
+        "ID_OPERADOR": 1,
+        "NOM_OPERADOR": "Metro",
+        "NOM_TIPUS_TRANSPORT": "METRO",
+        "CODI_FAMILIA": 1,
+        "NOM_FAMILIA": "Metro",
+        "ORDRE_FAMILIA": 1,
+        "ORDRE_LINIA": 1,
+        "CODI_TIPUS_CALENDARI": "1",
+        "NOM_TIPUS_CALENDARI": "Tots els dies",
+        "DATA": "2026-10-28Z",
+        "COLOR_LINIA": "CE1126",
+        "COLOR_AUX_LINIA": "CE1126",
+        "COLOR_TEXT_LINIA": "FFFFFF"
+      }
+    }
+  ]
+}

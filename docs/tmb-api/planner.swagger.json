@@ -1,0 +1,966 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API TMB - Planner",
+    "version": "v1",
+    "description": "# Introducció\nAquest servei utilitza el projecte open source OpenTripPlanner. Per a més informació consulteu la <a href=\"https://www.opentripplanner.org/\" target=\"blank\">pàgina del producte</a>.\n\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n```\nhttps://api.tmb.cat/v1/planner/plan?app_id=<your_app_id>&app_key=<your_app_key>\n```\n\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/planner",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Planner",
+      "x-displayName": "Càlcul de Rutes",
+      "description": "Càlcul de rutes de transport públic."
+    }
+  ],
+  "paths": {
+    "/plan": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Origen de la ruta en coordenades lat/lon",
+            "in": "query",
+            "name": "fromPlace",
+            "required": true,
+            "type": "string",
+            "x-example": "41.3755204,2.1498870"
+          },
+          {
+            "description": "Destí de la ruta en coordenades lat/lon",
+            "in": "query",
+            "name": "toPlace",
+            "required": true,
+            "type": "string",
+            "x-example": "41.422520,2.187824"
+          },
+          {
+            "description": "Dia d'arribada/sortida de la ruta (en funció del paràmetre arriveBy). Format mm-DD-YYYY. Per exemple 05-26-2014",
+            "pattern": "^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)\\d{2}$",
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "type": "string",
+            "x-example": "MM-DD-YYYY"
+          },
+          {
+            "description": "Hora d'arribada/sortida de la ruta (en funció del paràmetre arriveBy). Per exemple 11:58am",
+            "in": "query",
+            "name": "time",
+            "required": true,
+            "type": "string",
+            "pattern": "^(0[1-9]|1[012]):([0-5][0-9])(am|pm)$",
+            "x-example": "11:58am"
+          },
+          {
+            "description": "Indica si el dia/hora especificats determinent la hora de sortida (false) o d'arribada (true)",
+            "in": "query",
+            "name": "arriveBy",
+            "required": true,
+            "type": "string",
+            "x-example": false
+          },
+          {
+            "description": "Indica els modes de transport a utilitzar",
+            "in": "query",
+            "name": "mode",
+            "required": true,
+            "type": "string",
+            "x-example": "TRANSIT,WALK"
+          },
+          {
+            "description": "Màxima distància caminant en la ruta resultant",
+            "in": "query",
+            "name": "maxWalkDistance",
+            "required": false,
+            "type": "number",
+            "x-example": 300
+          },
+          {
+            "description": "Indica si es retornen les parades intermitges dins de cada part del trajecte resultant",
+            "in": "query",
+            "name": "showIntermediateStops",
+            "required": false,
+            "type": "boolean",
+            "x-example": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "requestParameters": {
+                  "$ref": "#/definitions/RequestParameters"
+                },
+                "plan": {
+                  "$ref": "#/definitions/Plan"
+                },
+                "debugOutput": {
+                  "type": "object",
+                  "properties": {
+                    "precalculationTime": {
+                      "type": "number",
+                      "x-example": 26
+                    },
+                    "pathCalculationTime": {
+                      "type": "number",
+                      "x-example": 243
+                    },
+                    "pathTimes": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "x-example": 16
+                      }
+                    },
+                    "renderingTime": {
+                      "type": "number",
+                      "x-example": 0
+                    },
+                    "totalTime": {
+                      "type": "number",
+                      "x-example": 269
+                    },
+                    "timedOut": {
+                      "type": "boolean",
+                      "x-example": false
+                    }
+                  }
+                },
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "number"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "PLAN_OK",
+                        "SYSTEM_ERROR",
+                        "GRAPH_UNAVAILABLE",
+                        "OUTSIDE_BOUNDS",
+                        "PATH_NOT_FOUND",
+                        "NO_TRANSIT_TIMES",
+                        "REQUEST_TIMEOUT",
+                        "BOGUS_PARAMETER",
+                        "GEOCODE_FROM_NOT_FOUND",
+                        "GEOCODE_TO_NOT_FOUND",
+                        "GEOCODE_FROM_TO_NOT_FOUND",
+                        "TOO_CLOSE",
+                        "LOCATION_NOT_ACCESSIBLE",
+                        "GEOCODE_FROM_AMBIGUOUS",
+                        "GEOCODE_TO_AMBIGUOUS",
+                        "GEOCODE_FROM_TO_AMBIGUOUS",
+                        "UNDERSPECIFIED_TRIANGLE",
+                        "TRIANGLE_NOT_AFFINE",
+                        "TRIANGLE_OPTIMIZE_TYPE_NOT_SET",
+                        "TRIANGLE_VALUES_NOT_SET"
+                      ]
+                    },
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "noPath": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "operationId": "plan",
+        "summary": "Servei per calcular la millor ruta en transport públic",
+        "tags": [
+          "Planner"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "Agency": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-example": 3
+        },
+        "name": {
+          "type": "string",
+          "x-example": "TMB"
+        },
+        "url": {
+          "type": "string",
+          "x-example": "https://www.tmb.cat"
+        },
+        "timezone": {
+          "type": "string",
+          "x-example": "Europe/Madrid"
+        },
+        "lang": {
+          "type": "string",
+          "x-example": "ca"
+        },
+        "phone": {
+          "type": "string",
+          "x-example": "902 07 50 27"
+        }
+      }
+    },
+    "RouteBase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-example": "3:2.165"
+        },
+        "shortName": {
+          "type": "string",
+          "x-example": 165
+        },
+        "longName": {
+          "type": "string",
+          "x-example": "Prat Exprés"
+        },
+        "color": {
+          "type": "string",
+          "x-example": "DC241F"
+        }
+      }
+    },
+    "Route": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/RouteBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "x-example": "BUS"
+            },
+            "agencyName": {
+              "type": "string",
+              "x-example": "TMB"
+            }
+          }
+        }
+      ]
+    },
+    "RouteDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/RouteBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "agency": {
+              "$ref": "#/definitions/Agency"
+            },
+            "type": {
+              "type": "number",
+              "x-example": 3
+            },
+            "url": {
+              "type": "string",
+              "x-example": "https://www.tmb.cat/ca/barcelona/autobusos/-/lineabus/165"
+            },
+            "textColor": {
+              "type": "string",
+              "x-example": "FFFFFF"
+            },
+            "routeBikesAllowed": {
+              "type": "number",
+              "x-example": 0
+            },
+            "bikesAllowed": {
+              "type": "number",
+              "x-example": 0
+            },
+            "sortOrder": {
+              "type": "number",
+              "x-example": -999
+            },
+            "sortOrderSet": {
+              "type": "boolean",
+              "x-example": false
+            }
+          }
+        }
+      ]
+    },
+    "Stop": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "x-example": "3:2.421"
+        },
+        "code": {
+          "type": "string",
+          "x-example": 421
+        },
+        "name": {
+          "type": "string",
+          "x-example": "Gran Via - Farell"
+        },
+        "lat": {
+          "type": "number",
+          "format": "double",
+          "x-example": 41.371993
+        },
+        "lon": {
+          "type": "number",
+          "format": "double",
+          "x-example": 2.14495
+        }
+      }
+    },
+    "StopDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/Stop"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "locationType": {
+              "type": "number",
+              "x-example": "0,"
+            },
+            "wheelchairBoarding": {
+              "type": "number",
+              "x-example": "0,"
+            },
+            "vehicleType": {
+              "type": "number",
+              "x-example": "-999,"
+            },
+            "vehicleTypeSet": {
+              "type": "boolean",
+              "x-example": false
+            }
+          }
+        }
+      ]
+    },
+    "StopTimes": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "identificador del viatge",
+              "x-example": "3:2.165:0:01"
+            },
+            "desc": {
+              "type": "string",
+              "description": "descripció del viatge",
+              "x-example": "165 to Remolar, S/N (3:2.9556)"
+            }
+          }
+        },
+        "times": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stopId": {
+                "type": "string",
+                "x-example": "3:2.421"
+              },
+              "scheduledArrival": {
+                "type": "number",
+                "x-example": 21744
+              },
+              "scheduledDeparture": {
+                "type": "number",
+                "x-example": 21744
+              },
+              "realtimeArrival": {
+                "type": "number",
+                "x-example": 21744
+              },
+              "realtimeDeparture": {
+                "type": "number",
+                "x-example": 21744
+              },
+              "arrivalDelay": {
+                "type": "number",
+                "x-example": 0
+              },
+              "departureDelay": {
+                "type": "number",
+                "x-example": 0
+              },
+              "timepoint": {
+                "type": "boolean",
+                "x-example": false
+              },
+              "realtime": {
+                "type": "boolean",
+                "x-example": false
+              },
+              "realtimeState": {
+                "type": "string",
+                "x-example": "SCHEDULED"
+              },
+              "serviceDay": {
+                "type": "number",
+                "description": "format UNIX epoch time.",
+                "x-example": 1520204400
+              },
+              "tripId": {
+                "type": "string",
+                "x-example": "3:2.1054572.0"
+              },
+              "headsign": {
+                "type": "string",
+                "description": "descripció del destí del servei",
+                "x-example": "El Prat"
+              }
+            }
+          }
+        }
+      }
+    },
+    "RequestParameters": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)\\d{2}$",
+          "x-example": "06-03-2018"
+        },
+        "mode": {
+          "type": "string",
+          "x-example": "TRANSIT,WALK"
+        },
+        "arriveBy": {
+          "type": "string",
+          "x-example": false
+        },
+        "app_key": {
+          "type": "string",
+          "x-example": "123456789123456789123456789"
+        },
+        "fromPlace": {
+          "type": "string",
+          "x-example": "41.3755204,2.1498870"
+        },
+        "toPlace": {
+          "type": "string",
+          "x-example": "41.422520,2.187824"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^(0[1-9]|1[012]):([0-5][0-9])(am|pm)$",
+          "x-example": "11:58am"
+        },
+        "maxWalkDistance": {
+          "type": "string",
+          "x-example": "300"
+        },
+        "app_id": {
+          "type": "string",
+          "x-example": "12345678"
+        }
+      }
+    },
+    "Plan": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "number",
+          "description": "data de la consulta en epoch time.",
+          "x-example": 1528019880000
+        },
+        "from": {
+          "$ref": "#/definitions/Place"
+        },
+        "to": {
+          "$ref": "#/definitions/Place"
+        },
+        "itineraries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Itinerary"
+          }
+        }
+      }
+    },
+    "Place": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-example": "Origin"
+        },
+        "lon": {
+          "type": "number",
+          "format": "double",
+          "x-example": 2.149887
+        },
+        "lat": {
+          "type": "number",
+          "format": "double",
+          "x-example": 41.3755204
+        },
+        "orig": {
+          "type": "string",
+          "x-example": ""
+        },
+        "vertexType": {
+          "description": "tipus de lloc: NORMAL si és un punt qualsevol al carrer, TRANSIT si és una parada de transport",
+          "type": "string",
+          "x-example": "NORMAL"
+        },
+        "stopCode": {
+          "description": "codi de la parada, si el vertexType es TRANSIT",
+          "type": "string",
+          "x-example": 421
+        }
+      }
+    },
+    "Itinerary": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "number",
+          "description": "Duració del viatge, en segons.",
+          "x-example": 1883
+        },
+        "startTime": {
+          "type": "number",
+          "description": "Moment en que comença el trajecte, en epoch time.",
+          "x-example": 1528020402000
+        },
+        "endTime": {
+          "type": "number",
+          "description": "Moment en que acaba el trajecte, en epoch time.",
+          "x-example": 1528022285000
+        },
+        "walkTime": {
+          "type": "number",
+          "description": "temps caminant durant el trajecte, en segons",
+          "x-example": 301
+        },
+        "transitTime": {
+          "type": "number",
+          "description": "temps en transport durant el trajecte, en segons",
+          "x-example": 1220
+        },
+        "waitingTime": {
+          "type": "number",
+          "description": "temps esperant el transport, en segons.",
+          "x-example": 362
+        },
+        "walkDistance": {
+          "type": "number",
+          "format": "double",
+          "description": "distància que ha de caminar l'usuari, en metres",
+          "x-example": 356.41564
+        },
+        "walkLimitExceeded": {
+          "type": "boolean",
+          "description": "si es cert, indica que s'ha excedit el límit de temps indicat",
+          "x-example": false
+        },
+        "elevationLost": {
+          "type": "number",
+          "format": "double",
+          "description": "elevació que s'ha descendit en total durant el trajecte, en metres",
+          "x-example": 0
+        },
+        "elevationGained": {
+          "type": "number",
+          "format": "double",
+          "description": "elevació que s'ha ascendit en total durant el trajecte, en metres",
+          "x-example": 0
+        },
+        "transfers": {
+          "type": "number",
+          "description": "Número de transbordaments de transport que té el trajecte.",
+          "x-example": 1
+        },
+        "fare": {
+          "type": "object",
+          "description": "Cost del viatge"
+        },
+        "legs": {
+          "description": "Llista de subtrajectes. Cada subtrajecte pot ser una part del trajecte caminant (inclou anar en bicicleta o cotxe privat) o un viatge en transport públic",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Leg"
+          }
+        },
+        "tooSloped": {
+          "type": "boolean",
+          "description": "si és cert, indica que el itinerari té més desnivell de l'indicat per l'usuari (perquè no hi ha itineraris amb menys desnivell)",
+          "x-example": false
+        }
+      }
+    },
+    "Leg": {
+      "type": "object",
+      "properties": {
+        "startTime": {
+          "type": "number",
+          "description": "dia i hora d'inici del subtrajecte",
+          "x-example": 1528020402000
+        },
+        "endTime": {
+          "type": "number",
+          "description": "dia i hora de finalització del subtrajecte",
+          "x-example": 1528020543000
+        },
+        "departureDelay": {
+          "type": "number",
+          "description": "per subtrajectes en transport, temps entre l'inici del subtrajecte i la hora planificada de sortida del transport",
+          "x-example": 0
+        },
+        "arrivalDelay": {
+          "type": "number",
+          "description": "per subtrajectes en transport, temps entre la hora planificada d'arribada' del transport i el final del subtrajecte",
+          "x-example": 0
+        },
+        "realTime": {
+          "type": "boolean",
+          "description": "cert si hi ha dades en temps real en aquest subtrajecte",
+          "x-example": false
+        },
+        "isNonExactFrequency": {
+          "type": "boolean",
+          "description": "cert si el temps de pas del transport son per freqüència, sense hores de sortida exactes."
+        },
+        "headway": {
+          "type": "number",
+          "description": "la millor estimació del temps d'arribada entre dos vehicles (freqüència)"
+        },
+        "distance": {
+          "type": "number",
+          "format": "double",
+          "description": "distància recorreguda en el subtrajecte, en metres",
+          "x-example": 160.102
+        },
+        "pathway": {
+          "type": "boolean",
+          "description": "Indica si aquest subtrajecte va a través de camins",
+          "x-example": false
+        },
+        "mode": {
+          "type": "string",
+          "description": "indica la forma de recorrer aquest subtrajecte (per exemple, WALK=caminant)",
+          "enum": [
+            "WALK",
+            "BICYCLE",
+            "CAR",
+            "TRAM",
+            "SUBWAY",
+            "RAIL",
+            "BUS",
+            "FERRY",
+            "CABLE_CAR",
+            "GONDOLA",
+            "FUNICULAR",
+            "TRANSIT",
+            "LEG_SWITCH",
+            "AIRPLANE"
+          ],
+          "x-example": "SUBWAY"
+        },
+        "route": {
+          "type": "string",
+          "description": "Per subtrajectes de transports, la ruta de bus o tren. Per subtrajectes caminant, el nom del carrer que es creua",
+          "x-example": "L1"
+        },
+        "agencyName": {
+          "type": "string",
+          "x-example": "TMB"
+        },
+        "agencyUrl": {
+          "type": "string",
+          "x-example": "https://www.tmb.cat"
+        },
+        "agencyTimeZoneOffset": {
+          "type": "number",
+          "x-example": 7200000
+        },
+        "routeColor": {
+          "type": "string",
+          "description": "per subtrajectes de transport, el color de fons de la ruta, si existeix",
+          "x-example": "CE1126"
+        },
+        "routeType": {
+          "type": "number",
+          "description": "per subtrajectes de transport, el tipus de ruta. Caminant -1. De 0-7: 0 Tram, 1 Subway, 2 Train, 3 Bus, 4 Ferry, 5 Cable Car, 6 Gondola, 7 Funicular. Si és igual o superior a 100, segueix la codificació HVT (Hierarchical Vehicle Type) de la European TPEG"
+        },
+        "routeId": {
+          "type": "string"
+        },
+        "routeTextColor": {
+          "type": "string",
+          "description": "per subtrajectes de transport, el color del text de la ruta, si existeix",
+          "x-example": "FFFFFF"
+        },
+        "interlineWithPreviousLeg": {
+          "type": "boolean",
+          "description": "indica si l'usuari s'ha de mantenir al vehicle, perquè canvia de ruta (venint de l'anterior subtrajecte)",
+          "x-example": false
+        },
+        "tripShortName": {
+          "type": "string",
+          "description": "per subtrajectes de transport, el nom curt del viatge dins la ruta."
+        },
+        "tripBlockId": {
+          "type": "string"
+        },
+        "headsign": {
+          "type": "string",
+          "description": "frontal de destinacio del bus o tren a utilitzar"
+        },
+        "agencyId": {
+          "type": "string",
+          "description": "identificador de l'operador de transport"
+        },
+        "tripId": {
+          "type": "string"
+        },
+        "serviceDate": {
+          "type": "string",
+          "description": "data del servei de transport"
+        },
+        "from": {
+          "$ref": "#/definitions/Place"
+        },
+        "to": {
+          "$ref": "#/definitions/Place"
+        },
+        "intermediateStops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Place"
+          },
+          "description": "per subtrajectes de transport, parades intermitges entre el origen i el desti del subtrajecte. Aquest paràmetre només té valor si el paràmetre d'entrada 'showIntermediateStops' és 'true'."
+        },
+        "legGeometry": {
+          "type": "object",
+          "properties": {
+            "points": {
+              "type": "string"
+            },
+            "length": {
+              "type": "number"
+            }
+          },
+          "description": "geometria del subtrajecte en format de encoded polyline"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WalkStep"
+          },
+          "description": "serie d'instruccions, pas a pas, per anar caminant, en bicicleta o amb cotxe."
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LocalizedAlert"
+          }
+        },
+        "routeShortName": {
+          "type": "string"
+        },
+        "routeLongName": {
+          "type": "string"
+        },
+        "boardRule": {
+          "type": "string"
+        },
+        "alightRule": {
+          "type": "string"
+        },
+        "rentedBike": {
+          "type": "boolean"
+        },
+        "transitLeg": {
+          "type": "boolean",
+          "description": "indica si aquest subtrajecte és caminant o no"
+        },
+        "duration": {
+          "type": "number",
+          "description": "duració del subtrajecte, en segons"
+        }
+      }
+    },
+    "WalkStep": {
+      "type": "object",
+      "properties": {
+        "distance": {
+          "type": "number",
+          "description": "distància en metres d'aquest pas"
+        },
+        "relativeDirection": {
+          "type": "string",
+          "description": "direcció relativa d'aquest pas",
+          "enum": [
+            "DEPART",
+            "HARD_LEFT",
+            "LEFT",
+            "SLIGHTLY_LEFT",
+            "CONTINUE",
+            "SLIGHTLY_RIGHT",
+            "RIGHT",
+            "HARD_RIGHT",
+            "CIRCLE_CLOCKWISE",
+            "CIRCLE_COUNTERCLOCKWISE",
+            "ELEVATOR",
+            "UTURN_LEFT",
+            "UTURN_RIGHT"
+          ]
+        },
+        "streetName": {
+          "type": "string",
+          "description": "nom del carrer"
+        },
+        "absoluteDirection": {
+          "type": "string",
+          "description": "direcció absoluta d'aquest pas",
+          "enum": [
+            "NORTH",
+            "NORTHEAST",
+            "EAST",
+            "SOUTHEAST",
+            "SOUTH",
+            "SOUTHWEST",
+            "WEST",
+            "NORTHWEST"
+          ]
+        },
+        "exit": {
+          "type": "string",
+          "description": "sortida d'una autopista o rotonda"
+        },
+        "stayOn": {
+          "type": "boolean",
+          "description": "indica si un carrer canvia de direcció a una interseccio"
+        },
+        "area": {
+          "type": "boolean",
+          "description": "indica que aquest pas és un lloc obert, com una plaça o una andana de tren"
+        },
+        "bogusName": {
+          "type": "boolean"
+        },
+        "lon": {
+          "type": "number",
+          "format": "double",
+          "description": "longitut de l'inici del pas"
+        },
+        "lat": {
+          "type": "number",
+          "format": "double",
+          "description": "latitut de l'inici del pas"
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/LocalizedAlert"
+          }
+        },
+        "elevation": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "LocalizedAlert": {
+      "type": "object"
+    }
+  },
+  "parameters": {
+    "AppId": {
+      "description": "Id de la app",
+      "in": "query",
+      "name": "app_id",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_ids",
+      "x-example": "app_id_value"
+    },
+    "AppKey": {
+      "description": "Key de la app",
+      "in": "query",
+      "name": "app_key",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_keys",
+      "x-example": "app_key_value"
+    },
+    "AgencyId": {
+      "description": "Identificador d'un operador de transport",
+      "in": "path",
+      "name": "agency_id",
+      "required": true,
+      "type": "string",
+      "x-example": 3
+    },
+    "RouteId": {
+      "description": "Identificador d'una línia de transport",
+      "in": "path",
+      "name": "route_id",
+      "required": true,
+      "type": "string",
+      "x-example": "3:2.165"
+    },
+    "StopId": {
+      "description": "Identificador d'una parada de transport",
+      "in": "path",
+      "name": "stop_id",
+      "required": true,
+      "type": "string",
+      "x-example": "3:2.421"
+    }
+  },
+  "responses": {
+    "ErrorAuth": {
+      "description": "Error en autorització",
+      "schema": {
+        "type": "string",
+        "default": "Authentication failed"
+      }
+    }
+  },
+  "x-tagGroups": [
+    {
+      "name": "Llistat de mètodes",
+      "tags": [
+        "Planner"
+      ]
+    }
+  ]
+}

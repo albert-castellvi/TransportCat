@@ -1,23 +1,148 @@
 {
+  "status": "success",
   "data": {
     "alerts": [
       {
-        "id": "alert-001",
         "disruption_dates": [
-          { "begin_date": 1793272800000, "end_date": 1796351400000 }
+          {
+            "begin_date": 1793272800000,
+            "end_date": 1796351400000
+          }
         ],
         "entities": [
-          { "line_code": "2", "line_name": "L2", "station_name": "La Pau" },
-          { "line_code": "2", "line_name": "L2", "station_name": "Verneda" }
-        ]
+          {
+            "direction_code": "ALL",
+            "direction_name": "ALL",
+            "entrance_code": "ALL",
+            "entrance_name": "ALL",
+            "line_code": "2",
+            "line_name": "L2",
+            "station_code": "221",
+            "station_name": "La Pau"
+          },
+          {
+            "direction_code": "ALL",
+            "direction_name": "ALL",
+            "entrance_code": "ALL",
+            "entrance_name": "ALL",
+            "line_code": "2",
+            "line_name": "L2",
+            "station_code": "222",
+            "station_name": "Verneda"
+          },
+          {
+            "direction_code": "ALL",
+            "direction_name": "ALL",
+            "entrance_code": "ALL",
+            "entrance_name": "ALL",
+            "line_code": "2",
+            "line_name": "L2",
+            "station_code": "223",
+            "station_name": "Artigues | Sant Adrià"
+          },
+          {
+            "direction_code": "ALL",
+            "direction_name": "ALL",
+            "entrance_code": "ALL",
+            "entrance_name": "ALL",
+            "line_code": "2",
+            "line_name": "L2",
+            "station_code": "224",
+            "station_name": "Sant Roc"
+          },
+          {
+            "direction_code": "ALL",
+            "direction_name": "ALL",
+            "entrance_code": "ALL",
+            "entrance_name": "ALL",
+            "line_code": "2",
+            "line_name": "L2",
+            "station_code": "225",
+            "station_name": "Gorg"
+          }
+        ],
+        "id": 228295,
+        "publications": [
+          {
+            "headerCa": "Des del 02/11/2026 fins al dia 03/12/2026",
+            "headerEn": "From 02/11/2026 to 03/12/2026",
+            "headerEs": "Des del 02/11/2026 hasta el dia 03/12/2026",
+            "textCa": "Per treballs en la infraestructura, del 2 de novembre al 3 de desembre, sense servei a l'L2 entre La Pau i Gorg.",
+            "textEn": "Due to infrastructure work, there will be no service on Line L2 between La Pau and Gorg from November 2 through December 3.",
+            "textEs": "Debido a obras en la infraestructura, del 2 de noviembre al 3 de diciembre, no habrá servicio en la línea L2 entre La Pau y Gorg.",
+            "begin_date": 1793228400000,
+            "end_date": 1793573940000
+          }
+        ],
+        "tstamp": 1793272916000,
+        "categories": {
+          "effect_code": "PP1",
+          "effect_type": "TRAFFIC",
+          "cause_code": "CONSTRUCTION",
+          "effect_status": "WARNING"
+        },
+        "cause": {
+          "code": "CONSTRUCTION",
+          "estat": "ACTIU"
+        },
+        "effect": {
+          "code": "PP1",
+          "ordre": 1001,
+          "status": "WARNING",
+          "type": "TRAFFIC"
+        }
       },
       {
         "disruption_dates": [
-          { "begin_date": 1793272800000 }
+          {
+            "begin_date": 1777256100000,
+            "end_date": 1806188460000
+          }
         ],
         "entities": [
-          { "line_code": 1, "station_name": "Clot" }
-        ]
+          {
+            "line_code": "1",
+            "line_name": "L1",
+            "station_code": "120",
+            "station_name": "Plaça de Sants"
+          },
+          {
+            "line_code": "5",
+            "line_name": "L5",
+            "station_code": "517",
+            "station_name": "Plaça de Sants"
+          }
+        ],
+        "id": 224755,
+        "publications": [
+          {
+            "headerCa": "PP2 Enllaç tancat",
+            "headerEn": "PP2 Enllaç tancat",
+            "headerEs": "PP2 Enllaç tancat",
+            "textCa": "Fins al 27/03/2027, aproximadament, tancat el passadís d'enllaç entre l'L1 i l'L5 de l'estació Plaça de Sants, per obres de millora. L'enllaç s'ha de fer per l'exterior.",
+            "textEn": "Until approximately March 27, 2027, the passageway between L1 and L5 at Plaça de Sants station will be closed due to improvement work. The link must be made from the outside.",
+            "textEs": "Hasta el 27/03/2027, aproximadamente, cerrado el pasillo de enlace entre L1 y L5 de la estación Plaça de Sants, por obras de mejora. El enlace se tiene que hacer por el exterior.",
+            "begin_date": 1777258800000,
+            "end_date": 1806188460000
+          }
+        ],
+        "tstamp": 1776186029000,
+        "categories": {
+          "effect_code": "PP2",
+          "effect_type": "INFRASTRUCTURE",
+          "cause_code": "CONSTRUCTION",
+          "effect_status": "WARNING"
+        },
+        "cause": {
+          "code": "CONSTRUCTION",
+          "estat": "ACTIU"
+        },
+        "effect": {
+          "code": "PP2",
+          "ordre": 1002,
+          "status": "WARNING",
+          "type": "INFRASTRUCTURE"
+        }
       }
     ]
   }

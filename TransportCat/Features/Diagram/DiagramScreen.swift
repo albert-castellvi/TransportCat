@@ -117,7 +117,7 @@ private struct DiagramRow: View {
             }
             Spacer()
             if let next = arrivals.compactMap({ $0 }).min(by: { ($0.seconds ?? .max) < ($1.seconds ?? .max) }), let seconds = next.seconds {
-                Text("\(seconds / 60) min")
+                Text(Arrival.countdownText(seconds: seconds))
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
             }

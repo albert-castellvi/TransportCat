@@ -1,0 +1,4400 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "\n# Introducció\nEl servei de transit ofereix dades sobre el servei de transport públic que ofereix TMB. Aquestes dades representen diferents realitats (entitats) relacionades entre elles:\n* Línies\n* Recorreguts\n* Parades\n* Estacions\n* Mobiliari\n* Accessos\n* ...\n\nL'adreça base d'aquest servei és: \n\n* https://api.tmb.cat/v1/transit/\n\nL'accés a les diferents entitats es realitza seguint el patró <a href=\"https://en.wikipedia.org/wiki/Representational_state_transfer\" target=\"blank\">REST</a>, on el path de la petició HTTP indica la entitat sol·licitada. Per exemple, per accedir a la informació de les parades, s'indicarà a la URL de la petició: \n  \n* https://api.tmb.cat/v1/transit/ `parades`\n\n# Entitats\n\nLes entitats que s'ofereixen estan relacionades entre elles, i es pot accedir a les dades mitjançant aquestes relacions, encadenant als diferents `path`'s els conceptes relacionats.\n\nPer exemple, en base a la entitat de les línies de bus, que té el següent `path` d'accès per una línia de bus concreta:\n  * https://api.tmb.cat/v1/transit/ `linies/bus` / `109`\nPer accedir a les parades d'aquesta línia de bus, s'afegeix al `path` d'accès el concepte relacionat:\n  * https://api.tmb.cat/v1/transit/linies/bus/109 `/parades`\n  \nPodeu consultar les relacions entre entitats en el següent diagrama:\n\n  ![Model Transit](/assets/api-docs/v1/transit/transit-model-preview.png \"Transit Model\")\n\n<a href=\"/assets/api-docs/v1/transit/transit-model.png\" target=\"blank\">Veure detall</a>\n\n# Filtres\n\n## Per codi\nEls mètodes que retornen un llistat d'elements, poden filtrar-se per un element en concret, indicant com a última part del path el codi de l'element en qüestió:\n\nPer exemple: \n* Totes les parades de Bus: https://api.tmb.cat/v1/transit/parades\n* Només la parada 2775 de Bus: https://api.tmb.cat/v1/transit/parades/ `2775`\n\n## Per camps\nEs poden fer filtres de dades segons els camps (`properties`) utilitzant el paràmetre `filter`, amb una expressió lògica amb la condició a complir.\n\nPer exemple, obtenir les parades del municipi de Barcelona, en base al camp ID_POBLACIO:\n  * https://api.tmb.cat/v1/transit/parades? `filter=ID_POBLACIO=748`\n\n# Format de resposta\nDegut a que les entitats que es retornen disposen de localització, totes compleixen el format estàndard <a href=\"https://geojson.org/\" target=\"blank\">GeoJSON</a>, que inclou la geometria (`geometry`) que representa la entitat, i un conjunt de propietats alfanumèriques(`properties`).\n\n```\n{\n  \"type\": \"Feature\",\n  \"geometry\": {\n    \"type\": \"Point\",\n    \"coordinates\": [2.148751, 41.374565] // coords en EPSG:4326\n  },\n  \"properties\": {\n    \"CODI_PARADA\": 2775,\n    \"NOM_PARADA\": \"Pl Espanya\",\n    \"DESC_PARADA\": \"Pl. Espanya/Gran Via C.Catalanes\",\n    ...\n  }\n}\n```\nEl sistema de coordenades de les geometries és l'estàndard <a href=\"https://epsg.io/4326\" target=\"blank\">EPSG:4326</a>. Es pot modificar el sistema de coordenades de la resposta, utilitzant el paràmetre `srsName`, indicant com a valor el sistema de coordenades en format `EPSG:XXXX`:\n  * https://api.tmb.cat/v1/transit/parades/2775? `srsName=EPSG:25831`\n\n  ```\n  {\n    \"type\": \"Feature\",\n    \"geometry\": {\n      \"type\": \"Point\",\n      \"coordinates\": [428815.189943,4580688.190257] // coords en EPSG:25831\n    },\n    \"properties\": {\n      \"CODI_PARADA\": 2775,\n      ...\n    }\n  }\n  ```\n\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n* https://api.tmb.cat/v1/transit/parades? ``app_id``=__<your_app_id>__&``app_key``=__<your_app_key>__\n\n\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n\n<!-- ReDoc-Inject: <security-definitions> -->\n",
+    "title": "API TMB - Transit",
+    "version": "v1"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/transit",
+  "schemes": [
+    "https"
+  ],
+  "produces": [
+    "application/json; charset=utf-8",
+    "application/xml",
+    "text/plain",
+    "text/html"
+  ],
+  "paths": {
+    "/elements/superficie/corresp/{lon}/{lat}/{dist}": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Lon"
+          },
+          {
+            "$ref": "#/parameters/Lat"
+          },
+          {
+            "$ref": "#/parameters/Dist"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaElementSuperficieCorresp"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat de correspondències d'elements de superfície, a partir d'un punt (longitut, latitut) i una distància.",
+        "operationId": "elements_superficie_corresp",
+        "summary": "Informació de correspondencies d'elements de superfície."
+      }
+    },
+    "/elements/superficie/{lon}/{lat}/{dist}": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/Lon"
+          },
+          {
+            "$ref": "#/parameters/Lat"
+          },
+          {
+            "$ref": "#/parameters/Dist"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaElementSuperficie"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat d'elements de superfície a partir d'un punt (longitut, latitut) i una distància.",
+        "operationId": "elements_superficie",
+        "summary": "Informació d'elements de superfície."
+      }
+    },
+    "/elements/superficie/{tipus}/{lon}/{lat}/{dist}": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/TipusElementSuperficie"
+          },
+          {
+            "$ref": "#/parameters/Lon"
+          },
+          {
+            "$ref": "#/parameters/Lat"
+          },
+          {
+            "$ref": "#/parameters/Dist"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaElementSuperficie"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat d'elements de superfície d'un determinat tipus, a partir d'un punt (longitut, latitut) i una distància.",
+        "operationId": "elements_superficie_tipus",
+        "summary": "Informació d'elements de superfície."
+      }
+    },
+    "/estacions": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaEstacionsGrup"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Estacions"
+        ],
+        "description": "Llistat d'estacions de metro (agrupades als enllaços, independents de línia).",
+        "operationId": "estacions",
+        "summary": "Estacions de Metro (agrupades)."
+      }
+    },
+    "/estacions/{codi_grup_estacio}/accessos": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiGrupEstacio"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaAccessos"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Accessos"
+        ],
+        "description": "Accessos d'una estació de Metro.",
+        "operationId": "accessos",
+        "summary": "Accessos d'una estació de Metro."
+      }
+    },
+    "/estacions/{codi_grup_estacio}/accessos/{codi_acces}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiGrupEstacio"
+          },
+          {
+            "$ref": "#/parameters/CodiAcces"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorrespAccessos"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Correspondències"
+        ],
+        "description": "LLista de correspondències d'un accés d'una estació, donat el seu codi.",
+        "operationId": "accessos_corresp",
+        "summary": "Correspondències d'un accés de Metro."
+      }
+    },
+    "/estacions/{codi_grup_estacio}/accessos/{codi_acces}/fisics": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiGrupEstacio"
+          },
+          {
+            "$ref": "#/parameters/CodiAcces"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaAccessosFisics"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Accessos"
+        ],
+        "description": "LLista de accessos físics (ascensor, escala...) d'un accés d'una estació, donat el seu codi.",
+        "operationId": "accessos_fisics",
+        "summary": "Accessos fisics d'un accés de Metro."
+      }
+    },
+    "/interc": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaInterc"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Intercanviadors"
+        ],
+        "description": "Retorna la informació dels intercanviadors de Bus.",
+        "operationId": "interc_codi",
+        "summary": "Intercanviadors de Bus."
+      }
+    },
+    "/interc/{codi_interc}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiInterc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorresp"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Correspondències"
+        ],
+        "description": "Retorna les correspondències de transport d'un intercanviador, donat el seu codi.",
+        "operationId": "interc_corresp",
+        "summary": "Correspondencies d'un intercanviador."
+      }
+    },
+    "/interc/{codi_interc}/parades": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiInterc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaParadesInterc"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Intercanviadors"
+        ],
+        "description": "Retorna la llista de parades d'un intercanviador, donat el seu codi.",
+        "operationId": "interc_parades",
+        "summary": "Parades d'un intercanviador. "
+      }
+    },
+    "/limits/municipis": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaMunicipis"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat de municipis.",
+        "operationId": "municipis",
+        "summary": "Informació de municipis."
+      }
+    },
+    "/linies": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaLinies"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat de les linies de tots els transports (metro, bus i altres).",
+        "operationId": "linies",
+        "summary": "Línies de transport."
+      }
+    },
+    "/linies/altres": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaLinies"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General"
+        ],
+        "description": "Retorna el llistat de les linies d'altres operadors.",
+        "operationId": "linies_altres",
+        "summary": "Línies d'altres operadors."
+      }
+    },
+    "/linies/bus": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaLinies"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General",
+          "Bus",
+          "Línies"
+        ],
+        "description": "Llistat de les línies de Bus que opera TMB.",
+        "operationId": "linies_bus",
+        "summary": "Línies de Bus"
+      }
+    },
+    "/linies/bus/{codi_linia_base}/parades/{codi_parada}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaBase"
+          },
+          {
+            "$ref": "#/parameters/CodiParada"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorresp"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Correspondències"
+        ],
+        "description": "Retorna les correspondències de transport d'una parada d'una línia, donats els seus codis.",
+        "operationId": "corresp_parades_linia",
+        "summary": "Correspondències de les parades d'una línia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/horaris": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaHorariLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Horaris"
+        ],
+        "description": "Retorna informació general de l'horari de la línia, donat el seu codi.",
+        "operationId": "horaris_linia_bus",
+        "summary": "Horaris generals d'una línia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/parades": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaParRec"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Parades"
+        ],
+        "description": "Parades d'una linia de bus, donat el seu codi.",
+        "operationId": "parades_linia",
+        "summary": "Parades d'una linia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/parades/cons": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaParRec"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Parades"
+        ],
+        "description": "Parades consolidades d'una línia de bus, donat el seu codi.",
+        "operationId": "parades_linia_cons",
+        "summary": "Parades consolidades d'una línia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/parades/reals": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaParRec"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus"
+        ],
+        "description": "Parades reals d'una línia de bus, donat el seu codi.",
+        "operationId": "parades_linia_reals",
+        "summary": "Informació de les parades reals d'una linia. "
+      }
+    },
+    "/linies/bus/{codi_linia}/parades/{codi_parada}/horaris": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          },
+          {
+            "$ref": "#/parameters/CodiParada"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaHorariParada"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Horaris"
+        ],
+        "description": "Retorna informació de l'horari d'una parada d'una línia, donats el seus codis.",
+        "operationId": "horaris_parada",
+        "summary": "Horaris generals d'una línia de Bus a nivell de parada."
+      }
+    },
+    "/linies/bus/{codi_linia}/parades/{codi_parada}/horespas": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          },
+          {
+            "$ref": "#/parameters/CodiParada"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaHoresPasParada"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Horaris"
+        ],
+        "description": "Retorna informació de les hores de pas per una parada d'una línia, donats el seus codis.",
+        "operationId": "hores_pas",
+        "summary": "Hores de pas per parada segons l'horari de la línia de Bus. "
+      }
+    },
+    "/linies/bus/{codi_linia}/recs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaRecLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Recorreguts"
+        ],
+        "description": "Retorna la llista de recorreguts de la línia.",
+        "operationId": "recs",
+        "summary": "Recorreguts d'una línia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/recs/cons": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaRecLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Recorreguts"
+        ],
+        "description": "Retorna la llista de recorreguts consolidats de la línia.",
+        "operationId": "recs_cons",
+        "summary": "Recorreguts consolidats d'una línia de Bus."
+      }
+    },
+    "/linies/bus/{codi_linia}/recs/reals": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaRecLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus"
+        ],
+        "description": "Retorna la llista de recorreguts reals de la línia.",
+        "operationId": "recs_reals",
+        "summary": "Informació dels recorreguts reals de linia."
+      }
+    },
+    "/linies/metro": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaLinies"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "General",
+          "Metro",
+          "Línies"
+        ],
+        "description": "Retorna el llistat de les linies de metro.",
+        "operationId": "linies_metro",
+        "summary": "Línies de Metro."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaEstacionsLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Estacions"
+        ],
+        "description": "Llistat de les estacions d'una línia de Metro, donat el seu codi.",
+        "operationId": "estacions_linia",
+        "summary": "Estacions d'una línia de Metro."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions/central": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaEstacionsLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro"
+        ],
+        "description": "Llistat de les estacions d'una línia de Metro, donat el seu codi, retornant la ubicació del punt central (estació grup)",
+        "operationId": "estacions_linia_central",
+        "summary": "Estacions d'una línia de Metro (punt central)."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions/{codi_estacio}/accessos": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          },
+          {
+            "$ref": "#/parameters/CodiEstacio"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaAccessosEstacioLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Accessos"
+        ],
+        "description": "LLista dels accessos d'una estació d'una línia de Metro, donat el seu codi.",
+        "operationId": "accessos_est_lin",
+        "summary": "Accessos d'una estació d'una línia."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions/{codi_estacio}/accessos/fisics": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          },
+          {
+            "$ref": "#/parameters/CodiEstacio"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaAccessosFisicsEstacioLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Accessos"
+        ],
+        "description": "LLista d'accesos físics d'una estació d'una línia de Metro, donat el seu codi.",
+        "operationId": "accessos_fisics_est_lin",
+        "summary": "Accesos físics d'una estació d'una línia de Metro."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions/{codi_estacio}/accessos/{codi_acces}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          },
+          {
+            "$ref": "#/parameters/CodiEstacio"
+          },
+          {
+            "$ref": "#/parameters/CodiAcces"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorrespAccessosEstacioLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Correspondències"
+        ],
+        "description": "LLista de correspondències d'un accés d'una estació d'una línia de Metro, donat el seu codi.",
+        "operationId": "accessos_el_corresp",
+        "summary": "Correspondencies d'accessos d'una estació d'una linia."
+      }
+    },
+    "/linies/metro/{codi_linia}/estacions/{codi_estacio}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          },
+          {
+            "$ref": "#/parameters/CodiEstacio"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorrespEstacionsLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Correspondències"
+        ],
+        "description": "LLista de correspondències d'una estació d'una línia de Metro, donat el seu codi.",
+        "operationId": "estacions_linia_corresp",
+        "summary": "Correspondencies d'una estació d'una línia."
+      }
+    },
+    "/linies/metro/{codi_linia}/horaris": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaHorarisMetro"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Horaris"
+        ],
+        "description": "Informació sobre els horaris d'una línia de Metro, donat el seu codi.",
+        "operationId": "horaris_linia_metro",
+        "summary": "Horaris generals d'una línia de Metro."
+      }
+    },
+    "/linies/metro/{codi_linia}/recs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaRecorregutsMetro"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro"
+        ],
+        "description": "Recorreguts d'una línia de Metro (anada i tornada), donat el seu codi.",
+        "operationId": "recs_metro",
+        "summary": "Informació recorreguts de metro."
+      }
+    },
+    "/linies/metro/{codi_linia}/trams": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLiniaMetro"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaTramsMetro"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Metro",
+          "Recorreguts"
+        ],
+        "description": "Trams entre estacions del recorregut d'una línia de Metro, donat el seu codi.",
+        "operationId": "trams_metro",
+        "summary": "Trams entre estacions de Metro."
+      }
+    },
+    "/mobiliari": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaMobiliari"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Mobiliari"
+        ],
+        "description": "Retorna la informació del mobiliari urbà.",
+        "operationId": "mobiliari_codi",
+        "summary": "Llistat de mobiliari de parades."
+      }
+    },
+    "/parades": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaParades"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Parades"
+        ],
+        "description": "Retorna la informació de totes les parades de bus.",
+        "operationId": "parades",
+        "summary": "Parades de Bus."
+      }
+    },
+    "/parades/{codi_parada}/corresp": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiParada"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaCorresp"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Correspondències"
+        ],
+        "description": "Retorna la informació de les correspondències de transport que hi ha a una parada de bus, donat el seu codi.",
+        "operationId": "corresp_parades",
+        "summary": "Correspondències d'una parada de Bus."
+      }
+    },
+    "/parades/{codi_parada}/mobiliari": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiParada"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaMobiliari"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "tags": [
+          "Bus",
+          "Mobiliari"
+        ],
+        "description": "Retorna la informació de tot el mobiliari urbà que hi ha a una parada de bus, donat el seu codi.",
+        "operationId": "mobiliari_parada",
+        "summary": "Mobiliari urbà d'una parada."
+      }
+    }
+  },
+  "definitions": {
+    "Acces": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 31503
+                },
+                "CODI_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 6660315
+                },
+                "DATA_INAUGURACIO": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 18
+                },
+                "ID_ESTACIO": {
+                  "type": "number",
+                  "x-example": 315
+                },
+                "ID_TIPUS_ACCESSIBILITAT": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "ID_TIPUS_ESTAT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ACCES": {
+                  "type": "string",
+                  "x-example": "Avda. Diagonal"
+                },
+                "NOM_ESTACIO": {
+                  "type": "string",
+                  "x-example": "Palau Reial"
+                },
+                "NOM_TIPUS_ACCESSIBILITAT": {
+                  "type": "string",
+                  "x-example": "No accessible"
+                },
+                "NOM_TIPUS_ESTAT": {
+                  "type": "string",
+                  "x-example": "Operatiu"
+                },
+                "NUM_ASCENSORS": {
+                  "type": "number",
+                  "x-example": 0
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "AccesEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/InfoEstacioLinia"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "CODI_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 42
+                },
+                "ID_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 42
+                },
+                "ID_ACCES_ESTACIO_LINIA": {
+                  "type": "number",
+                  "x-example": 42000189
+                },
+                "NOM_ACCES": {
+                  "type": "string",
+                  "x-example": "Nou de la Rambla"
+                },
+                "NUM_ASCENSORS": {
+                  "type": "number",
+                  "x-example": 0
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "AccesFisic": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 31503
+                },
+                "CODI_ACCES_FISIC": {
+                  "type": "number",
+                  "x-example": 31503
+                },
+                "CODI_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 6660315
+                },
+                "DATA_INAUGURACIO": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DESC_TIPUS_ACCES": {
+                  "type": "string",
+                  "x-example": "Escala d'obra"
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 18
+                },
+                "ID_ACCES_FISIC": {
+                  "type": "number",
+                  "x-example": 370
+                },
+                "ID_TIPUS_ACCES": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_ESTAT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ACCES": {
+                  "type": "string",
+                  "x-example": "Avda. Diagonal"
+                },
+                "NOM_ESTACIO": {
+                  "type": "string",
+                  "x-example": "Palau Reial"
+                },
+                "NOM_TIPUS_ACCES": {
+                  "type": "string",
+                  "x-example": "Escala d'obra"
+                },
+                "NOM_TIPUS_ESTAT": {
+                  "type": "string",
+                  "x-example": "Operatiu"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "AccesFisicEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "CODI_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "CODI_ACCES_FISIC": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "CODI_ESTACIO": {
+                  "type": "number",
+                  "x-example": 210
+                },
+                "CODI_ESTACIO_LINIA": {
+                  "type": "number",
+                  "x-example": 210
+                },
+                "CODI_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 6660210
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "CODI_SERVEI": {
+                  "type": "number",
+                  "x-example": 200
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INAUGURACIO": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2013-04-12Z"
+                },
+                "DESC_TIPUS_ACCES": {
+                  "type": "string",
+                  "x-example": "Escala d'obra"
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 42
+                },
+                "ID_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 42
+                },
+                "ID_ACCES_FISIC": {
+                  "type": "number",
+                  "x-example": 394
+                },
+                "ID_ACCES_FISIC_ESTACIO_LINIA": {
+                  "type": "number",
+                  "x-example": 436000189
+                },
+                "ID_ESTACIO_LINIA": {
+                  "type": "number",
+                  "x-example": 189
+                },
+                "ID_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 210
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_TIPUS_ACCES": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_ACCESSIBILITAT": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "ID_TIPUS_ESTAT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SERVEI": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ACCES": {
+                  "type": "string",
+                  "x-example": "Nou de la Rambla"
+                },
+                "NOM_ESTACIO": {
+                  "type": "string",
+                  "x-example": "Paral·lel"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "NOM_TIPUS_ACCES": {
+                  "type": "string",
+                  "x-example": "Escala d'obra"
+                },
+                "NOM_TIPUS_ACCESSIBILITAT": {
+                  "type": "string",
+                  "x-example": "No accessible"
+                },
+                "NOM_TIPUS_ESTAT": {
+                  "type": "string",
+                  "x-example": "Operatiu"
+                },
+                "NOM_TIPUS_SERVEI": {
+                  "type": "string",
+                  "x-example": "Normal"
+                },
+                "ORDRE_ESTACIO": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "CodiTipusElementSuperficie": {
+      "description": "Codi que identifica un tipus d'elements de transport de superfície (1  - ESTACIONS, 2 - PARADES, 3 - ACCESSOS, 4 - INTERCANVIADORS.",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "type": "number",
+      "x-example": "PARADES"
+    },
+    "Corresp": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "BEARING": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "BEARING_AGR": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "CODI_ELEMENT_CORRESP": {
+                  "type": "string",
+                  "x-example": 1775
+                },
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 92
+                },
+                "CODI_OPERADOR": {
+                  "type": "string",
+                  "x-example": 2
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 1775
+                },
+                "COLOR_LINIA": {
+                  "type": "string",
+                  "x-example": "DC241F"
+                },
+                "COLOR_TEXT_LINIA": {
+                  "type": "string",
+                  "x-example": "FFFFFF"
+                },
+                "DESC_CORRESP": {
+                  "type": "string",
+                  "x-example": "Direcció Pg. Marítim (Tornada)"
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pg. Marítim / Av. Tibidabo"
+                },
+                "DESTI_LINIA": {
+                  "type": "string",
+                  "x-example": "Av. Tibidabo"
+                },
+                "DIRECTION": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": -1
+                },
+                "DIRECTION_AGR": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": -1
+                },
+                "DIST": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "DIST_AGR": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ID_CORRESP": {
+                  "type": "number",
+                  "x-example": 9382
+                },
+                "ID_ELEMENT_CORRESP": {
+                  "type": "number",
+                  "x-example": 691809
+                },
+                "ID_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 103
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 691809
+                },
+                "MODE_AGR": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ELEMENT_CORRESP": {
+                  "type": "string"
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Convencionals"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 92
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NUM_SENTITS": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 92
+                },
+                "ORIGEN_LINIA": {
+                  "type": "string",
+                  "x-example": "Pg. Marítim"
+                },
+                "SENTIT": {
+                  "type": "string",
+                  "x-example": "T"
+                },
+                "SENTIT_AGR": {
+                  "type": "string",
+                  "x-example": "T"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "CorrespAcces": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 31503
+                },
+                "CODI_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 31503
+                },
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "CODI_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 6660315
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_OPERADOR": {
+                  "type": "string",
+                  "x-example": 1
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Zona Universitària - Trinitat Nova"
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 18
+                },
+                "ID_ACCES_ESTACIO": {
+                  "type": "number",
+                  "x-example": 18
+                },
+                "ID_CORRESP": {
+                  "type": "number",
+                  "x-example": 100000153
+                },
+                "ID_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_MLINIA": {
+                  "type": "number",
+                  "x-example": 50002
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Metro"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L3"
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "Metro"
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 3
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "CorrespAccesEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CorrespInfo"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ACCES": {
+                  "type": "number",
+                  "x-example": 21001
+                },
+                "CODI_ESTACIO": {
+                  "type": "number",
+                  "x-example": 210
+                },
+                "ID_ACCES": {
+                  "type": "number",
+                  "x-example": 42
+                },
+                "ID_ESTACIO_LINIA": {
+                  "type": "number",
+                  "x-example": 110
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "CorrespEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CorrespInfo"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ESTACIO": {
+                  "type": "number",
+                  "x-example": 210
+                },
+                "ID_ESTACIO": {
+                  "type": "number",
+                  "x-example": 110
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "CorrespInfo": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 21
+                },
+                "CODI_LINIA_BASE": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "CODI_OPERADOR": {
+                  "type": "string",
+                  "x-example": 2
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Paral·lel / El Prat"
+                },
+                "ID_CORRESP": {
+                  "type": "number",
+                  "x-example": 1830
+                },
+                "ID_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 509
+                },
+                "ID_LINIA_BASE": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Convencionals"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 21
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "ORDRE_BASE": {
+                  "type": "number",
+                  "x-example": 666
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 21
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ElementSuperficie": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "BEARING_IN_DEGREES": {
+                  "description": "Angle d'orientació des del punt de consulta en direcció a l'element (en graus).",
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 344
+                },
+                "CODI": {
+                  "description": "CODI de la feature",
+                  "type": "string",
+                  "x-example": 123456
+                },
+                "CODI_TIPUS": {
+                  "$ref": "#/definitions/CodiTipusElementSuperficie"
+                },
+                "DISTANCE_IN_METERS": {
+                  "description": "Distància de l'element fins al punt de consulta (en metres).",
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 27.3024
+                },
+                "ID": {
+                  "description": "ID de la feature",
+                  "type": "number",
+                  "x-example": 123456
+                },
+                "NOM": {
+                  "type": "string",
+                  "x-example": "Arizala - Les Corts"
+                },
+                "NOM_TIPUS": {
+                  "$ref": "#/definitions/NomTipusElementSuperficie"
+                },
+                "PICTO": {
+                  "type": "string",
+                  "x-example": "NXB"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ElementSuperficieCorresp": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/ElementSuperficie"
+        },
+        {
+          "properties": {
+            "CODI_FAMILIA": {
+              "type": "number",
+              "x-example": 1
+            },
+            "CODI_LINIA": {
+              "type": "number",
+              "x-example": 54
+            },
+            "CODI_OPERADOR": {
+              "type": "string",
+              "x-example": 2
+            },
+            "DESC_LINIA": {
+              "type": "string",
+              "x-example": "Estació del Nord / Campus Nord"
+            },
+            "ID_FAMILIA": {
+              "type": "number",
+              "x-example": 3
+            },
+            "ID_LINIA": {
+              "type": "number",
+              "x-example": 24
+            },
+            "ID_OPERADOR": {
+              "type": "number",
+              "x-example": 2
+            },
+            "NOM_FAMILIA": {
+              "type": "string",
+              "x-example": "Convencionals"
+            },
+            "NOM_LINIA": {
+              "type": "string",
+              "x-example": 54
+            },
+            "NOM_OPERADOR": {
+              "type": "string",
+              "x-example": "TB"
+            },
+            "ORDRE_FAMILIA": {
+              "type": "number",
+              "x-example": 13
+            },
+            "ORDRE_LINIA": {
+              "type": "number",
+              "x-example": 54
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "EstacioGrup": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_GRUP_ESTACIO": {
+                  "type": "number",
+                  "x-example": 6660315
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "1975-01-19Z"
+                },
+                "ID_ESTACIO": {
+                  "type": "number",
+                  "x-example": 315
+                },
+                "ID_TIPUS_ESTAT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ESTACIO": {
+                  "type": "string",
+                  "x-example": "Palau Reial"
+                },
+                "PICTO": {
+                  "type": "string",
+                  "x-example": "L3"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "EstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/InfoEstacioLinia"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "ESTACIO_BASE": {
+                  "description": "Estació Base per operació",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "PICTO": {
+                  "description": "Identificador del logo de línia per a la estació",
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "PICTO_GRUP": {
+                  "description": "Identificador del logo de línia pel grup d'estacions",
+                  "type": "string",
+                  "x-example": "L2"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "FeatureBase": {
+      "properties": {
+        "geometry": {
+          "properties": {
+            "coordinates": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array",
+              "x-example": [
+                2.123687,
+                41.378573
+              ]
+            },
+            "type": {
+              "type": "string",
+              "x-example": "Point"
+            }
+          },
+          "type": "object"
+        },
+        "geometry_name": {
+          "type": "string",
+          "x-example": "GEOMETRY"
+        },
+        "id": {
+          "type": "string",
+          "x-example": "FEATURE.fid-00000000000"
+        },
+        "type": {
+          "type": "string",
+          "x-example": "Feature"
+        }
+      },
+      "type": "object"
+    },
+    "FeatureCollectionBase": {
+      "properties": {
+        "crs": {
+          "properties": {
+            "properties": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "x-example": "urn:ogc:def:crs:EPSG::4326"
+                }
+              },
+              "type": "object"
+            },
+            "type": {
+              "type": "string",
+              "x-example": "name"
+            }
+          },
+          "type": "object"
+        },
+        "totalFeatures": {
+          "type": "number",
+          "x-example": 2
+        },
+        "type": {
+          "type": "string",
+          "x-example": "FeatureCollection"
+        }
+      },
+      "type": "object"
+    },
+    "HorariLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "DATA": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2018-01-21Z"
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_SENTIT": {
+                  "type": "string",
+                  "x-example": "Tornada\""
+                },
+                "DESC_TIPUS_DIA": {
+                  "type": "string",
+                  "x-example": "Feiners"
+                },
+                "HORARI": {
+                  "type": "string",
+                  "x-example": "023.023.FH16.00.00.TB09V0"
+                },
+                "ID_HORARI": {
+                  "type": "number",
+                  "x-example": 3280
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_SENTIT": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_DIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_TIRA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "PRIMERA_SORTIDA": {
+                  "description": "en format HH:mm",
+                  "type": "string",
+                  "x-example": "06:50"
+                },
+                "SENTIT": {
+                  "type": "string",
+                  "x-example": "T"
+                },
+                "TIPUS_TIRA": {
+                  "type": "string",
+                  "x-example": "HORA_PAS"
+                },
+                "ULTIMA_SORTIDA": {
+                  "description": "en format HH:mm",
+                  "type": "string",
+                  "x-example": 1215
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "HorariMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Paral·lel - Badalona Pompeu Fabra"
+                },
+                "DESC_TIPUS_DIA": {
+                  "type": "string",
+                  "x-example": "Feiners (de dilluns a dijous) i festius"
+                },
+                "HORARI": {
+                  "type": "string",
+                  "x-example": "HL20061"
+                },
+                "ID_HORARI": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_DIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Metro"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "Metro"
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "PRIMERA_SORTIDA": {
+                  "description": "format HH:mm",
+                  "type": "string",
+                  "x-example": "05:00"
+                },
+                "ULTIMA_SORTIDA": {
+                  "description": "format HH:mm",
+                  "type": "string",
+                  "x-example": 1440
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "HorariParada": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 2775
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya/Gran Via C.Catalanes"
+                },
+                "DESC_SENTIT": {
+                  "type": "string",
+                  "x-example": "Tornada"
+                },
+                "DESC_SUB_SERVEI": {
+                  "type": "string",
+                  "x-example": "Sentit Comercial Tornada"
+                },
+                "DESC_TIPUS_DIA": {
+                  "type": "string",
+                  "x-example": "Feiners"
+                },
+                "ES_DESTI": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ES_MAXINODE": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ES_ORIGEN": {
+                  "type": "number",
+                  "x-example": 0
+                },
+                "HORARI": {
+                  "type": "string",
+                  "x-example": "023.023.FH16.00.00.TB09V0"
+                },
+                "ID_ITI_REC": {
+                  "type": "number",
+                  "x-example": 51073851
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 679326
+                },
+                "ID_SENTIT": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_DIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SUB_SERVEI": {
+                  "type": "number",
+                  "x-example": 102
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NOM_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl Espanya"
+                },
+                "ORDRE": {
+                  "type": "number",
+                  "x-example": 12
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "SENTIT": {
+                  "type": "string",
+                  "x-example": "T"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "HoresPasParada": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 2775
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya/Gran Via C.Catalanes"
+                },
+                "DESC_SENTIT": {
+                  "type": "string",
+                  "x-example": "Anada"
+                },
+                "DESC_SUB_SERVEI": {
+                  "type": "string",
+                  "x-example": "Sentit Comercial Anada"
+                },
+                "DESC_TIPUS_DIA": {
+                  "type": "string",
+                  "x-example": "Feiners"
+                },
+                "ES_DESTI": {
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ES_MAXINODE": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ES_ORIGEN": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "HORARI": {
+                  "type": "string",
+                  "x-example": "023.023.FH16.00.00.TB09V0"
+                },
+                "ID_DETALL_TIRA": {
+                  "type": "number",
+                  "x-example": 3788770051072679
+                },
+                "ID_ITI_REC": {
+                  "type": "number",
+                  "x-example": 51072679
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 679326
+                },
+                "ID_SENTIT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_DIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SUB_SERVEI": {
+                  "type": "number",
+                  "x-example": 101
+                },
+                "LITERAL": {
+                  "type": "string",
+                  "x-example": "06:30 - 06:55 - 07:20 - 07:45 - 08:10 - 08:38 - 09:06 - 09:34"
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NOM_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl Espanya"
+                },
+                "ORDRE": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "ORDRE_LITERAL": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "SENTIT": {
+                  "type": "string",
+                  "x-example": "A"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "InfoEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ESTACIO": {
+                  "description": "Codi alternatiu de la estació",
+                  "type": "number",
+                  "x-example": 220
+                },
+                "CODI_ESTACIO_LINIA": {
+                  "description": "Codi identificador de una estació en una línia",
+                  "type": "number",
+                  "x-example": 220
+                },
+                "CODI_GRUP_ESTACIO": {
+                  "description": "Codi identificador d'un grup d'estacions (Ex. Espanya L1 i L3)",
+                  "type": "number",
+                  "x-example": 6660220
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "CODI_SERVEI": {
+                  "description": "Codi intern del servei que fa la línia",
+                  "type": "number",
+                  "x-example": 200
+                },
+                "COLOR_LINIA": {
+                  "type": "string",
+                  "x-example": "93248F"
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INAUGURACIO": {
+                  "description": "Data d'inauguració de la estació",
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2013-04-12Z"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2013-04-12Z"
+                },
+                "DESC_SERVEI": {
+                  "type": "string",
+                  "x-example": "Paral·lel - Badalona Pompeu Fabra"
+                },
+                "DESTI_SERVEI": {
+                  "description": "Parada/Estació destí del servei",
+                  "type": "string",
+                  "x-example": "Badalona Pompeu Fabra"
+                },
+                "ID_ESTACIO": {
+                  "description": "Identificador intern de la estació",
+                  "type": "number",
+                  "x-example": 220
+                },
+                "ID_ESTACIO_LINIA": {
+                  "description": "Identificador intern de la estació en la línia",
+                  "type": "number",
+                  "x-example": 142
+                },
+                "ID_GRUP_ESTACIO": {
+                  "description": "Identificador intern d'un grup d'estacions",
+                  "type": "number",
+                  "x-example": 220
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_SERVEI": {
+                  "description": "Identificador intern del servei que fa la línia",
+                  "type": "number",
+                  "x-example": 200
+                },
+                "ID_TIPUS_ACCESSIBILITAT": {
+                  "description": "Identificador del tipus d'accessibilitat (0 - Sense definir, 1 - Accesible, 2 - Semi-accesible, 3 - No accessible)",
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_ESTAT": {
+                  "description": "Identificador del tipus d'estat (1 - Operatiu, 2 - Planificat, 3 - En construcció)",
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SERVEI": {
+                  "description": "Identificador intern del tipus de servei que fa la línia",
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_ESTACIO": {
+                  "description": "Nom de la estació",
+                  "type": "string",
+                  "x-example": "Sant Martí"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "NOM_TIPUS_ACCESSIBILITAT": {
+                  "description": "Descripció del tipus d'accessibilitat",
+                  "type": "string",
+                  "x-example": "Accessible"
+                },
+                "NOM_TIPUS_ESTAT": {
+                  "description": "Descripció del tipus d'estat",
+                  "type": "string",
+                  "x-example": "Operatiu"
+                },
+                "NOM_TIPUS_SERVEI": {
+                  "description": "Nom del tipus de servei que fa la línia",
+                  "type": "string",
+                  "x-example": "Normal"
+                },
+                "ORDRE_ESTACIO": {
+                  "description": "Ordre de la estació dins la línia",
+                  "type": "number",
+                  "x-example": 11
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ORIGEN_SERVEI": {
+                  "description": "Parada/Estació origen del servei",
+                  "type": "string",
+                  "x-example": "Paral·lel"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Interc": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_INTERC": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2012-09-30Z"
+                },
+                "DESC_INTERC": {
+                  "type": "string",
+                  "x-example": "Pl Espanya"
+                },
+                "ID_INTERC": {
+                  "type": "number",
+                  "x-example": 92431
+                },
+                "ID_TIPUS_INTERC": {
+                  "type": "number",
+                  "x-example": 2001
+                },
+                "NOM_INTERC": {
+                  "type": "string",
+                  "x-example": "Espanya"
+                },
+                "NOM_TIPUS_INTERC": {
+                  "type": "string",
+                  "x-example": "INTERC"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Linia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "description": "Codi identificador de la família a la que pertany la línia",
+                  "type": "string",
+                  "x-example": 3
+                },
+                "CODI_LINIA": {
+                  "description": "Codi identificador de la línia",
+                  "type": "string",
+                  "x-example": 23
+                },
+                "CODI_OPERADOR": {
+                  "description": "Codi identificador de la empresa que opera la línia",
+                  "type": "string",
+                  "x-example": 2
+                },
+                "CODI_TIPUS_CALENDARI": {
+                  "description": "Codi indentificador del tipus de calendari",
+                  "type": "string",
+                  "x-example": 11
+                },
+                "COLOR_AUX_LINIA": {
+                  "description": "Color secundari de la línia (format RGB hexadecimal)",
+                  "type": "string",
+                  "x-example": "ED8E8C"
+                },
+                "COLOR_LINIA": {
+                  "description": "Color que identifica a la línia (format RGB hexadecimal)",
+                  "type": "string",
+                  "x-example": "DC241F"
+                },
+                "COLOR_TEXT_LINIA": {
+                  "description": "Color pel text de la línia (format RGB hexadecimal)",
+                  "type": "string",
+                  "x-example": "FFFFFF"
+                },
+                "DATA_FI": {
+                  "description": "Data que indica quan deixa d'estar en funcionament",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "DATA_INICI": {
+                  "description": "Data que indica quan comença a estar en funcionament",
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2017-06-13Z"
+                },
+                "DESC_LINIA": {
+                  "description": "Descripció de la línia",
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_TIPUS_CALENDARI": {
+                  "description": "Descripció del tipus de calendari (quan circula la línia)",
+                  "type": "string",
+                  "x-example": "Només feiners"
+                },
+                "DESTI_LINIA": {
+                  "description": "Destí del recorregut de la línia",
+                  "type": "string",
+                  "x-example": "Parc Logístic"
+                },
+                "ID_FAMILIA": {
+                  "description": "Identificador intern de la família a la que pertany la línia",
+                  "type": "number",
+                  "x-example": 5
+                },
+                "ID_LINIA": {
+                  "description": "Identificador intern de la línia",
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "description": "Identificador interna de la empresa que opera la línia",
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_CALENDARI": {
+                  "description": "Identificador intern del tipus de calendari",
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_TRANSPORT": {
+                  "description": "Identificador intern del tipus de transport",
+                  "type": "number",
+                  "x-example": 3
+                },
+                "NOM_FAMILIA": {
+                  "description": "Nom de la família a la que pertany la línia",
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_LINIA": {
+                  "description": "Nom de la línia",
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "description": "Nom de la empresa que opera la línia",
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NOM_TIPUS_TRANSPORT": {
+                  "description": "Nom del tipus de transport (BUS, METRO)",
+                  "type": "string",
+                  "x-example": "BUS"
+                },
+                "ORDRE_FAMILIA": {
+                  "description": "Ordre que permet ordenar les famílies de línies",
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "description": "Ordre que permet ordenar les línies",
+                  "type": "number",
+                  "x-example": 23
+                },
+                "ORIGEN_LINIA": {
+                  "description": "Origen del recorregut de la línia",
+                  "type": "number",
+                  "x-example": "Pl. Espanya"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaAccessos": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Acces"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaAccessosEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/AccesEstacioLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaAccessosFisics": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/AccesFisic"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaAccessosFisicsEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/AccesFisicEstacioLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaCorresp": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Corresp"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaCorrespAccessos": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/CorrespAcces"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaCorrespAccessosEstacioLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/CorrespAccesEstacioLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaCorrespEstacionsLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/CorrespEstacioLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaElementSuperficie": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/ElementSuperficie"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaElementSuperficieCorresp": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/ElementSuperficieCorresp"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaEstacionsGrup": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/EstacioGrup"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaEstacionsLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/EstacioLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaHorariLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/HorariLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaHorariParada": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/HorariParada"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaHorarisMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/HorariMetro"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaHoresPasParada": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/HoresPasParada"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaInterc": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Interc"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaLinies": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Linia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaMobiliari": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Mobiliari"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaMunicipis": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Municipi"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaParRec": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/ParadaRec"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaParades": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/Parada"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaParadesInterc": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/ParadaInterc"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaRecLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/RecLinia"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaRecorregutsMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/RecorregutMetro"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "LlistaTramsMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureCollectionBase"
+        },
+        {
+          "properties": {
+            "features": {
+              "items": {
+                "$ref": "#/definitions/TramMetro"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Mobiliari": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "ANGLE": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 46
+                },
+                "CODI_MOBILIARI": {
+                  "type": "number",
+                  "x-example": 3037
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 2775
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2015-05-24Z"
+                },
+                "DESC_MOBILIARI": {
+                  "type": "string",
+                  "x-example": "WC FOSTER"
+                },
+                "DESC_TIPUS_MOBILIARI": {
+                  "type": "string",
+                  "x-example": "WC Automatic"
+                },
+                "ID_MOBILIARI": {
+                  "type": "number",
+                  "x-example": 97
+                },
+                "ID_MOB_PAR": {
+                  "type": "number",
+                  "x-example": 2823
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 679326
+                },
+                "ID_TIPUS_MOBILIARI": {
+                  "type": "number",
+                  "x-example": 1027
+                },
+                "NOM_MOBILIARI": {
+                  "type": "string",
+                  "x-example": 3037
+                },
+                "NOM_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl Espanya"
+                },
+                "NOM_TIPUS_MOBILIARI": {
+                  "type": "string",
+                  "x-example": "WCAUTO"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "Municipi": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_COMARCA": {
+                  "type": "number",
+                  "x-example": 11
+                },
+                "CODI_MUNICIPI": {
+                  "type": "number",
+                  "x-example": 82042
+                },
+                "ID_COMARCA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_MUNICIPI": {
+                  "type": "number",
+                  "x-example": 1284
+                },
+                "NOM_COMARCA": {
+                  "type": "string",
+                  "x-example": "Baix Llobregat"
+                },
+                "NOM_MUNICIPI": {
+                  "type": "string",
+                  "x-example": "Sant Climent de Llobregat"
+                },
+                "SUPERFICIE": {
+                  "description": "superficie en Km2",
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 10.81
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "NomTipusElementSuperficie": {
+      "enum": [
+        "ESTACIONS",
+        "PARADES",
+        "ACCESSOS",
+        "INTERCANVIADORS"
+      ],
+      "type": "string",
+      "x-example": "PARADES"
+    },
+    "Parada": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "ADRECA": {
+                  "description": "Adreça on es troba",
+                  "type": "string",
+                  "x-example": "Av. Tibidabo, 38-40"
+                },
+                "CODI_INTERC": {
+                  "description": "Codi de l'intercanviador del que forma part, si és el cas",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "CODI_PARADA": {
+                  "description": "Codi identificador de la parada",
+                  "type": "number",
+                  "x-example": 1775
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2015-05-24Z"
+                },
+                "DESC_PARADA": {
+                  "description": "Descripció de la parada, en relació a la seva localització",
+                  "type": "string",
+                  "x-example": "Av. Tibidabo/Isaac Newton"
+                },
+                "DESC_TIPUS_PARADA": {
+                  "description": "Descripció de la tipologia de la parada",
+                  "type": "string",
+                  "x-example": "Marq. Pal·li 4m Simple"
+                },
+                "ID_DISTRICTE": {
+                  "description": "Identificador intern del districte on es troba",
+                  "type": "string",
+                  "x-example": 625
+                },
+                "ID_PARADA": {
+                  "description": "Identificador intern de la parada",
+                  "type": "number",
+                  "x-example": 691809
+                },
+                "ID_POBLACIO": {
+                  "description": "Identificador intern de la població on es troba",
+                  "type": "number",
+                  "x-example": 748
+                },
+                "NOM_DISTRICTE": {
+                  "description": "Nom del districte on es troba",
+                  "type": "string",
+                  "x-example": "Sarrià-St. Gervasi"
+                },
+                "NOM_INTERC": {
+                  "description": "Nom de l'intercanviador del que forma part, si és el cas",
+                  "type": "string"
+                },
+                "NOM_PARADA": {
+                  "description": "Nom de la parada",
+                  "type": "string",
+                  "x-example": "Av Tibidabo - Ronda de Dalt"
+                },
+                "NOM_POBLACIO": {
+                  "description": "Nom de la població on es troba",
+                  "type": "string",
+                  "x-example": "Barcelona"
+                },
+                "NOM_PROPERA_VIA": {
+                  "description": "Nom del següent carrer amb el que es fa cruïlla",
+                  "type": "string",
+                  "x-example": "Carrer de Isaac Newton"
+                },
+                "NOM_TIPUS_PARADA": {
+                  "description": "Tipologia de la parada, relativa al mobiliari que la composa",
+                  "type": "string",
+                  "x-example": "MAR4MS"
+                },
+                "NOM_VIA": {
+                  "description": "Nom del carrer on es troba",
+                  "type": "string",
+                  "x-example": "Avinguda del Tibidabo"
+                },
+                "TIPIFICACIO_PARADA": {
+                  "description": "Tipificació en funció del servei que està donant (N - Normal, P - Provisional, X - Sense ús)",
+                  "type": "string",
+                  "x-example": "N"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ParadaInterc": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_INTERC": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 180
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2012-09-30Z"
+                },
+                "DESC_INTERC": {
+                  "type": "string",
+                  "x-example": "Pl Espanya"
+                },
+                "ID_INTERC": {
+                  "type": "number",
+                  "x-example": 92431
+                },
+                "ID_INTERC_PAR": {
+                  "type": "number",
+                  "x-example": 136
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 674931
+                },
+                "ID_TIPUS_INTERC": {
+                  "type": "number",
+                  "x-example": 2001
+                },
+                "NOM_INTERC": {
+                  "type": "string",
+                  "x-example": "Espanya"
+                },
+                "NOM_PARADA": {
+                  "type": "string",
+                  "x-example": "Creu Coberta - Pl Espanya"
+                },
+                "NOM_TIPUS_INTERC": {
+                  "type": "string",
+                  "x-example": "INTERC"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "ParadaRec": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "ADRECA": {
+                  "type": "string",
+                  "x-example": "Av. Maria Cristina/Pl. Espanya (dir. Espanya)"
+                },
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_INTERC": {
+                  "type": "number"
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "CODI_PARADA": {
+                  "type": "number",
+                  "x-example": 393
+                },
+                "COLOR_REC": {
+                  "description": "color del recorregut en hexadecimal",
+                  "type": "string",
+                  "x-example": "ED8E8C"
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2012-09-30Z"
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_PARADA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya/Av. Paral·lel"
+                },
+                "DESC_SENTIT": {
+                  "description": "Descripció del sentit del recorregut",
+                  "type": "string",
+                  "x-example": "Tornada"
+                },
+                "DESC_SERVEI": {
+                  "description": "Descripció del servei que fa la línia",
+                  "type": "string",
+                  "x-example": "Sentit Comercial"
+                },
+                "DESC_SUB_SERVEI": {
+                  "description": "Descripció del tipus de subservei (comercial anada, comercial tornada...)",
+                  "type": "string",
+                  "x-example": "Sentit Comercial Tornada"
+                },
+                "DESTI_SENTIT": {
+                  "description": "Descripció del destí del recorregut",
+                  "type": "string",
+                  "x-example": "Pl. Espanya"
+                },
+                "DISTANCIA_PAR_ANTERIOR": {
+                  "description": "Distància respecte a la parada anterior dins el recorregut",
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 772.87856
+                },
+                "ES_DESTI": {
+                  "description": "Indica si la parada és el destí de la línia",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ES_MAXINODE": {
+                  "description": "Indica si la parada és un punt de regulació horària",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ES_ORIGEN": {
+                  "description": "Indica si la parada és l'origen de la línia",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ID_DISTRICTE": {
+                  "type": "number",
+                  "x-example": 623
+                },
+                "ID_ITI_REC": {
+                  "description": "Identificador intern del element dins el recorregut de la línia",
+                  "type": "number",
+                  "x-example": 51073850
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_PARADA": {
+                  "type": "number",
+                  "x-example": 674597
+                },
+                "ID_POBLACIO": {
+                  "type": "number",
+                  "x-example": 748
+                },
+                "ID_RECORREGUT": {
+                  "description": "Identificador intern del recorregut de la línia",
+                  "type": "number",
+                  "x-example": 1768046
+                },
+                "ID_SENTIT": {
+                  "description": "Identificador del sentit del recorregut (1 - Anada, 2 - Tornada)",
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_DIA": {
+                  "description": "Identificador del tipus de dia en que aplica (1 - Feiner, 2 - Dissabte, 3 - Diumenges i Festius)",
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_DIA_EMULAT": {
+                  "description": "Identificador intern del tipus de dia",
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ID_TIPUS_RECORREGUT": {
+                  "description": "Identificador intern del tipus de recorregut (1 - Consolidat, 2 - Real)",
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_SERVEI": {
+                  "description": "Identificador del tipus de servei",
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SUB_SERVEI": {
+                  "description": "Identificador del tipus de subservei",
+                  "type": "number",
+                  "x-example": 102
+                },
+                "NOM_DISTRICTE": {
+                  "type": "string",
+                  "x-example": "Sants-Montjuïc"
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_INTERC": {
+                  "type": "string"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NOM_PARADA": {
+                  "type": "string",
+                  "x-example": "Av Reina Maria Cristina - Pl Espanya"
+                },
+                "NOM_POBLACIO": {
+                  "type": "string",
+                  "x-example": "Barcelona"
+                },
+                "NOM_VIA": {
+                  "type": "string",
+                  "x-example": "Avinguda de la Reina Maria Cristina"
+                },
+                "ORDRE": {
+                  "description": "Ordre dins el recorregut de la línia",
+                  "type": "number",
+                  "x-example": 11
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "ORIGEN_SENTIT": {
+                  "description": "Descripció del origen del recorregut",
+                  "type": "string",
+                  "x-example": "Parc Logístic"
+                },
+                "SENTIT": {
+                  "description": "Codi del sentit del recorregut (A - Anada, T - Tornada)",
+                  "type": "string",
+                  "x-example": "T"
+                },
+                "TIPUS_ELEMENT": {
+                  "description": "Tipus d'element dins del recorregut de la línia (TRAM, PARADA)",
+                  "type": "string",
+                  "x-example": "PARADA"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "RecLinia": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_FAMILIA": {
+                  "type": "number",
+                  "x-example": 3
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "COLOR_REC": {
+                  "description": "color en hexadecimal",
+                  "type": "string",
+                  "x-example": "ED8E8C"
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2012-09-30Z"
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya / Parc Logístic"
+                },
+                "DESC_REC": {
+                  "type": "string",
+                  "x-example": "Avinguda del Parc Logístic, Carrer Número 2, Carrer Número 61, Carrer Número 62, Carrer A, Passeig de la Zona Franca..."
+                },
+                "DESC_SENTIT": {
+                  "type": "string",
+                  "x-example": "Tornada"
+                },
+                "DESC_SERVEI": {
+                  "type": "string",
+                  "x-example": "Sentit Comercial"
+                },
+                "DESC_SUB_SERVEI": {
+                  "type": "string",
+                  "x-example": "Sentit Comercial Tornada"
+                },
+                "DESC_TIPUS_RECORREGUT": {
+                  "type": "string",
+                  "x-example": "Real"
+                },
+                "DESTI_SENTIT": {
+                  "type": "string",
+                  "x-example": "Pl. Espanya"
+                },
+                "ID_INTERC_PAR": {
+                  "type": "number",
+                  "x-example": 136
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 125
+                },
+                "ID_OPERADOR": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_RECORREGUT": {
+                  "type": "number",
+                  "x-example": 1768046
+                },
+                "ID_SENTIT": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_DIA": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_DIA_EMULAT": {
+                  "type": "number",
+                  "x-example": 0
+                },
+                "ID_TIPUS_RECORREGUT": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ID_TIPUS_SERVEI": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SUB_SERVEI": {
+                  "type": "number",
+                  "x-example": 102
+                },
+                "LONGITUD": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 7007.75527
+                },
+                "LONGITUD_CARRIL_BUS": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 1324.50914
+                },
+                "NOM_FAMILIA": {
+                  "type": "string",
+                  "x-example": "Proximitat"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": 23
+                },
+                "NOM_OPERADOR": {
+                  "type": "string",
+                  "x-example": "TB"
+                },
+                "NOM_TIPUS_DIA": {
+                  "type": "string",
+                  "x-example": "Feiner"
+                },
+                "ORDRE_FAMILIA": {
+                  "type": "number",
+                  "x-example": 13
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 23
+                },
+                "ORIGEN_SENTIT": {
+                  "type": "string",
+                  "x-example": "Parc Logístic"
+                },
+                "SENTIT": {
+                  "type": "string",
+                  "x-example": "T"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "RecorregutMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "CODI_SENTIT": {
+                  "type": "string",
+                  "x-example": "A"
+                },
+                "CODI_SERVEI": {
+                  "type": "number",
+                  "x-example": 200
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2013-04-12Z"
+                },
+                "DESC_LINIA": {
+                  "type": "string",
+                  "x-example": "Paral·lel - Badalona Pompeu Fabra"
+                },
+                "DESC_SENTIT": {
+                  "type": "string",
+                  "x-example": "Anada"
+                },
+                "DESC_SERVEI": {
+                  "type": "string",
+                  "x-example": "Paral·lel - Badalona Pompeu Fabra"
+                },
+                "DESTI_SENTIT": {
+                  "type": "string",
+                  "x-example": "Badalona Pompeu Fabra"
+                },
+                "DESTI_SERVEI": {
+                  "type": "string",
+                  "x-example": "Badalona Pompeu Fabra"
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_REC_LINIA": {
+                  "type": "number",
+                  "x-example": 601
+                },
+                "ID_SENTIT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SERVEI": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "NOM_TIPUS_SERVEI": {
+                  "type": "string",
+                  "x-example": "Normal"
+                },
+                "ORIGEN_SENTIT": {
+                  "type": "string",
+                  "x-example": "Paral·lel"
+                },
+                "ORIGEN_SERVEI": {
+                  "type": "string",
+                  "x-example": "Paral·lel"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "TramMetro": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureBase"
+        },
+        {
+          "properties": {
+            "properties": {
+              "properties": {
+                "CODI_ESTACIO_FI": {
+                  "type": "number",
+                  "x-example": 213
+                },
+                "CODI_ESTACIO_INI": {
+                  "type": "number",
+                  "x-example": 212
+                },
+                "CODI_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "CODI_SERVEI": {
+                  "type": "number",
+                  "x-example": 200
+                },
+                "CODI_TRAM_LINIA": {
+                  "type": "string",
+                  "x-example": 212.213
+                },
+                "COLOR_LINIA": {
+                  "type": "string",
+                  "x-example": "93248F"
+                },
+                "DATA_FI": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "DATA_INICI": {
+                  "format": "date",
+                  "type": "string",
+                  "x-example": "2013-04-12Z"
+                },
+                "DESC_SERVEI": {
+                  "type": "string",
+                  "x-example": "Paral·lel - Badalona Pompeu Fabra"
+                },
+                "DESTI_SERVEI": {
+                  "type": "string",
+                  "x-example": "Badalona Pompeu Fabra"
+                },
+                "ID_ESTACIO_FI": {
+                  "type": "number",
+                  "x-example": 111
+                },
+                "ID_ESTACIO_INI": {
+                  "type": "number",
+                  "x-example": 52
+                },
+                "ID_LINIA": {
+                  "type": "number",
+                  "x-example": 6
+                },
+                "ID_SERVEI": {
+                  "type": "number",
+                  "x-example": 200
+                },
+                "ID_TIPUS_ESTAT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TIPUS_SERVEI": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ID_TRAM": {
+                  "type": "number",
+                  "x-example": 247
+                },
+                "ID_TRAM_LINIA": {
+                  "type": "number",
+                  "x-example": 118
+                },
+                "LONGITUD": {
+                  "format": "double",
+                  "type": "number",
+                  "x-example": 653.131
+                },
+                "NOM_ESTACIO_FI": {
+                  "type": "string",
+                  "x-example": "Passeig de Gràcia"
+                },
+                "NOM_ESTACIO_INI": {
+                  "type": "string",
+                  "x-example": "Universitat"
+                },
+                "NOM_LINIA": {
+                  "type": "string",
+                  "x-example": "L2"
+                },
+                "NOM_TIPUS_ESTAT": {
+                  "type": "string",
+                  "x-example": "Operatiu"
+                },
+                "NOM_TIPUS_SERVEI": {
+                  "type": "string",
+                  "x-example": "Normal"
+                },
+                "NOM_TRAM_LINIA": {
+                  "type": "string",
+                  "x-example": "Universitat - Passeig de Gràcia"
+                },
+                "ORDRE_LINIA": {
+                  "type": "number",
+                  "x-example": 2
+                },
+                "ORDRE_TRAM": {
+                  "type": "number",
+                  "x-example": 4
+                },
+                "ORIENTACIO_TEXT": {
+                  "type": "number",
+                  "x-example": 1
+                },
+                "ORIGEN_SERVEI": {
+                  "type": "string",
+                  "x-example": "Paral·lel"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "AppId": {
+      "description": "Id de la app",
+      "in": "query",
+      "name": "app_id",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_ids",
+      "x-example": "app_id_value"
+    },
+    "AppKey": {
+      "description": "Key de la app",
+      "in": "query",
+      "name": "app_key",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_keys",
+      "x-example": "app_key_value"
+    },
+    "CodiAcces": {
+      "description": "Codi accés",
+      "in": "path",
+      "name": "codi_acces",
+      "required": true,
+      "type": "string",
+      "x-example": 21001
+    },
+    "CodiEstacio": {
+      "description": "Codi estació",
+      "in": "path",
+      "name": "codi_estacio",
+      "required": true,
+      "type": "string",
+      "x-example": 210
+    },
+    "CodiGrupEstacio": {
+      "description": "Codi grup estació",
+      "in": "path",
+      "name": "codi_grup_estacio",
+      "required": true,
+      "type": "string",
+      "x-example": 6660210
+    },
+    "CodiHorari": {
+      "description": "Horari",
+      "in": "path",
+      "name": "horari",
+      "required": true,
+      "type": "string",
+      "x-example": "023.023.FH16.00.00.TB09V0"
+    },
+    "CodiInterc": {
+      "description": "Codi intercanviador",
+      "in": "path",
+      "name": "codi_interc",
+      "required": true,
+      "type": "number",
+      "x-example": 1
+    },
+    "CodiLinia": {
+      "description": "Codi línia",
+      "in": "path",
+      "name": "codi_linia",
+      "required": true,
+      "type": "number",
+      "x-example": 23
+    },
+    "CodiLiniaBase": {
+      "description": "Codi línia en la que es basa la consulta",
+      "in": "path",
+      "name": "codi_linia_base",
+      "required": true,
+      "type": "number",
+      "x-example": 23
+    },
+    "CodiLiniaMetro": {
+      "description": "Codi línia",
+      "in": "path",
+      "name": "codi_linia",
+      "required": true,
+      "type": "number",
+      "x-example": 2
+    },
+    "CodiMobiliari": {
+      "description": "Codi mobiliari",
+      "in": "path",
+      "name": "codi_mobiliari",
+      "required": true,
+      "type": "number",
+      "x-example": 3037
+    },
+    "CodiParada": {
+      "description": "Codi parada",
+      "in": "path",
+      "name": "codi_parada",
+      "required": true,
+      "type": "number",
+      "x-example": 2775
+    },
+    "Dist": {
+      "description": "Distància.",
+      "in": "path",
+      "name": "dist",
+      "required": true,
+      "type": "integer",
+      "x-example": 500
+    },
+    "Lat": {
+      "description": "Latitut.",
+      "in": "path",
+      "name": "lat",
+      "required": true,
+      "type": "number",
+      "x-example": 41.37881
+    },
+    "Lon": {
+      "description": "Longitut.",
+      "in": "path",
+      "name": "lon",
+      "required": true,
+      "type": "number",
+      "x-example": 2.123595
+    },
+    "TipusElementSuperficie": {
+      "description": "Tipus d'element de superfície",
+      "enum": [
+        "ESTACIONS",
+        "PARADES",
+        "ACCESSOS",
+        "INTERCANVIADORS"
+      ],
+      "in": "path",
+      "name": "tipus",
+      "required": true,
+      "type": "string",
+      "x-example": "PARADES"
+    }
+  },
+  "responses": {
+    "ErrorAuth": {
+      "description": "Error en autorització",
+      "schema": {
+        "default": "Authentication failed",
+        "type": "string"
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Informació general de transport (línies, elements de transports, límits...)",
+      "name": "General"
+    },
+    {
+      "description": "Informació de transport amb Bus (parades, correspondències...)",
+      "name": "Bus"
+    },
+    {
+      "description": "Informació de transport amb Metro (estacions, accessos...)",
+      "name": "Metro"
+    },
+    {
+      "description": "Informació de les línies de transport de TMB (Bus i Metro)",
+      "name": "Línies"
+    },
+    {
+      "description": "Informació de les línies de Bus",
+      "name": "Línies Bus"
+    },
+    {
+      "description": "Informació dels recorreguts de les línies de Bus",
+      "name": "Recorreguts"
+    },
+    {
+      "description": "Informació de les línies de Metro",
+      "name": "Línies Metro"
+    },
+    {
+      "description": "Informació sobre les parades d'autobus",
+      "name": "Parades"
+    },
+    {
+      "description": "Informació sobre el mobiliaria de les parades",
+      "name": "Mobiliari"
+    },
+    {
+      "description": "Informació sobre les estacions de Metro",
+      "name": "Estacions"
+    },
+    {
+      "description": "Informació sobre els accessos de Metro",
+      "name": "Accessos"
+    },
+    {
+      "description": "Informació sobre els intercanviadors de Bus",
+      "name": "Intercanviadors"
+    },
+    {
+      "description": "Informació sobre els enllaços entre les linies de transport des de cada parada o estació",
+      "name": "Correspondències"
+    },
+    {
+      "description": "Informació sobre els horaris de pas de bus i metro",
+      "name": "Horaris"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "tags": [
+        "Línies",
+        "Recorreguts",
+        "Parades",
+        "Estacions",
+        "Mobiliari",
+        "Accessos",
+        "Correspondències",
+        "Intercanviadors",
+        "Horaris"
+      ],
+      "name": "Llista de Mètodes"
+    }
+  ]
+}

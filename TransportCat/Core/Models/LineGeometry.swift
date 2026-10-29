@@ -7,9 +7,10 @@ struct GeoPoint: Equatable {
     let longitude: Double
 }
 
-/// Ordered polyline of a line's physical route, decoded from the TMB `tram`
-/// GeoJSON (LineString or MultiLineString). Points follow the TMB coordinate
-/// order [lng, lat] and are converted on decode.
+/// Ordered polyline of a line's physical route, decoded from the TMB
+/// `/transit/linies/metro/{code}` GeoJSON (a FeatureCollection whose geometry
+/// is the line MultiLineString). Points follow the TMB coordinate order
+/// [lng, lat] and are converted on decode.
 struct LineGeometry: Equatable {
     let points: [GeoPoint]
 

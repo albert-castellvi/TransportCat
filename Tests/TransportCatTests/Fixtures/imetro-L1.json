@@ -1,0 +1,82 @@
+{
+  "timestamp": 1793299483660,
+  "linies": [
+    {
+      "codi_linia": 1,
+      "nom_linia": "L1",
+      "nom_familia": "Metro",
+      "codi_familia": 1,
+      "color_linia": "CE1126",
+      "estacions": [
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 133,
+          "linies_trajectes": [
+            {
+              "codi_linia": 1,
+              "nom_linia": "L1",
+              "color_linia": "CE1126",
+              "codi_trajecte": "0011",
+              "desti_trajecte": "Fondo",
+              "propers_trens": [
+                {
+                  "codi_servei": "102",
+                  "temps_arribada": 1793299485000
+                },
+                {
+                  "codi_servei": "103",
+                  "temps_arribada": 1793299698000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codi_via": 2,
+          "id_sentit": 2,
+          "codi_estacio": 133,
+          "linies_trajectes": [
+            {
+              "codi_linia": 1,
+              "nom_linia": "L1",
+              "color_linia": "CE1126",
+              "codi_trajecte": "0012",
+              "desti_trajecte": "Hospital de Bellvitge",
+              "propers_trens": [
+                {
+                  "codi_servei": "129",
+                  "temps_arribada": 1793299624000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 138,
+          "linies_trajectes": [
+            {
+              "codi_linia": 1,
+              "nom_linia": "L1",
+              "color_linia": "CE1126",
+              "codi_trajecte": "0011",
+              "desti_trajecte": "Fondo",
+              "propers_trens": [
+                {
+                  "codi_servei": "135",
+                  "temps_arribada": 1793299626000
+                },
+                {
+                  "codi_servei": "101",
+                  "temps_arribada": 1793299863000
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

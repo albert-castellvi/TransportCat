@@ -1,0 +1,58 @@
+{
+  "timestamp": 1793299795196,
+  "linies": [
+    {
+      "codi_linia": 5,
+      "nom_linia": "L5",
+      "nom_familia": "Metro",
+      "codi_familia": 1,
+      "color_linia": "005A97",
+      "estacions": [
+        {
+          "codi_via": 1,
+          "id_sentit": 1,
+          "codi_estacio": 509,
+          "linies_trajectes": [
+            {
+              "codi_linia": 5,
+              "nom_linia": "L5",
+              "color_linia": "005A97",
+              "codi_trajecte": "0051",
+              "desti_trajecte": "Vall d'Hebron",
+              "propers_trens": [
+                {
+                  "codi_servei": "522",
+                  "temps_arribada": 1793299935000
+                },
+                {
+                  "codi_servei": "524",
+                  "temps_arribada": 1793300214000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "codi_via": 2,
+          "id_sentit": 2,
+          "codi_estacio": 509,
+          "linies_trajectes": [
+            {
+              "codi_linia": 5,
+              "nom_linia": "L5",
+              "color_linia": "005A97",
+              "codi_trajecte": "0051",
+              "desti_trajecte": "Vall d'Hebron",
+              "propers_trens": [
+                {
+                  "codi_servei": "523",
+                  "temps_arribada": 1793299961000
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

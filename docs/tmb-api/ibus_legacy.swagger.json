@@ -1,0 +1,236 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API TMB - i-Bus",
+    "version": "v1",
+    "description": "# Introducció\nEl servei de i-Bus ofereix en temps real els propers temps de pas de les línies que pasaran per una parada de Bus. Cal tenir en consideració que les dades son una previsió basada en la última localització coneguda de l'autobus amb una precisió màxima de minut.\n\n# Format de la resposta\nEl temps de pas retornat, es una llista de temps per cadascun dels autobusos corresponents a una línia de transport:\n\n```\n{\n  \"routeId\": \"0231\",    --> identificador intern de la ruta d'autobus \n  \"line\": \"23\",         --> codi de la linia d'autobus\n  \"text-ca\": \"25 min\",  --> temps de pas descrit textualment\n  \"t-in-s\": 1556,       --> temps de pas en segons\n  \"t-in-min\": 25        --> temps de pas en minuts\n}\n```\n\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n* https://api.tmb.cat/v1/ibus/stops/2775? ``app_id``=__<your_app_id>__&``app_key``=__<your_app_key>__\n\n\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n\n<!-- ReDoc-Inject: <security-definitions> -->\n"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/ibus",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Metodes",
+      "x-displayName": "Llista de mètodes"
+    }
+  ],
+  "paths": {
+    "/stops/{codi_parada}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiParada"
+          },
+          {
+            "$ref": "#/parameters/NumPrevisions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaTempsPas"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "description": "Previsió per una parada.",
+        "operationId": "parades",
+        "summary": "Previsió per una parada",
+        "tags": [
+          "Metodes"
+        ]
+      }
+    },
+    "/lines/{codi_linia}/stops/{codi_parada}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiLinia"
+          },
+          {
+            "$ref": "#/parameters/CodiParada"
+          },
+          {
+            "$ref": "#/parameters/NumPrevisions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta correcta",
+            "schema": {
+              "$ref": "#/definitions/LlistaTempsPasLinia"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "description": "Previsió de pas per una linia i parada.",
+        "operationId": "paradesLinia",
+        "summary": "Previsió per linia i parada.",
+        "tags": [
+          "Metodes"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "TempsPas": {
+      "type": "object",
+      "properties": {
+        "routeId": {
+          "type": "string",
+          "x-example": "230"
+        },
+        "line": {
+          "type": "string",
+          "description": "codi de la linia",
+          "x-example": "23"
+        },
+        "text-ca": {
+          "type": "string",
+          "description": "temps de pas textual",
+          "x-example": "25 min"
+        },
+        "t-in-s": {
+          "type": "integer",
+          "description": "temps de pas en segons",
+          "x-example": 1556
+        },
+        "t-in-min": {
+          "type": "integer",
+          "description": "temps de pas en minuts",
+          "x-example": 25
+        }
+      }
+    },
+    "LlistaTempsPas": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "x-example": "success"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "ibus": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TempsPas"
+              }
+            }
+          }
+        }
+      }
+    },
+    "TempsPasLinia": {
+      "type": "object",
+      "properties": {
+        "routeId": {
+          "type": "string",
+          "x-example": "230"
+        },
+        "text-ca": {
+          "type": "string",
+          "description": "temps de pas textual",
+          "x-example": "25 min"
+        },
+        "t-in-s": {
+          "type": "integer",
+          "description": "temps de pas en segons",
+          "x-example": 1556
+        },
+        "t-in-min": {
+          "type": "integer",
+          "description": "temps de pas en minuts",
+          "x-example": 25
+        }
+      }
+    },
+    "LlistaTempsPasLinia": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "x-example": "success"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "ibus": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TempsPasLinia"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "AppId": {
+      "description": "Id de la app",
+      "in": "query",
+      "name": "app_id",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_ids",
+      "x-example": "app_id_value"
+    },
+    "AppKey": {
+      "description": "Key de la app",
+      "in": "query",
+      "name": "app_key",
+      "required": true,
+      "type": "string",
+      "x-data-threescale-name": "app_keys",
+      "x-example": "app_key_value"
+    },
+    "CodiLinia": {
+      "description": "Codi línia",
+      "in": "path",
+      "name": "codi_linia",
+      "required": true,
+      "type": "string",
+      "x-example": 23
+    },
+    "CodiParada": {
+      "description": "Codi parada",
+      "in": "path",
+      "name": "codi_parada",
+      "required": true,
+      "type": "string",
+      "x-example": 1775
+    },
+    "NumPrevisions": {
+      "description": "Número de previsions per linia (per defecte 1)",
+      "in": "query",
+      "name": "numberOfPredictions",
+      "required": false,
+      "type": "number",
+      "x-example": 2
+    }
+  },
+  "responses": {
+    "ErrorAuth": {
+      "description": "Error en autorització",
+      "schema": {
+        "type": "string",
+        "default": "Authentication failed"
+      }
+    }
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API TMB - i-Metro",
+    "version": "v1",
+    "description": "# Introducció\nEl servei de i-Metro ofereix en temps real els propers temps de pas dels trens que pasaran per una estació de Metro. Cal tenir en consideració que les dades son una previsió basada en la última localització coneguda del tren amb una freqüència d'actualització no inferior a 10-15 segons.\n\n# Format de resposta\nRetorna per cada línia que passa per una estació les properes arribades de trens:\n\n```json\n{\n\"timestamp\": 1746449254397, // timestamp de la consulta\n\"linies\": [\t\t// Per cada linia...\n  {\n    //Atributs de la linia\n    \"codi_linia\": 1,\n    \"nom_linia\": \"L1\",\n    \"nom_familia\": \"Metro\",\n    \"codi_familia\": 1,\n    \"color_linia\": \"CE1126\",\n    \"estacions\": [  // per cada estació per la que passa la linia\n      {\n        \"codi_via\": 1,\t\t// Via 1 o 2\n        \"id_sentit\": 1,\t\t// 1 = Anada, 2 = Tornada\n        \"codi_estacio\": 120,\n        \"linies_trajectes\": [\t// per cada trajecte que pot tenir la línia, en el cas de metro normalment 1 per sentit\n          {\n            \"codi_linia\": 1,\n            \"nom_linia\": \"L1\",\n            \"color_linia\": \"CE1126\",\n            \"codi_trajecte\": \"0011\",\n            \"desti_trajecte\": \"Fondo\", // Destinació del trajecte\n            \"propers_trens\": [\t\t\t// llista dels propers trens que arribaran a la estació\n              {\n                \"codi_servei\": \"120\",\t\t\t\t// codi del servei que té assignat el tren (es veu al frontal del tren)\n                \"temps_arribada\": 1746449431000 \t// timestamp absolut del moment d'arribada a la estació\n              },\n              {\n                \"codi_servei\": \"121\",\n                \"temps_arribada\": 1746449707000\n              }\n            ]\n          }\n        ]\n      },\n    ]\n  }\n]}\n```\n\n# Autorització\nEls serveis del API utilitzen un mecanisme d'autorització de tipus API-Key. En concret es requereix d'un identificador d'aplicació (`app_id`) i una clau vàlida per a l'aplicació (`app_key`). Totes les crides hauran d'incloure aquestes claus com a paràmetres:\n\n```\nhttps://api.tmb.cat/v1/itransit/metro/estacions?estacions=122&app_id=<your_app_id>&app_key=<your_app_key>\n```\nCal __registrar-se__ com a desenvolupador per obtenir unes claus d'autorització.\n"
+  },
+  "host": "api.tmb.cat",
+  "basePath": "/v1/itransit",
+  "schemes": [
+    "https"
+  ],
+  "tags": [
+    {
+      "name": "Metodes",
+      "x-displayName": "Llista de mètodes"
+    }
+  ],
+  "paths": {
+    "/metro/estacions": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/CodiEstacio"
+          },
+          {
+            "$ref": "#/parameters/AppId"
+          },
+          {
+            "$ref": "#/parameters/AppKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta amb les línies i properes arribades a la estació",
+            "schema": {
+              "$ref": "#/definitions/RespostaPrevisioLiniesEstacions"
+            }
+          },
+          "403": {
+            "$ref": "#/responses/ErrorAuth"
+          }
+        },
+        "description": "Previsió de pas dels propers trens de totes les línies que passen per una estació.",
+        "operationId": "previsioEstacio",
+        "summary": "Previsió de temps de pas per estació",
+        "tags": [
+          "Metodes"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "RespostaPrevisioLiniesEstacions": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "timestamp",
+          "description": "Marca temporal en mil·lisegons en que s'ha fet la consulta",
+          "example": 1746450527000
+        },
+        "linies": {
+          "type": "array",
+          "description": "línies que passen per les estacions consultades",
+          "items": {
+            "$ref": "#/definitions/PrevisioLiniesEstacions"
+          }
+        }
+      }
+    },
+    "PrevisioLiniesEstacions": {
+      "type": "object",
+      "description": "linies amb les estacions seleccionades",
+      "properties": {
+        "codi_linia": {
+          "description": "codi identificador de la linia",
+          "type": "integer",
+          "example": 1
+        },
+        "nom_linia": {
+          "description": "nom de la linia",
+          "type": "string",
+          "example": "L1"
+        },
+        "codi_familia": {
+          "description": "codi identificador de la familia de linies",
+          "type": "integer",
+          "example": 1
+        },
+        "nom_familia": {
+          "description": "nom de la familia de linies",
+          "type": "string",
+          "example": "Metro"
+        },
+        "color_linia": {
+          "description": "color de la linia (en hexadecimal)",
+          "type": "string",
+          "example": "CE1126"
+        },
+        "estacions": {
+          "description": "llista d'estacions consultades per aquella línia amb les seves previsions, per cada via/sentit",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PrevisioEstacio"
+          }
+        }
+      }
+    },
+    "PrevisioEstacio": {
+      "type": "object",
+      "properties": {
+        "codi_via": {
+          "description": "codi identificador de via (1 o 2)",
+          "type": "integer",
+          "example": 1
+        },
+        "id_sentit": {
+          "description": "codi identificador del sentit de la linia (1 = Anada, 2 = Tornada)",
+          "type": "integer",
+          "example": 1
+        },
+        "codi_estacio": {
+          "description": "codi identificador de la estació",
+          "type": "integer",
+          "example": 120
+        },
+        "linies_trajectes": {
+          "type": "array",
+          "description": "per cada trajecte de la línia que passa per la estació",
+          "items": {
+            "$ref": "#/definitions/LiniaTrajecte"
+          }
+        }
+      }
+    },
+    "LiniaTrajecte": {
+      "type": "object",
+      "properties": {
+        "codi_linia": {
+          "type": "string",
+          "description": "identificador únic de la línia",
+          "example": 1
+        },
+        "nom_linia": {
+          "type": "string",
+          "description": "nom de la línia",
+          "example": "L1"
+        },
+        "color_linia": {
+          "description": "color de la linia (en hexadecimal)",
+          "type": "string",
+          "example": "CE1126"
+        },
+        "codi_trajecte": {
+          "type": "string",
+          "description": "identificador del trajecte dins la línia (múltiples recorreguts)",
+          "example": "0011"
+        },
+        "desti_trajecte": {
+          "type": "string",
+          "description": "descripció de la destinació del trajecte",
+          "example": "Fondo"
+        },
+        "propers_trens": {
+          "type": "array",
+          "description": "llistat dels propers trens que arribaran a la estació",
+          "items": {
+            "$ref": "#/definitions/ProperTren"
+          }
+        }
+      }
+    },
+    "ProperTren": {
+      "type": "object",
+      "properties": {
+        "temps_arribada": {
+          "type": "integer",
+          "format": "timestamp",
+          "description": "moment en el que està previst que el tren arribi a la estació",
+          "example": 1746449431000
+        },
+        "codi_servei": {
+          "type": "string",
+          "description": "identificador del servei que està fent el tren",
+          "example": "120"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "AppId": {
+      "description": "Id de la app",
+      "in": "query",
+      "name": "app_id",
+      "required": true,
+      "type": "string",
+      "x-example": "xxxxxxxx"
+    },
+    "AppKey": {
+      "description": "Key de la app",
+      "in": "query",
+      "name": "app_key",
+      "required": true,
+      "type": "string",
+      "x-example": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+    },
+    "CodiEstacio": {
+      "description": "Codi estació",
+      "in": "query",
+      "name": "estacions",
+      "required": true,
+      "type": "string",
+      "x-example": "122,321"
+    }
+  },
+  "responses": {
+    "ErrorAuth": {
+      "description": "Error en autorització",
+      "schema": {
+        "type": "string",
+        "default": "Authentication failed"
+      }
+    }
+  }
+}
