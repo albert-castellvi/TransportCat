@@ -41,22 +41,19 @@ API pública de TMB y despliegue a TestFlight con la pipeline del skill ios-test
 ## Tasks
 
 - T1 [S1] scaffold: `project.yml`, Info.plist, entry SwiftUI, assets, .gitignore,
-  estructura de carpetas, README stub. Route: worker (GPT, effort medium). Commit:
-  pendiente.
+  estructura de carpetas, README stub. Route: inline (admisión de writers rota).
+  Commit: 32c91dc.
 - T2 [S3,S6] cliente TMB: modelos, decoders tolerantes, TMBClient (async/await),
-  fixtures + tests con URLProtocol mock. Route: worker (GPT, effort medium). Commit:
-  pendiente.
+  fixtures + tests con URLProtocol mock. Route: inline. Commit: 888c4f0.
 - T3 [S6] motor de posiciones: interpolación iBus→lat/lng sobre geometría, tests
-  deterministas (RED→GREEN en CI). Route: worker (GPT, effort medium). Commit:
-  pendiente.
-- T4 [S2,S5] UI: mapa (MapKit) con overlay de línea y trenes, diagrama de línea
-  (Canvas), detalle de estación (llegadas iBus), banner/lista de afectaciones;
-  polling ~15s visible; catalán. Route: worker (GPT, effort medium). Commit: pendiente.
-- T5 [S4] pipeline: ci.yml (test+release), provision-signing.sh sin SIWA, Sentry,
-  ITSAppUsesNonExemptEncryption, inyección TMB_APP_ID/TMB_APP_KEY por secret,
-  README con checklist manual. Route: worker (GPT, effort medium). Commit: pendiente.
+  deterministas. Route: inline. Commit: 4498c69.
+- T4 [S2,S5] UI: mapa (MapKit), diagrama (Canvas), detalle de estación, avisos;
+  polling 20s; catalán; Sentry opcional por DSN. Route: inline. Commit: af8115c.
+- T5 [S4] pipeline: ci.yml (test+release firmado), provision-signing.sh sin SIWA,
+  Sentry dSYMs, ITSAppUsesNonExemptEncryption, checklist manual en README.
+  Route: inline. Commits: bd6e1f3, 4b37444.
 - T6 [S1..S4] verificación: CI verde en la rama (requiere push — decisión del
-  usuario) + handoff del checklist manual al humano. Route: orquestador + verify.
+  usuario) + handoff del checklist manual al humano. Route: orquestador.
   Commit: n/a.
 
 ## Log
@@ -80,3 +77,15 @@ API pública de TMB y despliegue a TestFlight con la pipeline del skill ios-test
   tests solo verificables en CI (runner macos-26). Los workers no pueden ejecutar
   XCTest localmente; escriben código+tests y la verificación real es el job `test`
   de CI tras push.
+- L5 (incidente de delegación): la sesión registró su autoridad Git cuando el
+  directorio estaba vacío; tras `gh repo clone`, toda admisión de writer falla
+  ("Writer session Git authority changed before admission") igual que
+  `session_worktree_register`. Fallback: T1–T5 ejecutados inline por el
+  orquestador. Reiniciar la sesión dentro del repo restaurará la delegación.
+- L6 (simplificación de inyección): se descarta el xcconfig; TMB_APP_ID,
+  TMB_APP_KEY y SENTRY_DSN son build settings mapeados a Info.plist
+  (TMBAppId/TMBAppKey/SentryDSN) e inyectados por CI en archive/test.
+- L7 (dato real de la red): /tmp/network.json (export de andana) confirma que
+  L9N/9S/10N/10S/FM llevan propiedades mínimas (sin ID_ESTACIO ni accesibilidad)
+  y CODI_LINIA como String; los decoders son tolerantes y hay test de ese caso.
+  Colores reales L1–L5/L11 tomados de COLOR_LINIA.

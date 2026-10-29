@@ -53,14 +53,14 @@ final class TMBClient {
     // MARK: - Transport
 
     private func get(path: String) async throws -> Data {
-        var components = URLComponents(string: "\(Self.baseURL)/\(path)")
-        guard let urlComponents = components else { throw TMBError.invalidURL }
-        urlComponents.queryItems = [
+        guard var components = URLComponents(string: "\(Self.baseURL)/\(path)") else {
+            throw TMBError.invalidURL
+        }
+        components.queryItems = [
             URLQueryItem(name: "app_id", value: credentials.appId),
             URLQueryItem(name: "app_key", value: credentials.appKey),
         ]
-        guard let url = urlComponents.url else { throw TMBError.invalidURL }
-        components = urlComponents
+        guard let url = components.url else { throw TMBError.invalidURL }
 
         let (data, response) = try await session.data(from: url)
         guard let http = response as? HTTPURLResponse else {
