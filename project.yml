@@ -1,0 +1,81 @@
+# TransportCat — XcodeGen project spec.
+#
+# The .xcodeproj is generated, never committed: run `xcodegen generate` before
+# building (CI does this on the macos-26 runner).
+#
+# Identity: bundle id `cat.transport.app`, display name `TransportCat`,
+# scheme `TransportCat`.
+
+name: TransportCat
+
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: ca
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTS_MACCATALYST: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # DEVELOPMENT_TEAM is unset on purpose: simulator builds need no team; the
+    # signed CI archive injects it on the command line.
+    # TMB public API credentials are injected at build time (CI secrets or a
+    # local override); they are never committed with real values.
+    TMB_APP_ID: ""
+    TMB_APP_KEY: ""
+
+packages:
+  # sentry-cocoa: crash reporting and handled errors. Major version pinned.
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: "8.0.0"
+
+targets:
+  TransportCat:
+    type: application
+    platform: iOS
+    sources:
+      - path: TransportCat
+        excludes:
+          # Provided through INFOPLIST_FILE below; must not be copied into the
+          # bundle as a resource.
+          - Resources/Info.plist
+    dependencies:
+      - package: Sentry
+        product: Sentry
+    settings:
+      base:
+        PRODUCT_NAME: TransportCat
+        PRODUCT_BUNDLE_IDENTIFIER: cat.transport.app
+        INFOPLIST_FILE: TransportCat/Resources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  TransportCatTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: TransportCat
+
+schemes:
+  TransportCat:
+    build:
+      targets:
+        TransportCat: all
+        TransportCatTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - TransportCatTests
