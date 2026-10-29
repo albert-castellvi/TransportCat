@@ -64,8 +64,10 @@ final class TrainPositionEngineTests: XCTestCase {
 
         let position = try XCTUnwrap(positions.first)
         XCTAssertFalse(position.forward)
-        // Approaching station 2 from the north: 3/4 of the way down.
-        XCTAssertEqual(position.segmentProgress, 0.75, accuracy: 0.01)
+        // Approaching station 2 from the north: ~3/4 of the way down. The
+        // synthetic vertices are not metrically exact (138.7 m spacing vs the
+        // 125 m assumption), so allow a 2% tolerance.
+        XCTAssertEqual(position.segmentProgress, 0.75, accuracy: 0.02)
         XCTAssertEqual(position.position.latitude, 41.3526725, accuracy: 0.0005)
     }
 
