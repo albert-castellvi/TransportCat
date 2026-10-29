@@ -66,6 +66,10 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+    settings:
+      base:
+        # The test bundle needs no custom plist; let the build generate it.
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: TransportCat
 
