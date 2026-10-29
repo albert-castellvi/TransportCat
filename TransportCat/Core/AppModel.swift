@@ -4,6 +4,9 @@ import SwiftUI
 /// App-wide model: owns the TMB client and the service alerts feed.
 @MainActor
 final class AppModel: ObservableObject {
+    /// Shared instance for the root view; created on the main actor.
+    static let shared = AppModel()
+
     /// nil when the build has no TMB credentials injected; screens then show
     /// a configuration error instead of an empty feed.
     let client: TMBClient?
