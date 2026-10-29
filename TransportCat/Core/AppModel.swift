@@ -1,4 +1,6 @@
 import Foundation
+import OSLog
+import Sentry
 import SwiftUI
 
 /// App-wide model: owns the TMB client and the service alerts feed.
@@ -44,17 +46,22 @@ final class AppModel: ObservableObject {
 
 /// State of the currently selected line: topology (loaded once) plus a
 /// polling cycle of i-Metro arrivals that feeds the position engine.
+///
+/// `@Observable` rather than `ObservableObject`: the screens hold it in an
+/// optional `@State`, which does not subscribe to `@Published` changes, so
+/// the map and diagram never redrew after the data arrived.
 @MainActor
-final class LineState: ObservableObject {
+@Observable
+final class LineState {
     let line: MetroLine
 
-    @Published private(set) var stations: [Station] = []
-    @Published private(set) var geometry: LineGeometry?
-    @Published private(set) var positions: [TrainPosition] = []
-    @Published private(set) var arrivalsByStop: [Int: [Arrival]] = [:]
-    @Published private(set) var isLoadingTopology = false
-    @Published private(set) var isPolling = false
-    @Published private(set) var errorMessage: String?
+    private(set) var stations: [Station] = []
+    private(set) var geometry: LineGeometry?
+    private(set) var positions: [TrainPosition] = []
+    private(set) var arrivalsByStop: [Int: [Arrival]] = [:]
+    private(set) var isLoadingTopology = false
+    private(set) var isPolling = false
+    private(set) var errorMessage: String?
 
     /// Poll cycle for i-Metro arrivals, in seconds. 20 s keeps the request
     /// volume per visible line modest while staying visibly live.
@@ -95,8 +102,13 @@ final class LineState: ObservableObject {
         do {
             let loadedStations = try await client.stations(lineCode: line.code)
             stations = loadedStations
-            let fetchedGeometry = try? await client.lineGeometry(lineCode: line.code)
-            var loadedGeometry = fetchedGeometry
+            Self.log.info("Line \(self.line.code, privacy: .public): \(loadedStations.count) stations")
+            var loadedGeometry: LineGeometry?
+            do {
+                loadedGeometry = try await client.lineGeometry(lineCode: line.code)
+            } catch {
+                Self.report(error, "geometry", line: line.code)
+            }
             if loadedGeometry?.points.isEmpty ?? true {
                 loadedGeometry = Self.stationsPolyline(from: loadedStations)
             }
@@ -108,7 +120,20 @@ final class LineState: ObservableObject {
                 ? "No s'ha pogut projectar la línia sobre la seva geometria."
                 : nil
         } catch {
+            Self.report(error, "stations", line: line.code)
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private static let log = Logger(subsystem: "cat.transport.app", category: "LineState")
+
+    /// Logs a failed request and reports it to Sentry as a non-fatal event,
+    /// so a blank map in the field can be traced to its cause.
+    private static func report(_ error: Error, _ request: String, line: String) {
+        log.error("Line \(line, privacy: .public) \(request, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+        SentrySDK.capture(error: error) { scope in
+            scope.setTag(value: request, key: "tmb.request")
+            scope.setTag(value: line, key: "tmb.line")
         }
     }
 
@@ -131,15 +156,19 @@ final class LineState: ObservableObject {
         defer { isPolling = false }
 
         let stationCodes = stations.map(\.code)
-        if let fetched = try? await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes) {
+        do {
+            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes)
             var updated = arrivalsByStop
             for (code, arrivals) in fetched where !arrivals.isEmpty {
                 updated[code] = arrivals
             }
             arrivalsByStop = updated
+        } catch {
+            Self.report(error, "arrivals", line: line.code)
         }
 
         let all = arrivalsByStop.values.flatMap { $0 }
         positions = engine?.positions(lineCode: line.code, arrivals: all) ?? []
+        Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(self.positions.count) trains")
     }
 }

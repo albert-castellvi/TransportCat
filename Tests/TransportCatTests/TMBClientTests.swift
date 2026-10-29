@@ -1,3 +1,4 @@
+import Observation
 import XCTest
 @testable import TransportCat
 
@@ -115,6 +116,32 @@ final class TMBClientTests: XCTestCase {
         XCTAssertNil(state.errorMessage)
     }
 
+    /// The screens hold LineState in an optional `@State`, so it must be
+    /// `@Observable`: an `ObservableObject` there never redraws the map after
+    /// the stations arrive (blank map in builds up to 11).
+    @MainActor
+    func testLoadedStationsNotifyObservers() async throws {
+        MockURLProtocol.requestHandler = { request in
+            (
+                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!,
+                try Fixtures.data("stations-L1")
+            )
+        }
+        let line = try XCTUnwrap(MetroLine.line(forCode: "1"))
+        let state = LineState(line: line, client: client)
+        let changed = ChangeFlag()
+        withObservationTracking {
+            _ = state.stations
+        } onChange: {
+            changed.value = true
+        }
+
+        await state.loadTopology()
+
+        XCTAssertTrue(changed.value)
+        XCTAssertFalse(state.stations.isEmpty)
+    }
+
     func testHTTPErrorSurfacesAsTMBError() async {
         stub(status: 403, body: { Data() })
         do {
@@ -138,4 +165,9 @@ final class TMBClientTests: XCTestCase {
         XCTAssertEqual(credentials, TMBCredentials(appId: "abc", appKey: "def"))
         XCTAssertFalse(credentials.isEmpty)
     }
+}
+
+/// Set from `withObservationTracking`'s `@Sendable` onChange closure.
+private final class ChangeFlag: @unchecked Sendable {
+    var value = false
 }
