@@ -24,6 +24,14 @@ struct DiagramScreen: View {
             .sheet(item: $selectedStation) { station in
                 StationDetailView(station: station, line: selectedLine)
             }
+            // Same rule as MapScreen: the loader task lives on the always-
+            // visible container, not on the view that requires loaded data.
+            .task(id: selectedLineCode) {
+                guard let client = app.client else { return }
+                let state = LineState(line: selectedLine, client: client)
+                self.lineState = state
+                await state.run()
+            }
         }
     }
 
@@ -31,17 +39,8 @@ struct DiagramScreen: View {
     private var content: some View {
         if let message = app.missingCredentialsMessage {
             ConfigurationNotice(message: message)
-        } else if let client = app.client {
-            if let state = lineState {
-                diagram(state: state)
-                    .task(id: selectedLineCode) {
-                        let state = LineState(line: selectedLine, client: client)
-                        self.lineState = state
-                        await state.run()
-                    }
-            } else {
-                ProgressView("Carregant…")
-            }
+        } else if let state = lineState {
+            diagram(state: state)
         } else {
             ProgressView("Carregant…")
         }

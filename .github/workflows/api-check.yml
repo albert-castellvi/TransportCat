@@ -1,0 +1,29 @@
+# One-shot diagnostic: verifies the TMB public API credentials stored in the
+# `release` environment work against the four endpoints the app consumes.
+# Manual dispatch only; prints HTTP status, byte counts and a small sample of
+# each response — never a credential (GitHub masks them anyway).
+
+name: TMB API check
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Probe TMB endpoints
+        env:
+          TMB_APP_ID: ${{ secrets.TMB_APP_ID }}
+          TMB_APP_KEY: ${{ secrets.TMB_APP_KEY }}
+        run: |
+          set -euo pipefail
+          for ep in "transit/linies/metro/1/estacions" "transit/linies/metro/1/tram" "ibus/lines/1/stops/111" "alerts/metro/channels/WEB"; do
+            code="$(curl -s -o /tmp/out.json -w '%{http_code}' "https://api.tmb.cat/v1/$ep?app_id=$TMB_APP_ID&app_key=$TMB_APP_KEY")"
+            bytes="$(wc -c < /tmp/out.json | tr -d ' ')"
+            echo "== $ep -> HTTP $code ($bytes bytes)"
+            head -c 240 /tmp/out.json | tr -d '\n'; echo; echo
+          done

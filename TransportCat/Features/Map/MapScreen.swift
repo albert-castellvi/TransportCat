@@ -31,6 +31,15 @@ struct MapScreen: View {
             .sheet(item: $selectedStation) { station in
                 StationDetailView(station: station, line: selectedLine)
             }
+            // The loader task must live on the always-visible container: the
+            // map itself only renders once LineState exists, so a task attached
+            // there would never start (infinite "Carregant…").
+            .task(id: selectedLineCode) {
+                guard let client = app.client else { return }
+                let state = LineState(line: selectedLine, client: client)
+                self.lineState = state
+                await state.run()
+            }
         }
     }
 
@@ -86,11 +95,6 @@ struct MapScreen: View {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .padding(16)
             }
-        }
-        .task(id: selectedLineCode) {
-            let state = LineState(line: selectedLine, client: client)
-            self.lineState = state
-            await state.run()
         }
     }
 
