@@ -26,19 +26,76 @@ enum GeoMath {
         return cumulative
     }
 
-    /// Index of the polyline vertex nearest to `point`.
-    static func nearestVertexIndex(of point: GeoPoint, in points: [GeoPoint]) -> Int? {
-        guard !points.isEmpty else { return nil }
-        var bestIndex = 0
-        var bestDistance = Double.greatestFiniteMagnitude
-        for (index, vertex) in points.enumerated() {
-            let distance = distanceMeters(from: point, to: vertex)
-            if distance < bestDistance {
-                bestDistance = distance
-                bestIndex = index
-            }
+    /// Result of projecting a point onto a polyline.
+    struct Projection: Equatable {
+        /// Distance in meters along the polyline to the perpendicular foot,
+        /// on the same scale as `cumulativeDistances`.
+        let distance: Double
+        /// Index of the segment's start vertex: the foot lies on
+        /// `points[segmentIndex] → points[segmentIndex + 1]`.
+        let segmentIndex: Int
+        /// Position of the foot within the segment, clamped to [0, 1].
+        let fraction: Double
+        /// Perpendicular distance in meters from `point` to the polyline.
+        let offsetMeters: Double
+    }
+
+    /// Projects `point` perpendicularly onto the nearest polyline segment and
+    /// reports where that foot lies in meters along the polyline.
+    ///
+    /// The perpendicular foot is computed in a local equirectangular plane
+    /// centred on `point` (the approximation used by `distanceMeters`), and
+    /// the along-route distance is the segment's cumulative start plus
+    /// `fraction * segment length`. Points beside the polyline land on the
+    /// foot; points past either end clamp to that end. Ties keep the earliest
+    /// segment, so the result is deterministic.
+    static func nearestProjection(of point: GeoPoint, in points: [GeoPoint]) -> Projection? {
+        nearestProjection(of: point, in: points, cumulative: cumulativeDistances(of: points))
+    }
+
+    /// Same as `nearestProjection(of:in:)`, reusing a precomputed cumulative
+    /// distance table for `points`.
+    static func nearestProjection(of point: GeoPoint, in points: [GeoPoint], cumulative: [Double]) -> Projection? {
+        guard !points.isEmpty, points.count == cumulative.count else { return nil }
+        if points.count == 1 {
+            return Projection(
+                distance: cumulative[0],
+                segmentIndex: 0,
+                fraction: 0,
+                offsetMeters: distanceMeters(from: point, to: points[0])
+            )
         }
-        return bestIndex
+        let metersPerDegree = earthRadiusMeters * .pi / 180
+        let lonScale = metersPerDegree * cos(point.latitude * .pi / 180)
+        func local(_ vertex: GeoPoint) -> (x: Double, y: Double) {
+            ((vertex.longitude - point.longitude) * lonScale, (vertex.latitude - point.latitude) * metersPerDegree)
+        }
+
+        var best: Projection?
+        for index in 0..<(points.count - 1) {
+            let start = local(points[index])
+            let end = local(points[index + 1])
+            let dx = end.x - start.x
+            let dy = end.y - start.y
+            let lengthSquared = dx * dx + dy * dy
+            // Closest point on the infinite line through the segment is at
+            // parameter t; clamping t to [0, 1] handles points beyond an end.
+            let rawFraction = lengthSquared > 0 ? -(start.x * dx + start.y * dy) / lengthSquared : 0
+            let fraction = min(max(rawFraction, 0), 1)
+            let footX = start.x + dx * fraction
+            let footY = start.y + dy * fraction
+            let offset = sqrt(footX * footX + footY * footY)
+            if let current = best, current.offsetMeters <= offset { continue }
+            let startDistance = cumulative[index]
+            let segmentLength = cumulative[index + 1] - startDistance
+            best = Projection(
+                distance: startDistance + fraction * segmentLength,
+                segmentIndex: index,
+                fraction: fraction,
+                offsetMeters: offset
+            )
+        }
+        return best
     }
 
     /// Geographic point at `distance` meters along the polyline described by
