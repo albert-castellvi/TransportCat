@@ -197,6 +197,8 @@ enum AlertParser {
             guard let alertDict = JSONValue.dictionary(from: item) else { return nil }
             var lineCodes: [String] = []
             var stationNames: [String] = []
+            var stationCodes: [Int] = []
+            var entranceNames: [String] = []
             for entity in JSONValue.array(from: alertDict["entities"]) ?? [] {
                 guard let entityDict = JSONValue.dictionary(from: entity) else { continue }
                 if let lineCode = JSONValue.string(from: entityDict["line_code"]), !lineCodes.contains(lineCode) {
@@ -205,7 +207,24 @@ enum AlertParser {
                 if let stationName = JSONValue.string(from: entityDict["station_name"]), !stationNames.contains(stationName) {
                     stationNames.append(stationName)
                 }
+                // `station_code` is a numeric string ("136"); a line-wide
+                // alert sends ALL, which is not a station code.
+                if let code = stationCode(from: entityDict["station_code"]),
+                   !stationCodes.contains(code) {
+                    stationCodes.append(code)
+                }
+                // `entrance_name` is absent on some entities, and ALL when the
+                // whole station is affected.
+                if let entranceName = JSONValue.string(from: entityDict["entrance_name"]),
+                   entranceName.caseInsensitiveCompare("ALL") != .orderedSame,
+                   !entranceNames.contains(entranceName) {
+                    entranceNames.append(entranceName)
+                }
             }
+            // `effect_code` tells the kind of disruption: PP2 corridors
+            // closed, PP7 access closed, PP8 elevator out, PP9 escalator out.
+            let categories = JSONValue.dictionary(from: alertDict["categories"])
+            let effectCode = JSONValue.string(from: categories?["effect_code"])
             var beginDate: Date?
             var endDate: Date?
             if let dates = JSONValue.array(from: alertDict["disruption_dates"]),
@@ -226,9 +245,21 @@ enum AlertParser {
                 stationNames: stationNames,
                 beginDate: beginDate,
                 endDate: endDate,
-                text: text
+                text: text,
+                stationCodes: stationCodes,
+                entranceNames: entranceNames,
+                effectCode: effectCode
             )
         }
+    }
+
+    /// `station_code` arrives as a string ("136") and must stay numeric: ALL
+    /// and any other non-numeric value mean no particular station.
+    private static func stationCode(from any: Any?) -> Int? {
+        if let string = any as? String {
+            return Int(string.trimmingCharacters(in: .whitespaces))
+        }
+        return JSONValue.int(from: any)
     }
 
     /// Live alerts carry no top-level text: the disruption copy lives in

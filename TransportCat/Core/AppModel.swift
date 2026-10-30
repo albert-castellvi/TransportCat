@@ -87,11 +87,12 @@ final class LineState {
             await loadTopology()
         }
         guard engine != nil else { return }
-        // One-second ticker between polls: the markers move continuously
-        // instead of jumping on every arrivals response (S4).
+        // 10 Hz ticker between the 20 s polls: the markers move smoothly
+        // instead of hopping once per second, and the velocity controller in
+        // `TrainMotion` gets small steps to ease over (S1).
         let ticker = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 100_000_000)
                 self?.tick()
             }
         }

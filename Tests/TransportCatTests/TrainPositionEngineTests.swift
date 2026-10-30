@@ -233,6 +233,82 @@ final class TrainPositionEngineTests: XCTestCase {
         XCTAssertFalse(backwardPosition.forward)
     }
 
+    /// S2: a route distance expressed in station-order index units, which is
+    /// what the diagram multiplies by its row height for a continuous y.
+    func testStationIndexPositionInterpolatesBetweenStations() throws {
+        let engine = try makeEngine()
+        // Route distances of the second and third stations, read from the
+        // positions the engine derives for them (a train at the platform).
+        let second = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(stationCode: 2, seconds: 30)]).first)
+        let third = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(stationCode: 3, seconds: 30)]).first)
+        XCTAssertEqual(second.routeDistance, 504.6, accuracy: 1.0)
+        XCTAssertEqual(third.routeDistance, 2 * second.routeDistance, accuracy: 1.0)
+
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: 0), 0, accuracy: 1e-9)
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: second.routeDistance), 1, accuracy: 1e-9)
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: third.routeDistance), 2, accuracy: 1e-9)
+        // Halfway between the second and third station is 1.5, not 1.
+        let halfway = (second.routeDistance + third.routeDistance) / 2
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: halfway), 1.5, accuracy: 1e-9)
+        // A quarter of the way is 1.25.
+        let quarter = second.routeDistance + (third.routeDistance - second.routeDistance) / 4
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: quarter), 1.25, accuracy: 1e-9)
+
+        // Clamped outside the line: there is nothing to interpolate there.
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: -800), 0, accuracy: 1e-9)
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: third.routeDistance + 900), 2, accuracy: 1e-9)
+
+        // Monotonic and inside the clamp over the whole route.
+        var previous = engine.stationIndexPosition(atRouteDistance: -100)
+        for step in 0...300 {
+            let distance = Double(step) * 6
+            let value = engine.stationIndexPosition(atRouteDistance: distance)
+            XCTAssertGreaterThanOrEqual(value, previous, "index dropped at \(distance) m")
+            XCTAssertGreaterThanOrEqual(value, 0)
+            XCTAssertLessThanOrEqual(value, 2)
+            previous = value
+        }
+    }
+
+    /// Stations projected onto the same route distance share that point. The
+    /// pair must not divide by zero and must keep the index non-decreasing.
+    func testStationIndexPositionSurvivesStationsSharingARouteDistance() throws {
+        // Stations 2 and 3 sit on the same coordinate, so they project onto
+        // the same route distance.
+        let duplicated = [
+            Station(code: 1, name: "Sud", orderInLine: 1, lineCode: "1", latitude: 41.34467731, longitude: 2.10724192, id: 81, accessible: true),
+            Station(code: 2, name: "Mig", orderInLine: 2, lineCode: "1", latitude: 41.35375440, longitude: 2.10724192, id: 82, accessible: true),
+            Station(code: 3, name: "Nord", orderInLine: 3, lineCode: "1", latitude: 41.35375440, longitude: 2.10724192, id: 83, accessible: true),
+        ]
+        let engine = try XCTUnwrap(TrainPositionEngine.make(stations: duplicated, geometry: geometry))
+        // The route distance both stations project onto.
+        let shared = try XCTUnwrap(makeEngine().positions(lineCode: "1", arrivals: [arrival(stationCode: 3, seconds: 30)]).first).routeDistance
+
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: 0), 0, accuracy: 1e-9)
+        // The shared point is the last station's distance, so the clamp puts it
+        // on the last index instead of dividing the duplicate interval by
+        // zero.
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: shared), 2, accuracy: 1e-9)
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: shared + 10), 2, accuracy: 1e-9)
+        XCTAssertEqual(engine.stationIndexPosition(atRouteDistance: 5000), 2, accuracy: 1e-9)
+        // Just before the shared point the index is still between the first
+        // and the second station.
+        let before = engine.stationIndexPosition(atRouteDistance: shared - 10)
+        XCTAssertEqual(before, 1 - 10 / shared, accuracy: 1e-9)
+        XCTAssertLessThan(before, 1)
+        XCTAssertGreaterThan(before, 0)
+
+        // Non-decreasing over the whole route, with no division by zero.
+        var previous = engine.stationIndexPosition(atRouteDistance: -50)
+        for step in 0...400 {
+            let value = engine.stationIndexPosition(atRouteDistance: Double(step) * 3)
+            XCTAssertGreaterThanOrEqual(value, previous)
+            XCTAssertGreaterThanOrEqual(value, 0)
+            XCTAssertLessThanOrEqual(value, 2)
+            previous = value
+        }
+    }
+
     func testDwellingThresholdIsFifteenSeconds() throws {
         let engine = try makeEngine()
         let dwelling = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(seconds: 15)]).first)
