@@ -19,6 +19,14 @@ struct Arrival: Identifiable, Hashable {
     /// a default value so callers that do not know the train run keep using
     /// the memberwise initializer unchanged.
     var serviceCode: String? = nil
+    /// i-Metro `codi_trajecte`, the route variant of the line the train runs.
+    /// Together with `serviceCode` it identifies one physical train, so the
+    /// pair is what the position engine collapses and keys trains by (S1).
+    var trajectCode: String? = nil
+    /// i-Metro `codi_via`: 1 means the train travels toward the line's last
+    /// station, 2 toward the first. Absent for feeds that only report a
+    /// destination name, which stays as the fallback direction source (S2).
+    var via: Int? = nil
 
     var id: String {
         if let serviceCode {
