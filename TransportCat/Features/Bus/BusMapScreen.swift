@@ -1,9 +1,13 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 /// Live map of one bus line (spec S3): the route of both directions in the
 /// line color, the stops of the direction on screen as dots, and the buses
 /// placed from the arrivals the poll collected (spec S4).
+///
+/// The buses are the `bus-<colorHex>` pictograms of the asset catalog, rotated
+/// to their heading, with the line name in an upright chip (spec S2).
 ///
 /// It mirrors `MapScreen` on purpose — same header shape, same chips, same
 /// camera bookkeeping — so switching mode with the selector at the top changes
@@ -22,7 +26,7 @@ struct BusMapScreen: View {
     @State private var showLinePicker = false
     /// Stop whose sheet is open (spec S6).
     @State private var selectedStop: BusStop?
-    /// Camera bearing in degrees clockwise from north: the bus pills rotate
+    /// Camera bearing in degrees clockwise from north: the bus markers rotate
     /// against it so they keep facing along the route whatever the user does
     /// with the map, exactly like the metro train markers.
     @State private var cameraHeading: Double = 0
@@ -186,9 +190,7 @@ struct BusMapScreen: View {
                 // Empty title: the destination is already on the marker.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.train.position.latitude, longitude: position.train.position.longitude)) {
                     BusMarker(
-                        lineName: line.name,
-                        colorHex: line.colorHex,
-                        textColorHex: line.textColorHex,
+                        line: line,
                         destination: position.train.destination,
                         rotation: position.train.heading - 90 - cameraHeading,
                         showLabel: latitudeSpan < Self.labelSpanThreshold,
@@ -353,30 +355,53 @@ private struct StopDot: View {
     }
 }
 
-/// Moving bus marker: the line-colored pill with its name, a notch pointing
-/// where the bus is heading, and the destination label when zoomed in (S3).
-private struct BusMarker: View {
-    let lineName: String
-    let colorHex: String
-    let textColorHex: String
+/// Moving bus marker: the line-colored bus pictogram rotated along its
+/// heading, the line name in an upright chip above it, and the destination
+/// label below when zoomed in (spec S2, S3).
+struct BusMarker: View {
+    let line: BusLine
     let destination: String
-    /// Rotation of the pill: `heading - 90 - cameraHeading`, the same rule the
-    /// east-facing metro pictograms use, so 0 degrees means heading east.
+    /// Rotation of the pictogram: `heading - 90 - cameraHeading`, the same rule
+    /// the east-facing metro pictograms use, so 0 degrees means heading east.
     let rotation: Double
     let showLabel: Bool
     /// 1 for the direction on screen, 0.55 for the other one (spec S3).
     let opacity: Double
 
-    /// Width and height of the pill in points.
-    private static let pillSize = CGSize(width: 34, height: 20)
+    /// Width and height of the pictogram in points: the 54x32 bus asset
+    /// rendered at the size its README asks for (spec S2).
+    static let markerSize = CGSize(width: 42, height: 24.9)
+
+    /// Asset name of the bus for a line: `bus-<colorHex>` when the catalog has
+    /// that colour, `bus-default` otherwise (spec S3). The lookup is by name at
+    /// runtime, so a colour the generator did not emit degrades instead of
+    /// drawing nothing.
+    static func assetName(for line: BusLine) -> String {
+        let name = "bus-\(line.colorHex.lowercased())"
+        return UIImage(named: name) != nil ? name : "bus-default"
+    }
 
     var body: some View {
-        // MapKit centers an annotation on its coordinate, so only the pill and
-        // its notch rotate and `rotationEffect` keeps the layout size at
-        // 34x20 pt: the label lives in an overlay on that unrotated frame,
-        // which adds nothing to the marker size and always stays upright.
-        pill
+        // MapKit centers an annotation on its coordinate, so only the pictogram
+        // rotates and `rotationEffect` keeps the layout size at 42x24.9 pt: the
+        // chip and the label live in overlays on that unrotated frame, which
+        // adds nothing to the marker size and always stays upright.
+        Image(Self.assetName(for: line))
+            .resizable()
+            .frame(width: Self.markerSize.width, height: Self.markerSize.height)
             .rotationEffect(.degrees(rotation))
+            .overlay(alignment: .top) {
+                // The line name has to stay readable while the bus turns, so
+                // it is a chip of its own outside the rotated image (spec S2).
+                Text(line.name)
+                    .font(.caption2.bold())
+                    .foregroundStyle(Color(hex: line.textColorHex))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(hex: line.colorHex)))
+                    .fixedSize()
+                    .offset(y: -20)
+            }
             .opacity(opacity)
             .overlay(alignment: .bottom) {
                 if showLabel {
@@ -389,42 +414,7 @@ private struct BusMarker: View {
                         .offset(y: 22)
                 }
             }
-            .accessibilityLabel("Bus \(lineName) cap a \(destination)")
-    }
-
-    private var pill: some View {
-        ZStack {
-            Capsule()
-                .fill(Color(hex: colorHex))
-                .overlay(Capsule().stroke(.white, lineWidth: 2))
-            Text(lineName)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color(hex: textColorHex))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .padding(.horizontal, 3)
-        }
-        .frame(width: Self.pillSize.width, height: Self.pillSize.height)
-        .overlay(alignment: .trailing) {
-            // The notch marks the front of the vehicle: the marker rotates so
-            // that 0 degrees heads east, exactly like the metro pictograms.
-            HeadingNotch()
-                .fill(.white)
-                .frame(width: 6, height: 8)
-                .offset(x: 4)
-        }
-    }
-}
-
-/// Triangle pointing right, used as the heading notch of the bus pill.
-private struct HeadingNotch: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.maxX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-            path.closeSubpath()
-        }
+            .accessibilityLabel("Bus \(line.name) cap a \(destination)")
     }
 }
 

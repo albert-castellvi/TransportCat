@@ -408,7 +408,7 @@ private struct TrainOverlay: View {
                 Image("train-\(train.assetKey)")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 36, height: 30)
+                    .frame(width: 42, height: 18.67)
                     .rotationEffect(.degrees(train.forward ? 90 : -90))
                     .position(x: DiagramRow.spineCenterX, y: train.y)
                     .accessibilityHidden(true)

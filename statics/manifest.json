@@ -399,6 +399,339 @@
       "forward": "east",
       "renderWidth": 36,
       "renderHeight": 30
+    },
+    {
+      "file": "map-trains-v2/l1.svg",
+      "png": "map-trains-v2/l1@3x.png",
+      "label": "L1",
+      "color": "#CE1126",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l2.svg",
+      "png": "map-trains-v2/l2@3x.png",
+      "label": "L2",
+      "color": "#93248F",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l3.svg",
+      "png": "map-trains-v2/l3@3x.png",
+      "label": "L3",
+      "color": "#1EB53A",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l4.svg",
+      "png": "map-trains-v2/l4@3x.png",
+      "label": "L4",
+      "color": "#F7A30E",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l5.svg",
+      "png": "map-trains-v2/l5@3x.png",
+      "label": "L5",
+      "color": "#005A97",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l9n.svg",
+      "png": "map-trains-v2/l9n@3x.png",
+      "label": "L9N",
+      "color": "#FB712B",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l9s.svg",
+      "png": "map-trains-v2/l9s@3x.png",
+      "label": "L9S",
+      "color": "#FB712B",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l10n.svg",
+      "png": "map-trains-v2/l10n@3x.png",
+      "label": "L10N",
+      "color": "#00A6D6",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l10s.svg",
+      "png": "map-trains-v2/l10s@3x.png",
+      "label": "L10S",
+      "color": "#00A6D6",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/l11.svg",
+      "png": "map-trains-v2/l11@3x.png",
+      "label": "L11",
+      "color": "#89B94C",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-trains-v2/fm.svg",
+      "png": "map-trains-v2/fm@3x.png",
+      "label": "FM",
+      "color": "#004C38",
+      "width": 72,
+      "height": 32,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 42,
+      "renderHeight": 18.6667
+    },
+    {
+      "file": "map-buses/standard-red.svg",
+      "png": "map-buses/standard-red@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#E53945",
+      "vehicle": "standard",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/standard-blue.svg",
+      "png": "map-buses/standard-blue@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#168AC4",
+      "vehicle": "standard",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/standard-green.svg",
+      "png": "map-buses/standard-green@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#22A477",
+      "vehicle": "standard",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/standard-amber.svg",
+      "png": "map-buses/standard-amber@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#ECA82B",
+      "vehicle": "standard",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/articulated-red.svg",
+      "png": "map-buses/articulated-red@3x.png",
+      "width": 64,
+      "height": 32,
+      "color": "#E53945",
+      "vehicle": "articulated",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/articulated-blue.svg",
+      "png": "map-buses/articulated-blue@3x.png",
+      "width": 64,
+      "height": 32,
+      "color": "#168AC4",
+      "vehicle": "articulated",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/articulated-green.svg",
+      "png": "map-buses/articulated-green@3x.png",
+      "width": 64,
+      "height": 32,
+      "color": "#22A477",
+      "vehicle": "articulated",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/articulated-amber.svg",
+      "png": "map-buses/articulated-amber@3x.png",
+      "width": 64,
+      "height": 32,
+      "color": "#ECA82B",
+      "vehicle": "articulated",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/electric-red.svg",
+      "png": "map-buses/electric-red@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#E53945",
+      "vehicle": "electric",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/electric-blue.svg",
+      "png": "map-buses/electric-blue@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#168AC4",
+      "vehicle": "electric",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/electric-green.svg",
+      "png": "map-buses/electric-green@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#22A477",
+      "vehicle": "electric",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
+    },
+    {
+      "file": "map-buses/electric-amber.svg",
+      "png": "map-buses/electric-amber@3x.png",
+      "width": 54,
+      "height": 32,
+      "color": "#ECA82B",
+      "vehicle": "electric",
+      "colorMeaning": "illustrative, not an official route color",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east"
     }
   ]
 }

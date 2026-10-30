@@ -1,6 +1,6 @@
 # CatTrans static assets
 
-46 original SVG assets: 20 outline icons, 11 line badges, 4 map markers and 11 directional train markers (also exported as 3× PNG).
+69 original SVG assets (including 12 bus markers): 20 outline icons, 11 line badges, 4 map markers and two sets of 11 directional train markers (also exported as 3× PNG).
 Open `index.html` for the gallery; `manifest.json` lists dimensions and metadata.
 
 ## Usage
@@ -27,3 +27,12 @@ No additional transport modes or station-specific facilities are inferred.
 
 See `map-trains/README.md`, `map-trains/preview.png` and
 `map-trains/motion-preview.html` for the moving-train asset set.
+
+## Set 02 — Top-down articulated trains
+
+See `map-trains-v2/README.md` and `map-trains-v2/preview.png` for a slimmer alternative.
+
+## Bus markers
+
+See `map-buses/README.md` and `map-buses/preview.png` for the bus set.
+Bus colors are illustrative, not inherited from metro lines.

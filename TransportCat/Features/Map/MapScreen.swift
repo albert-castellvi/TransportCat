@@ -245,12 +245,13 @@ private struct TrainMarker: View {
 
     var body: some View {
         // MapKit centers an annotation on its coordinate, so only the image is
-        // rotated and `rotationEffect` keeps the layout size at 36x30 pt: the
-        // label lives in an overlay on that unrotated frame, which adds nothing
-        // to the marker size and always stays upright.
+        // rotated and `rotationEffect` keeps the layout size at 42x18.67 pt
+        // (the 72:32 aspect of the v2 train art): the label lives in an overlay
+        // on that unrotated frame, which adds nothing to the marker size and
+        // always stays upright.
         Image(imageName)
             .resizable()
-            .frame(width: 36, height: 30)
+            .frame(width: 42, height: 18.67)
             .rotationEffect(.degrees(rotation))
             .overlay(alignment: .bottom) {
                 if showLabel {
@@ -260,7 +261,12 @@ private struct TrainMarker: View {
                         .padding(.vertical, 2)
                         .background(.thinMaterial, in: Capsule())
                         .fixedSize()
-                        .offset(y: 24)
+                        // Measured from the frame's bottom edge, 9.33 pt under
+                        // the marker center. The pictogram is 42 pt long, so
+                        // heading north or south it reaches 21 pt under that
+                        // center: this offset puts the label's top edge just
+                        // below it, so the two never overlap in any heading.
+                        .offset(y: 20)
                 }
             }
             .accessibilityLabel("Tren \(destination)")

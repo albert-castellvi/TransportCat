@@ -3,7 +3,12 @@
 # Render the original assets in statics/ into the app asset catalog
 # (TransportCat/Resources/Assets.xcassets) as @3x PNG image sets (spec S7).
 #
-#   - train-<line>:    copy of statics/map-trains/<line>@3x.png (180x150 px)
+#   - train-<line>:    copy of statics/map-trains-v2/<line>@3x.png (216x96 px,
+#     rendered at 42x18.67 pt; the cab faces east, so the app rotates it)
+#   - bus-<hex>:       statics/map-buses/standard-blue.svg with its single body
+#     colour re-tinted to #<COLOR_LINIA>, one per TMB bus line colour, at
+#     162x96 px (42x24.9 pt), name lower case; bus-default is the unmodified
+#     blue source
 #   - badge-<line>:    statics/lines/<line>.svg at 192x120 px (64x40 pt)
 #   - station-<line>:  statics/markers/station.svg re-tinted to the line color
 #   - terminal-<line>: statics/markers/station-terminal.svg, same re-tint
@@ -39,6 +44,11 @@ done
 
 # Markers ship with the L5 blue as default fill; that is the token to replace.
 DEFAULT_MARKER_FILL="#005A97"
+
+# The bus silhouette ships with one body colour; every bus-<hex> imageset is
+# that same SVG with this token replaced by the line colour.
+BUS_SOURCE_SVG="$STATIC_DIR/map-buses/standard-blue.svg"
+DEFAULT_BUS_FILL="#168AC4"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -142,7 +152,7 @@ fi
 # 1. Directional train markers (pre-exported PNG, faces east)
 # --------------------------------------------------------------------------
 while read -r key hex; do
-    source="$STATIC_DIR/map-trains/$key@3x.png"
+    source="$STATIC_DIR/map-trains-v2/$key@3x.png"
     if [[ ! -f "$source" ]]; then
         echo "ERROR: missing $source" >&2
         exit 1
@@ -151,7 +161,54 @@ while read -r key hex; do
 done < <(line_specs)
 
 # --------------------------------------------------------------------------
-# 2. Line badges, 64x40 pt at 3x
+# 2. Bus markers, 42x24.9 pt at 3x: the standard silhouette re-tinted to each
+# line colour the TMB catalog publishes (COLOR_LINIA). Articulated and electric
+# variants are out of scope: the iBus feed exposes no vehicle model.
+# --------------------------------------------------------------------------
+if [[ ! -f "$BUS_SOURCE_SVG" ]]; then
+    echo "ERROR: missing $BUS_SOURCE_SVG" >&2
+    exit 1
+fi
+
+# bus_svg <out-svg> <to-hex-or-empty-for-default> — the source must carry the
+# body colour exactly once; more than one hit would recolour windows or tyres
+# as well, so the check is a hard stop, not a warning.
+bus_svg() {
+    local out="$1" to="$2" hits
+    if [[ -z "$to" ]]; then
+        cp "$BUS_SOURCE_SVG" "$out"
+        to="$DEFAULT_BUS_FILL"
+    else
+        sed "s/${DEFAULT_BUS_FILL}/${to}/Ig" "$BUS_SOURCE_SVG" >"$out"
+    fi
+    hits="$(grep -oiF -- "$DEFAULT_BUS_FILL" "$BUS_SOURCE_SVG" | wc -l || true)"
+    if [[ "$hits" -ne 1 ]]; then
+        echo "ERROR: $BUS_SOURCE_SVG has $hits occurrences of $DEFAULT_BUS_FILL, expected 1" >&2
+        exit 1
+    fi
+    if ! grep -qF -- "$to" "$out"; then
+        echo "ERROR: $to not present in $out, nothing was re-tinted" >&2
+        exit 1
+    fi
+}
+
+# Imageset names are lower case (`bus-6ab023`): the app builds them from
+# `BusLine.colorHex` lowercased, so TMB's upper-case hexes must not leak into
+# the catalog names.
+for bus_hex_upper in 003888 6AB023 937500 DA291C 93107E 010101 DF2228 076AB3; do
+    bus_hex="$(printf '%s' "$bus_hex_upper" | tr '[:upper:]' '[:lower:]')"
+    bus_svg "$TMP_DIR/bus-$bus_hex.svg" "#$bus_hex_upper"
+    render_png "$TMP_DIR/bus-$bus_hex.svg" "$TMP_DIR/bus-$bus_hex.png" 162 96
+    emit_imageset "bus-$bus_hex" "$TMP_DIR/bus-$bus_hex.png"
+done
+
+# Fallback for a line colour with no imageset of its own (spec S3).
+bus_svg "$TMP_DIR/bus-default.svg" ""
+render_png "$TMP_DIR/bus-default.svg" "$TMP_DIR/bus-default.png" 162 96
+emit_imageset "bus-default" "$TMP_DIR/bus-default.png"
+
+# --------------------------------------------------------------------------
+# 3. Line badges, 64x40 pt at 3x
 # --------------------------------------------------------------------------
 while read -r key hex; do
     render_png "$STATIC_DIR/lines/$key.svg" "$TMP_DIR/$key-badge.png" 192 120
@@ -159,7 +216,7 @@ while read -r key hex; do
 done < <(line_specs)
 
 # --------------------------------------------------------------------------
-# 3. Station and terminal markers, 24 pt at 3x, re-tinted to the line color
+# 4. Station and terminal markers, 24 pt at 3x, re-tinted to the line color
 # --------------------------------------------------------------------------
 while read -r key hex; do
     tint_svg "$STATIC_DIR/markers/station.svg" "$TMP_DIR/$key-station.svg" \
@@ -174,7 +231,7 @@ while read -r key hex; do
 done < <(line_specs)
 
 # --------------------------------------------------------------------------
-# 4. Tab and status icons, 24 pt at 3x, template rendering.
+# 5. Tab and status icons, 24 pt at 3x, template rendering.
 # Icons use currentColor, which resolves to black outside a CSS context.
 # --------------------------------------------------------------------------
 for icon_spec in \
