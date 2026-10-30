@@ -27,6 +27,9 @@ struct MapScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                ModeSelector()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 LinePicker(selectedLineCode: $selectedLineCode)
                 chipsRow
                 mapArea

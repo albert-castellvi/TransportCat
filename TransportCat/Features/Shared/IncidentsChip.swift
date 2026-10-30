@@ -6,17 +6,51 @@ import SwiftUI
 /// It replaces the red `AlertBanner` on the map: the count is all the map needs
 /// to stay readable, and the full text is one tap away.
 struct IncidentsChip: View {
-    let lineCode: String
-    let lineDisplayName: String
+    /// Which alert feed the chip counts. Only the source differs: the loading
+    /// state, the counts, the colors and the detail sheet are shared (S7).
+    private enum Feed {
+        case metro(code: String)
+        case bus(code: String)
+    }
+
+    private let feed: Feed
+    private let lineDisplayName: String
 
     @EnvironmentObject private var app: AppModel
     @State private var showIncidents = false
 
+    init(lineCode: String, lineDisplayName: String) {
+        self.feed = .metro(code: lineCode)
+        self.lineDisplayName = lineDisplayName
+    }
+
+    /// Chip reading the bus alerts feed instead of the metro one (spec S7).
+    init(busLineCode: String, lineDisplayName: String) {
+        self.feed = .bus(code: busLineCode)
+        self.lineDisplayName = lineDisplayName
+    }
+
+    /// Time of the last successful load of this feed.
+    private var feedUpdatedAt: Date? {
+        switch feed {
+        case .metro: return app.alertsUpdatedAt
+        case .bus: return app.busAlertsUpdatedAt
+        }
+    }
+
+    /// The alerts of the line in force right now, from the feed this chip reads.
+    private func activeAlerts() -> [ServiceAlert] {
+        switch feed {
+        case .metro(let code): return app.activeAlerts(affecting: code)
+        case .bus(let code): return app.activeBusAlerts(affecting: code)
+        }
+    }
+
     var body: some View {
-        if app.alertsUpdatedAt == nil, app.isLoadingAlerts || app.alertsErrorMessage == nil {
+        if feedUpdatedAt == nil, app.isLoadingAlerts || app.alertsErrorMessage == nil {
             loadingCapsule
         } else {
-            let active = app.activeAlerts(affecting: lineCode)
+            let active = activeAlerts()
             if active.isEmpty {
                 // Nothing known about this line: show no chip at all.
                 EmptyView()
@@ -58,7 +92,7 @@ struct IncidentsChip: View {
             IncidentListSheet(
                 lineDisplayName: lineDisplayName,
                 alerts: active,
-                updatedAt: app.alertsUpdatedAt
+                updatedAt: feedUpdatedAt
             )
             .presentationDetents([.medium, .large])
         }
