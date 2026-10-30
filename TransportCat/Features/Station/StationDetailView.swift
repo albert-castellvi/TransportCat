@@ -61,7 +61,7 @@ struct StationDetailView: View {
                         ContentUnavailableView(
                             "Sense dades en temps real",
                             systemImage: "clock.badge.exclamationmark",
-                            description: Text("Aquesta línia no publica arribades ara mateix.")
+                            description: Text("TMB no publica les arribades d'aquesta línia ara mateix.")
                         )
                         .listRowBackground(Color.clear)
                     } else {
@@ -85,7 +85,6 @@ struct StationDetailView: View {
                 await refresh()
             }
         }
-        .presentationDetents([.medium, .large])
     }
 
     private func refresh() async {
@@ -119,6 +118,8 @@ private struct IncidentRow: View {
                     Text(text)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        // Full text, never clipped by the row height (spec S9).
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

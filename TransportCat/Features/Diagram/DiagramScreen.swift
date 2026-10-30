@@ -32,13 +32,11 @@ struct DiagramScreen: View {
         NavigationStack {
             VStack(spacing: 0) {
                 LinePicker(selectedLineCode: $selectedLineCode)
+                chipsRow
                 content
             }
             .navigationTitle("Xarxa")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $selectedStation) { station in
-                StationDetailView(station: station, line: selectedLine)
-            }
             // Same rule as MapScreen: the loader task lives on the always-
             // visible container, not on the view that requires loaded data.
             .task(id: selectedLineCode) {
@@ -48,6 +46,29 @@ struct DiagramScreen: View {
                 await state.run()
             }
         }
+        // Same as MapScreen: the sheet comes from the stack itself and its
+        // detents are declared here, not inside the presented view (spec S9).
+        .sheet(item: $selectedStation) { station in
+            StationDetailView(station: station, line: selectedLine)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Freshness of the line data and count of its incidents (spec S7).
+    private var chipsRow: some View {
+        HStack(spacing: 8) {
+            if let state = lineState {
+                FreshnessChip(lineState: state)
+            }
+            IncidentsChip(
+                lineCode: selectedLineCode,
+                lineDisplayName: selectedLine.displayName
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 16)
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -82,6 +103,13 @@ struct DiagramScreen: View {
                         lineName: selectedLine.displayName
                     )
                     .padding(16)
+                }
+                if state.isFeedEmpty {
+                    // No arrivals feed for this line: say so above the rows
+                    // instead of leaving a spine with no trains (spec S8).
+                    NoRealtimeDataCard()
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
                 }
                 rowsColumn(state: state, rows: rows)
                     .padding(.top, incidentCount > 0 ? 0 : 16)
@@ -306,11 +334,14 @@ private struct DiagramRow: View {
     private func arrivalPill(_ arrival: Arrival) -> some View {
         Text(pillText(arrival))
             .font(.caption2.bold())
-            .foregroundStyle(lineColor)
+            // Solid line colour with text chosen from its luminance: a tinted
+            // capsule made the line-coloured text unreadable for L1, L2 and L5
+            // in dark mode (spec S6).
+            .foregroundStyle(HexLuminance.isLight(line.colorHex) ? Color.black : Color.white)
             .lineLimit(1)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(Capsule().fill(lineColor.opacity(0.15)))
+            .background(Capsule().fill(lineColor))
     }
 
     private func pillText(_ arrival: Arrival) -> String {

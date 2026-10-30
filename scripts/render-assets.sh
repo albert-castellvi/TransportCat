@@ -9,7 +9,8 @@
 #   - terminal-<line>: statics/markers/station-terminal.svg, same re-tint
 #   - tab-*/icon-*:    statics/icons/*.svg with currentColor -> black, template
 #     (icon-escalator, icon-elevator and icon-entrance are the incident kind
-#     icons drawn in the station rows of the diagram, spec S7)
+#     icons drawn in the station rows of the diagram, spec S7; icon-realtime-off
+#     is the "no live feed" notice on the map and in Xarxa, spec S8)
 #
 # <line> is MetroLine.displayName lowercased (l1 ... l9n, l10s, l11, fm) and the
 # hex colors are read from TransportCat/Core/Models/MetroLine.swift, so the
@@ -184,7 +185,8 @@ for icon_spec in \
     "icon-alert:service-alert" \
     "icon-escalator:escalator" \
     "icon-elevator:elevator" \
-    "icon-entrance:station-entrance"; do
+    "icon-entrance:station-entrance" \
+    "icon-realtime-off:realtime-unavailable"; do
     name="${icon_spec%%:*}"
     source_svg="$STATIC_DIR/icons/${icon_spec#*:}.svg"
     tinted="$TMP_DIR/$name.svg"

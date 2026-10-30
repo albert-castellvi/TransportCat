@@ -223,8 +223,11 @@ enum AlertParser {
             }
             // `effect_code` tells the kind of disruption: PP2 corridors
             // closed, PP7 access closed, PP8 elevator out, PP9 escalator out.
+            // `effect_type` tells how bad it is: TRAFFIC (service) or
+            // INFRASTRUCTURE (facilities).
             let categories = JSONValue.dictionary(from: alertDict["categories"])
             let effectCode = JSONValue.string(from: categories?["effect_code"])
+            let effectType = JSONValue.string(from: categories?["effect_type"])
             var beginDate: Date?
             var endDate: Date?
             if let dates = JSONValue.array(from: alertDict["disruption_dates"]),
@@ -248,7 +251,8 @@ enum AlertParser {
                 text: text,
                 stationCodes: stationCodes,
                 entranceNames: entranceNames,
-                effectCode: effectCode
+                effectCode: effectCode,
+                effectType: effectType
             )
         }
     }

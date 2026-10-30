@@ -24,24 +24,15 @@ struct MapScreen: View {
         MetroLine.line(forCode: selectedLineCode) ?? MetroLine.allLines[0]
     }
 
-    private var lineAlerts: [ServiceAlert] {
-        app.alerts(affecting: selectedLineCode)
-    }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 LinePicker(selectedLineCode: $selectedLineCode)
-                if !lineAlerts.isEmpty {
-                    AlertBanner(alerts: lineAlerts, lineColor: selectedLine.colorHex)
-                }
+                chipsRow
                 mapArea
             }
             .navigationTitle("Mapa")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $selectedStation) { station in
-                StationDetailView(station: station, line: selectedLine)
-            }
             // The loader task must live on the always-visible container: the
             // map itself only renders once LineState exists, so a task attached
             // there would never start (infinite "Carregant…").
@@ -52,6 +43,31 @@ struct MapScreen: View {
                 await state.run()
             }
         }
+        // The station sheet is presented by the stack itself and declares its
+        // detents here instead of inside the presented view: presenting it from
+        // a view nested in the stack is what left its first rows under the
+        // navigation bar in build 23 (spec S9).
+        .sheet(item: $selectedStation) { station in
+            StationDetailView(station: station, line: selectedLine)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Freshness of the line data and count of its incidents (spec S7).
+    private var chipsRow: some View {
+        HStack(spacing: 8) {
+            if let state = lineState {
+                FreshnessChip(lineState: state)
+            }
+            IncidentsChip(
+                lineCode: selectedLineCode,
+                lineDisplayName: selectedLine.displayName
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 16)
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -116,6 +132,13 @@ struct MapScreen: View {
                     .padding(10)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .padding(16)
+            }
+        }
+        .overlay {
+            // Five lines publish no arrivals: an empty map would read as a bug,
+            // so the reason goes on top of it (spec S8).
+            if state.isFeedEmpty {
+                NoRealtimeDataCard()
             }
         }
         .onAppear {

@@ -1,5 +1,17 @@
 import Foundation
 
+/// How badly an alert hits the service, from its TMB effect type
+/// (`categories.effect_type`): a service interruption outranks a facility out
+/// of order. `Comparable` so callers can pick the highest severity of a list.
+enum AlertSeverity: Int, Comparable {
+    case facility = 0
+    case service = 1
+
+    static func < (lhs: AlertSeverity, rhs: AlertSeverity) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
 /// A service disruption from the TMB alerts feed
 /// (`/v1/alerts/metro/channels/WEB`).
 struct ServiceAlert: Identifiable, Hashable {
@@ -23,4 +35,21 @@ struct ServiceAlert: Identifiable, Hashable {
     /// TMB effect code (`categories.effect_code`): PP2 corridors closed,
     /// PP7 access closed, PP8 elevator out, PP9 escalator out.
     var effectCode: String? = nil
+    /// TMB effect type (`categories.effect_type`): TRAFFIC for service
+    /// interruptions, INFRASTRUCTURE for facilities out of order.
+    var effectType: String? = nil
+
+    /// An alert is active when it already began (or has no begin date) and has
+    /// not ended yet (or has no end date).
+    func isActive(now: Date) -> Bool {
+        if let begin = beginDate, begin > now { return false }
+        if let end = endDate, end < now { return false }
+        return true
+    }
+
+    /// Service when TMB flags the alert as a traffic disruption; every other
+    /// kind (infrastructure, missing type) is a facility-level alert.
+    var severity: AlertSeverity {
+        effectType?.caseInsensitiveCompare("TRAFFIC") == .orderedSame ? .service : .facility
+    }
 }

@@ -38,7 +38,7 @@ enum IncidentIndex {
         var result: [Int: [StationIncident]] = [:]
         for station in stations {
             let matching = alerts.filter { alert in
-                isActive(alert, now: now) && alert.lineCodes.contains(lineCode) && covers(alert, station: station)
+                alert.isActive(now: now) && alert.lineCodes.contains(lineCode) && covers(alert, station: station)
             }
             guard !matching.isEmpty else { continue }
             result[station.code] = matching
@@ -46,14 +46,6 @@ enum IncidentIndex {
                 .sorted { $0.alertID < $1.alertID }
         }
         return result
-    }
-
-    /// An alert is active when it already began (or has no begin date) and has
-    /// not ended yet (or has no end date).
-    private static func isActive(_ alert: ServiceAlert, now: Date) -> Bool {
-        if let begin = alert.beginDate, begin > now { return false }
-        if let end = alert.endDate, end < now { return false }
-        return true
     }
 
     /// A station matches by code; the name comparison is only a fallback for
@@ -77,12 +69,13 @@ enum IncidentIndex {
     private static func incident(for alert: ServiceAlert, station: Station) -> StationIncident {
         let kind = kind(for: alert.effectCode)
         let entrance = alert.entranceNames.first
+        let text = plainText(from: alert.text)
         return StationIncident(
             id: "\(alert.id)-\(station.code)",
             alertID: alert.id,
             kind: kind,
-            title: title(for: kind, entrance: entrance),
-            text: plainText(from: alert.text),
+            title: title(for: kind, entrance: entrance, text: text),
+            text: text,
             entrance: entrance
         )
     }
@@ -96,15 +89,38 @@ enum IncidentIndex {
         }
     }
 
-    private static func title(for kind: IncidentKind, entrance: String?) -> String {
+    private static func title(for kind: IncidentKind, entrance: String?, text: String?) -> String {
         switch kind {
         case .escalator: return "Escala mecànica fora de servei"
         case .elevator: return "Ascensor fora de servei"
         case .accessClosed:
             guard let entrance, !entrance.isEmpty else { return "Accés tancat" }
             return "Accés tancat: \(entrance)"
-        case .other: return "Incidència a l'estació"
+        case .other: return firstSentence(from: text)
         }
+    }
+
+    /// Used when the text says nothing usable.
+    private static let genericTitle = "Incidència a l'estació"
+    /// Longest snippet taken from a text that has no sentence break.
+    private static let maxTitleLength = 70
+
+    /// The first sentence of the alert text, so the diagram says what actually
+    /// happens instead of a generic label. The cut is at the first ". "; a sentence
+    /// longer than `maxTitleLength` is cut at a word boundary with an ellipsis. Missing or
+    /// empty text keeps the generic title.
+    private static func firstSentence(from text: String?) -> String {
+        guard let text, !text.isEmpty else { return genericTitle }
+        var sentence = text
+        if let separator = text.range(of: ". ") {
+            let head = String(text[text.startIndex..<separator.lowerBound])
+            if !head.isEmpty { sentence = head }
+        }
+        guard sentence.count > maxTitleLength else { return sentence }
+        // Cut at the last word boundary inside the limit so no word is split.
+        var cut = String(sentence.prefix(maxTitleLength))
+        if let lastSpace = cut.lastIndex(of: " ") { cut = String(cut[cut.startIndex..<lastSpace]) }
+        return cut.trimmingCharacters(in: .whitespaces) + "…"
     }
 
     /// The feed ships HTML in `textCa` ("...<br>Si els necessites..."). Line
