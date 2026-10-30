@@ -36,8 +36,13 @@ struct ServiceAlert: Identifiable, Hashable {
     /// PP7 access closed, PP8 elevator out, PP9 escalator out.
     var effectCode: String? = nil
     /// TMB effect type (`categories.effect_type`): TRAFFIC for service
-    /// interruptions, INFRASTRUCTURE for facilities out of order.
+    /// interruptions, INFRASTRUCTURE for facilities out of order. Bus alerts
+    /// put their `categories.messageType` (ALTERATION, SERVICE_MESSAGE) here.
     var effectType: String? = nil
+    /// Alert kind as free text (`typeName`): "Parada anul·lada amb parada
+    /// alternativa nova", "Modificació del recorregut ...". Metro alerts carry
+    /// no `typeName`, and their kind comes from `effectCode` instead.
+    var typeName: String? = nil
 
     /// An alert is active when it already began (or has no begin date) and has
     /// not ended yet (or has no end date).

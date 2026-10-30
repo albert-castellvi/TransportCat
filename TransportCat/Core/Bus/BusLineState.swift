@@ -1,0 +1,290 @@
+import Foundation
+import Observation
+import OSLog
+import Sentry
+
+/// Monotonic clock for poll latency: wall-clock time would report nonsense
+/// after an NTP step or a timezone change.
+///
+/// Same helper as `AppModel.swift`, duplicated because both files keep theirs
+/// file-private: a poll either file performs must be measured the same way.
+private let pollClock = ContinuousClock()
+
+/// Milliseconds elapsed since `start`, truncated.
+private func elapsedMilliseconds(since start: ContinuousClock.Instant) -> Int {
+    let elapsed = pollClock.now - start
+    let components = elapsed.components
+    let milliseconds = Double(components.seconds) * 1_000
+        + Double(components.attoseconds) / 1_000_000_000_000_000
+    return Int(milliseconds)
+}
+
+/// Sentry breadcrumb for one bus poll (spec S5): category `poll`, with the
+/// latency and counters that explain a slow or empty refresh. Breadcrumbs
+/// only: a transient network failure stays out of the event stream.
+private func addPollBreadcrumb(_ message: String, data: [String: Any]) {
+    let crumb = Breadcrumb(level: .info, category: "poll")
+    crumb.message = message
+    crumb.data = data
+    SentrySDK.addBreadcrumb(crumb)
+}
+
+/// State of the selected bus line: topology (loaded once) plus a polling cycle
+/// of per-stop iBus arrivals that feeds the position engine (specs S4, S5, S9).
+///
+/// Bus real time is per stop, so unlike `LineState` a poll is many requests:
+/// the evenly spaced subset `BusFleet.pollPlan` chooses, at most
+/// `maxConcurrentRequests` in flight, every `pollIntervalSeconds`.
+@MainActor
+@Observable
+final class BusLineState {
+    let line: BusLine
+
+    /// Directions of the line, sorted by `ID_SENTIT`; empty until loaded.
+    private(set) var directions: [BusDirection] = []
+    /// Buses on the map, sorted by id (spec S4).
+    private(set) var positions: [BusPosition] = []
+    /// Arrivals of THIS line at the polled stops of the last successful poll,
+    /// grouped by stop code. All directions are included, so the stop sheet
+    /// and the diagram read both from here.
+    private(set) var arrivalsByStop: [Int: [BusArrival]] = [:]
+    /// Time of the last successful poll; nil until one succeeds (spec S9).
+    private(set) var arrivalsUpdatedAt: Date?
+    /// Whether the last poll failed. A failed poll keeps the markers moving on
+    /// the last known data, so it downgrades freshness instead of clearing it.
+    private(set) var lastPollFailed = false
+    private(set) var isLoading = false
+    private(set) var errorMessage: String?
+
+    /// Poll cycle, in seconds. iBus updates on the order of tens of seconds,
+    /// so 20 s keeps a line visible without hammering the API (spec S5).
+    static let pollIntervalSeconds: UInt64 = 20
+    /// Stop requests per poll, both directions together (spec S5).
+    static let maxRequestsPerPoll = 30
+    /// Stop requests allowed in flight at once.
+    static let maxConcurrentRequests = 6
+
+    private let client: TMBClient
+
+    /// Smooth, per-direction movement between the 20 s polls. Not observed:
+    /// only `positions`, the value they publish, drives the UI.
+    @ObservationIgnored private var motions: [Int: TrainMotion] = [:]
+
+    init(line: BusLine, client: TMBClient) {
+        self.line = line
+        self.client = client
+    }
+
+    /// Stops the poll actually asks about, counted once per stop code: the two
+    /// directions share their terminals, and the strip says "N de M parades".
+    var polledStopCount: Int {
+        Set(directions.flatMap { $0.polledStops.map(\.code) }).count
+    }
+
+    /// Stops of the line, same counting rule as `polledStopCount`.
+    var totalStopCount: Int {
+        Set(directions.flatMap { $0.stops.map(\.code) }).count
+    }
+
+    /// Distinct buses the last successful poll reported for this line: what
+    /// the data-source strip calls "K busos seguits" (spec S3).
+    var trackedBusCount: Int {
+        Set(arrivalsByStop.values.flatMap { $0 }.compactMap(\.busID)).count
+    }
+
+    /// A successful poll answered with no bus at all for the line: the screen
+    /// says so instead of drawing an empty map (spec S9).
+    var hasNoBuses: Bool {
+        guard arrivalsUpdatedAt != nil, !lastPollFailed else { return false }
+        return arrivalsByStop.values.allSatisfy(\.isEmpty)
+    }
+
+    /// Long-running task body: load topology once, then poll until cancelled
+    /// (the bus screen's `.task` cancels on disappear, spec S5).
+    func run() async {
+        if directions.isEmpty {
+            await loadTopology()
+        }
+        guard !directions.isEmpty else { return }
+        // 10 Hz ticker between polls, like the metro line: the buses move
+        // smoothly instead of hopping once per second.
+        let ticker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                self?.tick()
+            }
+        }
+        defer { ticker.cancel() }
+        while !Task.isCancelled {
+            await poll()
+            do {
+                try await Task.sleep(nanoseconds: Self.pollIntervalSeconds * 1_000_000_000)
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// Loads the line topology once: every stop of both directions and the
+    /// route geometries, then builds the directions. A line whose stops cannot
+    /// be projected onto its geometry reports an error instead of drawing a
+    /// map without buses.
+    func loadTopology() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let loadedStops = try await client.busStops(lineCode: line.code)
+            let loadedRoutes = try await client.busRoutes(lineCode: line.code)
+            directions = BusFleet.directions(
+                stops: loadedStops,
+                routes: loadedRoutes,
+                lineCode: String(line.code),
+                maxRequests: Self.maxRequestsPerPoll
+            )
+            errorMessage = directions.isEmpty
+                ? "No s'ha pogut projectar la línia sobre la seva geometria."
+                : nil
+            Self.log.info("Bus line \(self.line.name, privacy: .public): \(loadedStops.count) stops, \(self.directions.count) directions, \(self.polledStopCount) polled")
+        } catch {
+            Self.report(error, "stops", line: line.name)
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private static let log = Logger(subsystem: "cat.transport.app", category: "BusLineState")
+
+    /// Logs a failed request and reports it to Sentry as a non-fatal event, so
+    /// a blank bus map in the field can be traced to its cause.
+    private static func report(_ error: Error, _ request: String, line: String) {
+        log.error("Bus line \(line, privacy: .public) \(request, privacy: .public) failed: \(SecretRedactor.redact(String(describing: error)), privacy: .public)")
+        guard !error.isTransientNetworkFailure else { return }
+        SentrySDK.capture(error: error) { scope in
+            scope.setTag(value: request, key: "tmb.request")
+            scope.setTag(value: line, key: "tmb.line")
+        }
+    }
+
+    /// Polls every polled stop of the line and recomputes the bus positions.
+    ///
+    /// One failed stop request is skipped: another stop of the same bus is
+    /// usually enough to place it. A poll where every request failed counts as
+    /// a failed poll and changes nothing, so the markers keep moving on the
+    /// last known data instead of being re-anchored to an empty feed.
+    func poll() async {
+        guard !directions.isEmpty else { return }
+        let start = pollClock.now
+
+        // One request per stop code: the two directions of a line share their
+        // terminals, and asking twice for the same stop only burns budget.
+        var requestedCodes: [Int] = []
+        var seenCodes: Set<Int> = []
+        for direction in directions {
+            for stop in direction.polledStops where !seenCodes.contains(stop.code) {
+                seenCodes.insert(stop.code)
+                requestedCodes.append(stop.code)
+            }
+        }
+
+        var responses: [(stopCode: Int, arrivals: [BusArrival]?, error: Error?)] = []
+        let client = self.client
+        for offset in stride(from: 0, to: requestedCodes.count, by: Self.maxConcurrentRequests) {
+            let upper = min(offset + Self.maxConcurrentRequests, requestedCodes.count)
+            let chunk = Array(requestedCodes[offset..<upper])
+            let batch = await withTaskGroup(of: (stopCode: Int, arrivals: [BusArrival]?, error: Error?).self) { group in
+                for code in chunk {
+                    group.addTask {
+                        do {
+                            return (stopCode: code, arrivals: try await client.busArrivals(stopCode: code), error: nil)
+                        } catch {
+                            return (stopCode: code, arrivals: nil, error: error)
+                        }
+                    }
+                }
+                var results: [(stopCode: Int, arrivals: [BusArrival]?, error: Error?)] = []
+                for await result in group {
+                    results.append(result)
+                }
+                return results
+            }
+            responses.append(contentsOf: batch)
+        }
+
+        let succeeded = responses.filter { $0.arrivals != nil }
+        guard !succeeded.isEmpty else {
+            lastPollFailed = true
+            if let error = responses.compactMap(\.error).first {
+                Self.report(error, "arrivals", line: line.name)
+            }
+            addPollBreadcrumb("bus arrivals failed", data: [
+                "line": line.name,
+                "latency_ms": elapsedMilliseconds(since: start),
+                "ok": false,
+                "arrivals": 0,
+                "buses": 0,
+            ])
+            return
+        }
+
+        var fetched: [Int: [BusArrival]] = [:]
+        for response in succeeded {
+            // iBus answers for every line at the stop; only this line's
+            // arrivals belong to this state.
+            let arrivals = (response.arrivals ?? []).filter { $0.lineCode == line.code }
+            guard !arrivals.isEmpty else { continue }
+            fetched[response.stopCode, default: []].append(contentsOf: arrivals)
+        }
+        arrivalsByStop = fetched
+        arrivalsUpdatedAt = Date()
+        lastPollFailed = false
+
+        let now = Date()
+        let all = fetched.values.flatMap { $0 }
+        let lineCode = String(line.code)
+        for direction in directions {
+            let trains = BusFleet.positions(direction: direction, arrivals: all, lineCode: lineCode).map(\.train)
+            motions[direction.id, default: TrainMotion()].update(with: trains, now: now)
+        }
+        positions = publishedPositions(now: now)
+
+        let buses = trackedBusCount
+        addPollBreadcrumb("bus arrivals", data: [
+            "line": line.name,
+            "latency_ms": elapsedMilliseconds(since: start),
+            "ok": true,
+            "arrivals": all.count,
+            "buses": buses,
+        ])
+        Self.log.info("Bus line \(self.line.name, privacy: .public): \(all.count) arrivals, \(buses) buses, \(self.positions.count) markers")
+    }
+
+    /// How old the arrivals behind the buses are (spec S9).
+    func freshness(now: Date = Date()) -> DataFreshness {
+        Freshness.level(
+            lastUpdate: arrivalsUpdatedAt,
+            now: now,
+            lastAttemptFailed: lastPollFailed
+        )
+    }
+
+    /// Advances the interpolated buses by one tick. Called by the 10 Hz ticker
+    /// in `run()`; does nothing until the topology is loaded.
+    func tick() {
+        guard !directions.isEmpty else { return }
+        positions = publishedPositions(now: Date())
+    }
+
+    /// Every direction's smoothed markers, wrapped as bus positions and sorted
+    /// by id so the map redraws deterministically (spec S4).
+    private func publishedPositions(now: Date) -> [BusPosition] {
+        var result: [BusPosition] = []
+        for direction in directions {
+            guard var motion = motions[direction.id] else { continue }
+            let trains = motion.advance(to: now, engine: direction.engine)
+            motions[direction.id] = motion
+            result.append(contentsOf: trains.map {
+                BusPosition(id: "\(direction.id)-\($0.id)", directionID: direction.id, train: $0)
+            })
+        }
+        return result.sorted { $0.id < $1.id }
+    }
+}

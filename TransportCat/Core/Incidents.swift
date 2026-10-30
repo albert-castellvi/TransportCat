@@ -1,12 +1,19 @@
 import Foundation
 
-/// What a service alert does to a station, derived from the TMB effect code
-/// (`categories.effect_code`): PP9 escalator out, PP8 elevator out, PP7 access
-/// closed; everything else (PP2 corridors closed, ...) stays `other`.
+/// What a service alert does to a station.
+///
+/// Metro alerts carry an effect code (`categories.effect_code`): PP9 escalator
+/// out, PP8 elevator out, PP7 access closed; everything else (PP2 corridors
+/// closed, ...) stays `other`. Bus alerts carry no effect code but a free-text
+/// `typeName`, which is where the kind comes from for them.
 enum IncidentKind: String, Hashable {
     case escalator
     case elevator
     case accessClosed
+    /// Bus alert closing a stop ("Parada anul·lada").
+    case stopClosed
+    /// Bus alert diverting the route ("Recorregut modificat").
+    case detour
     case other
 }
 
@@ -67,7 +74,7 @@ enum IncidentIndex {
     }
 
     private static func incident(for alert: ServiceAlert, station: Station) -> StationIncident {
-        let kind = kind(for: alert.effectCode)
+        let kind = kind(for: alert)
         let entrance = alert.entranceNames.first
         let text = plainText(from: alert.text)
         return StationIncident(
@@ -80,13 +87,39 @@ enum IncidentIndex {
         )
     }
 
-    private static func kind(for effectCode: String?) -> IncidentKind {
-        switch effectCode?.uppercased() {
+    /// The effect code decides for metro alerts; bus alerts have none, so their
+    /// free-text `typeName` decides instead, and anything unrecognised stays
+    /// `other` (which falls back to the text's first sentence, as before).
+    private static func kind(for alert: ServiceAlert) -> IncidentKind {
+        guard let effectCode = alert.effectCode else {
+            return busKind(for: alert.typeName)
+        }
+        switch effectCode.uppercased() {
         case "PP9": return .escalator
         case "PP8": return .elevator
         case "PP7": return .accessClosed
         default: return .other
         }
+    }
+
+    /// Bus alert kinds as `typeName` says: "Parada anul·lada ..." closes a
+    /// stop, "Modificació del recorregut ..." diverts the line.
+    ///
+    /// The match is case- and diacritic-insensitive, and it runs on the letters
+    /// only, because TMB spells the middle dot of "anul·lada" differently
+    /// across payloads (and a plain "anul.lada" or "anul-lada" must read the
+    /// same). "anul·lació" does not match "anullada", so a detour that also
+    /// cancels stops keeps its `recorregut` kind.
+    private static func busKind(for typeName: String?) -> IncidentKind {
+        guard let typeName, !typeName.isEmpty else { return .other }
+        let folded = typeName.folding(
+            options: [.caseInsensitive, .diacriticInsensitive],
+            locale: Locale(identifier: "ca_ES")
+        )
+        let lettersOnly = folded.filter { $0.isLetter }
+        if lettersOnly.contains("anullada") { return .stopClosed }
+        if lettersOnly.contains("recorregut") { return .detour }
+        return .other
     }
 
     private static func title(for kind: IncidentKind, entrance: String?, text: String?) -> String {
@@ -96,6 +129,8 @@ enum IncidentIndex {
         case .accessClosed:
             guard let entrance, !entrance.isEmpty else { return "Accés tancat" }
             return "Accés tancat: \(entrance)"
+        case .stopClosed: return "Parada anul·lada"
+        case .detour: return "Recorregut modificat"
         case .other: return firstSentence(from: text)
         }
     }

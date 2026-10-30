@@ -57,7 +57,9 @@ final class TMBClient {
 
     // MARK: - Transport
 
-    private func get(path: String) async throws -> Data {
+    /// Credentialed GET shared by the metro and bus endpoints; bus requests
+    /// live in `TMBClient+Bus.swift`, which needs it visible across files.
+    func get(path: String) async throws -> Data {
         guard var components = URLComponents(string: "\(Self.baseURL)/\(path)") else {
             throw TMBError.invalidURL
         }

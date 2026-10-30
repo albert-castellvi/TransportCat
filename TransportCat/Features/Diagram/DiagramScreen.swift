@@ -9,6 +9,7 @@ extension IncidentKind {
         case .escalator: return "icon-escalator"
         case .elevator: return "icon-elevator"
         case .accessClosed: return "icon-entrance"
+        case .stopClosed, .detour: return "icon-alert"
         case .other: return "icon-alert"
         }
     }
@@ -31,6 +32,8 @@ struct DiagramScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                ModeSelector()
+                    .padding(.horizontal, 16)
                 LinePicker(selectedLineCode: $selectedLineCode)
                 chipsRow
                 content

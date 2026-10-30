@@ -1,0 +1,834 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2777",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.14116137,
+       41.3532341
+      ],
+      [
+       2.14110451,
+       41.35309323
+      ],
+      [
+       2.14118224,
+       41.35298677
+      ],
+      [
+       2.14137881,
+       41.352965
+      ],
+      [
+       2.14162842,
+       41.35305701
+      ],
+      [
+       2.14332281,
+       41.35412997
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3008,
+    "CODI_LINIA": 216,
+    "NOM_LINIA": "H16",
+    "DESC_LINIA": "Pg. Zona Franca / Fòrum Campus Besòs",
+    "ORIGEN_LINIA": "Pg. Zona Franca",
+    "DESTI_LINIA": "Fòrum Campus Besòs",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 8,
+    "CODI_FAMILIA": 6,
+    "NOM_FAMILIA": "Horitzontals",
+    "ORDRE_FAMILIA": 11,
+    "ORDRE_LINIA": 216,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "003888",
+    "COLOR_AUX_LINIA": "7F9BC3",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2775",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.19632222,
+       41.38520971
+      ],
+      [
+       2.19582002,
+       41.38483781
+      ],
+      [
+       2.19568485,
+       41.38482352
+      ],
+      [
+       2.19435766,
+       41.38583281
+      ],
+      [
+       2.19434836,
+       41.38589409
+      ],
+      [
+       2.1944,
+       41.38597371
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3013,
+    "CODI_LINIA": 227,
+    "NOM_LINIA": "V27",
+    "DESC_LINIA": "Pg. Marítim / Canyelles",
+    "ORIGEN_LINIA": "Pg. Marítim",
+    "DESTI_LINIA": "Canyelles",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 9,
+    "CODI_FAMILIA": 7,
+    "NOM_FAMILIA": "Verticals",
+    "ORDRE_FAMILIA": 12,
+    "ORDRE_LINIA": 227,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "6AB023",
+    "COLOR_AUX_LINIA": "B4D791",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2774",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.13120484,
+       41.35202257
+      ],
+      [
+       2.13045792,
+       41.35169378
+      ],
+      [
+       2.13019747,
+       41.35168859
+      ],
+      [
+       2.13006936,
+       41.35163968
+      ],
+      [
+       2.12999917,
+       41.35154528
+      ],
+      [
+       2.13003286,
+       41.35140491
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3016,
+    "CODI_LINIA": 984,
+    "NOM_LINIA": "984",
+    "DESC_LINIA": "Parking Fira 2 / Estadi",
+    "ORIGEN_LINIA": "Pl. Espanya",
+    "DESTI_LINIA": "Estadi",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 24,
+    "CODI_FAMILIA": 9,
+    "NOM_FAMILIA": "Llançadores",
+    "ORDRE_FAMILIA": 17,
+    "ORDRE_LINIA": 984,
+    "CODI_TIPUS_CALENDARI": "6",
+    "NOM_TIPUS_CALENDARI": "Dissabtes, diumenges i festius",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "937500",
+    "COLOR_AUX_LINIA": "D1A600",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2771",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.21549019,
+       41.41057449
+      ],
+      [
+       2.21290782,
+       41.40997872
+      ],
+      [
+       2.18860601,
+       41.40387933
+      ],
+      [
+       2.18850977,
+       41.40380795
+      ],
+      [
+       2.18864223,
+       41.40362897
+      ],
+      [
+       2.18860687,
+       41.40353156
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 2905,
+    "CODI_LINIA": 7,
+    "NOM_LINIA": "7",
+    "DESC_LINIA": "Fòrum / Zona Universitària",
+    "ORIGEN_LINIA": "Fòrum",
+    "DESTI_LINIA": "Zona Universitària",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 3,
+    "CODI_FAMILIA": 1,
+    "NOM_FAMILIA": "Convencionals",
+    "ORDRE_FAMILIA": 14,
+    "ORDRE_LINIA": 7,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "DA291C",
+    "COLOR_AUX_LINIA": "EC948D",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2770",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.17696994,
+       41.4108533
+      ],
+      [
+       2.17715209,
+       41.41079703
+      ],
+      [
+       2.17722707,
+       41.41080776
+      ],
+      [
+       2.17828471,
+       41.41161597
+      ],
+      [
+       2.17827088,
+       41.41169837
+      ],
+      [
+       2.17788101,
+       41.41201476
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 2914,
+    "CODI_LINIA": 117,
+    "NOM_LINIA": "117",
+    "DESC_LINIA": "Guinardó",
+    "ORIGEN_LINIA": "Guinardó",
+    "DESTI_LINIA": "Font d'en Fargas",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 5,
+    "CODI_FAMILIA": 3,
+    "NOM_FAMILIA": "Proximitat",
+    "ORDRE_FAMILIA": 14,
+    "ORDRE_LINIA": 117,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "DA291C",
+    "COLOR_AUX_LINIA": "EC948D",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2753",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.13458346,
+       41.36295882
+      ],
+      [
+       2.13408557,
+       41.36334261
+      ],
+      [
+       2.13407457,
+       41.36341568
+      ],
+      [
+       2.135177,
+       41.36425483
+      ],
+      [
+       2.1356249,
+       41.36432931
+      ],
+      [
+       2.13577146,
+       41.36440774
+      ]
+     ],
+     [
+      [
+       2.11967515,
+       41.35309569
+      ],
+      [
+       2.1189834,
+       41.35253112
+      ],
+      [
+       2.11902118,
+       41.35244347
+      ],
+      [
+       2.11928932,
+       41.35224783
+      ],
+      [
+       2.11936796,
+       41.35223457
+      ],
+      [
+       2.11947206,
+       41.35226805
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 2997,
+    "CODI_LINIA": 212,
+    "NOM_LINIA": "H12",
+    "DESC_LINIA": "Gornal / Besòs Verneda",
+    "ORIGEN_LINIA": "Gornal",
+    "DESTI_LINIA": "Besòs Verneda",
+    "NUM_PAQUETS": 2,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 8,
+    "CODI_FAMILIA": 6,
+    "NOM_FAMILIA": "Horitzontals",
+    "ORDRE_FAMILIA": 11,
+    "ORDRE_LINIA": 212,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "003888",
+    "COLOR_AUX_LINIA": "7F9BC3",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2751",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.19457214,
+       41.38565212
+      ],
+      [
+       2.19435766,
+       41.38583281
+      ],
+      [
+       2.19437644,
+       41.38595205
+      ],
+      [
+       2.19523863,
+       41.38659812
+      ],
+      [
+       2.19535036,
+       41.38662937
+      ],
+      [
+       2.1954622,
+       41.38659836
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 2999,
+    "CODI_LINIA": 220,
+    "NOM_LINIA": "D20",
+    "DESC_LINIA": "Pg. Marítim / Ernest Lluch",
+    "ORIGEN_LINIA": "Pg. Marítim",
+    "DESTI_LINIA": "Ernest Lluch",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 7,
+    "CODI_FAMILIA": 5,
+    "NOM_FAMILIA": "Diagonals",
+    "ORDRE_FAMILIA": 10,
+    "ORDRE_LINIA": 220,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "93107E",
+    "COLOR_AUX_LINIA": "C987BE",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2749",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.18789506,
+       41.3691527
+      ],
+      [
+       2.18802128,
+       41.36978886
+      ],
+      [
+       2.18767058,
+       41.37031199
+      ],
+      [
+       2.1876698,
+       41.37074319
+      ],
+      [
+       2.18812305,
+       41.37353074
+      ],
+      [
+       2.18867892,
+       41.37456975
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3079,
+    "CODI_LINIA": 215,
+    "NOM_LINIA": "V15",
+    "DESC_LINIA": "Barceloneta / Av. Tibidabo",
+    "ORIGEN_LINIA": "Barceloneta",
+    "DESTI_LINIA": "Av. Tibidabo",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 9,
+    "CODI_FAMILIA": 7,
+    "NOM_FAMILIA": "Verticals",
+    "ORDRE_FAMILIA": 12,
+    "ORDRE_LINIA": 215,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "6AB023",
+    "COLOR_AUX_LINIA": "B4D791",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2745",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.14376553,
+       41.43473793
+      ],
+      [
+       2.14376553,
+       41.43470575
+      ],
+      [
+       2.14172705,
+       41.43403009
+      ],
+      [
+       2.14078291,
+       41.43164914
+      ],
+      [
+       2.13925942,
+       41.42978293
+      ],
+      [
+       2.13831528,
+       41.43004034
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3558,
+    "CODI_LINIA": 135,
+    "NOM_LINIA": "135",
+    "DESC_LINIA": "Montbau-la Vall d'Hebron",
+    "ORIGEN_LINIA": "Montbau-la Vall d'Hebron",
+    "DESTI_LINIA": "Montbau-la Vall d'Hebron",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 25,
+    "CODI_FAMILIA": 10,
+    "NOM_FAMILIA": "Bus a la Demanda",
+    "ORDRE_FAMILIA": 15,
+    "ORDRE_LINIA": 135,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "DA291C",
+    "COLOR_AUX_LINIA": "EC948D",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2734",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.16656864,
+       41.37611981
+      ],
+      [
+       2.16553633,
+       41.37690053
+      ],
+      [
+       2.16545555,
+       41.37692088
+      ],
+      [
+       2.16325358,
+       41.37529519
+      ],
+      [
+       2.16319309,
+       41.37522269
+      ],
+      [
+       2.16317619,
+       41.37508011
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3978,
+    "CODI_LINIA": 245,
+    "NOM_LINIA": "X3",
+    "DESC_LINIA": "Paral·lel - L'Hospitalet (Av. Carrilet)",
+    "ORIGEN_LINIA": "Paral·lel",
+    "DESTI_LINIA": "L'Hospitalet (Av. Carrilet)",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 26,
+    "CODI_FAMILIA": 11,
+    "NOM_FAMILIA": "XPRESBus",
+    "ORDRE_FAMILIA": 13,
+    "ORDRE_LINIA": 245,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "010101",
+    "COLOR_AUX_LINIA": "808080",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2726",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.17147138,
+       41.38854324
+      ],
+      [
+       2.17010734,
+       41.38805009
+      ],
+      [
+       2.1686863,
+       41.38916298
+      ],
+      [
+       2.16858589,
+       41.38930148
+      ],
+      [
+       2.16856722,
+       41.38946158
+      ],
+      [
+       2.16849528,
+       41.38956072
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 3054,
+    "CODI_LINIA": 52,
+    "NOM_LINIA": "52",
+    "DESC_LINIA": "Pl. Catalunya / Collblanc",
+    "ORIGEN_LINIA": "Pl. Catalunya",
+    "DESTI_LINIA": "Collblanc",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 3,
+    "CODI_FAMILIA": 1,
+    "NOM_FAMILIA": "Convencionals",
+    "ORDRE_FAMILIA": 14,
+    "ORDRE_LINIA": 52,
+    "CODI_TIPUS_CALENDARI": "2",
+    "NOM_TIPUS_CALENDARI": "Només feiners",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "DA291C",
+    "COLOR_AUX_LINIA": "EC948D",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2714",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.1697623,
+       41.38623818
+      ],
+      [
+       2.16872318,
+       41.38743513
+      ],
+      [
+       2.16865839,
+       41.38746158
+      ],
+      [
+       2.16850045,
+       41.3874452
+      ],
+      [
+       2.168448,
+       41.38746574
+      ],
+      [
+       2.16724526,
+       41.3883652
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 2875,
+    "CODI_LINIA": 100,
+    "NOM_LINIA": "100",
+    "DESC_LINIA": "Barcelona Bus Turístic - Ruta Vermella",
+    "ORIGEN_LINIA": "Vermella-Roja-Red",
+    "DESTI_LINIA": "Vermella-Roja-Red",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 6,
+    "CODI_FAMILIA": 4,
+    "NOM_FAMILIA": "BusTuristic",
+    "ORDRE_FAMILIA": 16,
+    "ORDRE_LINIA": 100,
+    "CODI_TIPUS_CALENDARI": "1",
+    "NOM_TIPUS_CALENDARI": "Tots els dies",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "DF2228",
+    "COLOR_AUX_LINIA": "FF715F",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "LINIES_BUS.fid-4adcea27_1a18c6d878e_-2706",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       2.10830043,
+       41.3816417
+      ],
+      [
+       2.10776948,
+       41.38132566
+      ],
+      [
+       2.10769689,
+       41.38131758
+      ],
+      [
+       2.10764767,
+       41.38134602
+      ],
+      [
+       2.10700599,
+       41.38283592
+      ],
+      [
+       2.10699683,
+       41.38302605
+      ]
+     ]
+    ]
+   },
+   "geometry_name": "GEOMETRY",
+   "properties": {
+    "ID_LINIA": 4100,
+    "CODI_LINIA": 242,
+    "NOM_LINIA": "X1",
+    "DESC_LINIA": "Torre Melina / Glòries",
+    "ORIGEN_LINIA": "Torre Melina",
+    "DESTI_LINIA": "Glòries",
+    "NUM_PAQUETS": 1,
+    "ID_OPERADOR": 2,
+    "CODI_OPERADOR": "002",
+    "NOM_OPERADOR": "TB",
+    "ID_TIPUS_TRANSPORT": 3,
+    "NOM_TIPUS_TRANSPORT": "BUS",
+    "ID_FAMILIA": 26,
+    "CODI_FAMILIA": 11,
+    "NOM_FAMILIA": "XPRESBus",
+    "ORDRE_FAMILIA": 13,
+    "ORDRE_LINIA": 242,
+    "CODI_TIPUS_CALENDARI": "2",
+    "NOM_TIPUS_CALENDARI": "Només feiners",
+    "DATA": "2026-10-29Z",
+    "COLOR_LINIA": "010101",
+    "COLOR_AUX_LINIA": "808080",
+    "COLOR_TEXT_LINIA": "FFFFFF"
+   }
+  }
+ ],
+ "totalFeatures": 115,
+ "numberMatched": 13,
+ "numberReturned": 13,
+ "timeStamp": "2026-10-30T10:53:06.455Z",
+ "crs": {
+  "type": "name",
+  "properties": {
+   "name": "urn:ogc:def:crs:EPSG::4326"
+  }
+ }
+}

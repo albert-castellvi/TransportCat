@@ -27,6 +27,9 @@ struct MapScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                ModeSelector()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 LinePicker(selectedLineCode: $selectedLineCode)
                 chipsRow
                 mapArea
@@ -134,11 +137,14 @@ struct MapScreen: View {
                     .padding(16)
             }
         }
-        .overlay {
+        .overlay(alignment: .top) {
             // Five lines publish no arrivals: an empty map would read as a bug,
-            // so the reason goes on top of it (spec S8).
+            // so the reason is stated, in a compact strip at the top so it does
+            // not cover the line itself (spec S8).
             if state.isFeedEmpty {
-                NoRealtimeDataCard()
+                NoRealtimeDataCard(compact: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
             }
         }
         .onAppear {
