@@ -30,11 +30,20 @@ struct TrainPosition: Identifiable, Equatable {
     let isDwelling: Bool
     /// Computed geographic position of the train.
     let position: GeoPoint
+    /// Bearing of the travel direction at `position`, in degrees clockwise
+    /// from north (north 0, east 90) and normalized to 0..<360 (S2). The map
+    /// rotates the train marker with it; it is never the direction of the
+    /// line, so a backward train reports the reversed bearing.
+    let heading: Double
 
     /// A copy of this position re-placed along the route, keeping every
     /// poll-derived field (countdown, dwelling state, direction). Used by
     /// `TrainMotion` to publish an interpolated marker.
-    func moved(toRouteDistance distance: Double, position point: GeoPoint) -> TrainPosition {
+    ///
+    /// The caller supplies `heading` because it belongs to the new point: the
+    /// smoother recomputes the bearing at the distance it draws, instead of
+    /// inheriting the one measured at the poll.
+    func moved(toRouteDistance distance: Double, position point: GeoPoint, heading: Double) -> TrainPosition {
         TrainPosition(
             id: id,
             lineCode: lineCode,
@@ -46,7 +55,8 @@ struct TrainPosition: Identifiable, Equatable {
             routeDistance: distance,
             segmentEndDistance: segmentEndDistance,
             isDwelling: isDwelling,
-            position: point
+            position: point,
+            heading: heading
         )
     }
 }
@@ -164,6 +174,27 @@ struct TrainPositionEngine {
         GeoMath.point(at: distance, points: points, cumulative: cumulativePolyline)
     }
 
+    /// Bearing of the travel direction at `distance` meters along the route,
+    /// in degrees clockwise from north, normalized to 0..<360 (S2).
+    ///
+    /// The bearing is measured between two points of the polyline, 15 m behind
+    /// and 15 m ahead of `distance`, both clamped to the route ends. A window
+    /// that spans a vertex therefore reports the average direction instead of
+    /// flipping the marker on every vertex it crosses. `forward` trains travel
+    /// toward the last station (increasing distance) and take the bearing from
+    /// the rear point to the front one; backward trains travel toward
+    /// decreasing distance and take the reversed bearing. A window whose ends
+    /// coincide has no direction and reports 0.
+    func heading(atRouteDistance distance: Double, forward: Bool) -> Double {
+        let halfWindow = 15.0
+        guard let behind = point(atRouteDistance: distance - halfWindow),
+              let ahead = point(atRouteDistance: distance + halfWindow),
+              behind != ahead else { return 0 }
+        return forward
+            ? GeoMath.bearingDegrees(from: behind, to: ahead)
+            : GeoMath.bearingDegrees(from: ahead, to: behind)
+    }
+
     /// Computes all positions derivable from the given arrivals, one per
     /// physical train. Arrivals may come from any subset of stops; stops that
     /// were never polled simply contribute nothing. Sorted by `id`, because a
@@ -215,7 +246,8 @@ struct TrainPositionEngine {
                 routeDistance: distance,
                 segmentEndDistance: stationDistances[nextIndex],
                 isDwelling: seconds <= 15,
-                position: geoPoint
+                position: geoPoint,
+                heading: heading(atRouteDistance: distance, forward: forward)
             ))
         }
         return result.sorted { $0.id < $1.id }

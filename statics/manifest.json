@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "style": "Original rounded outline pictograms; not official operator logos",
+  "lineColorSource": "TransportCat/Core/Models/MetroLine.swift",
+  "assets": [
+    {
+      "file": "icons/metro.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/train.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/funicular.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/station.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/station-interchange.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/station-terminal.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/station-entrance.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": true
+    },
+    {
+      "file": "icons/accessible.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/accessibility-unavailable.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/accessibility-unknown.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/elevator.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": true
+    },
+    {
+      "file": "icons/stairs.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": true
+    },
+    {
+      "file": "icons/escalator.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": true
+    },
+    {
+      "file": "icons/map.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/network.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/service-alert.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/arrivals.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/realtime-unavailable.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/direction.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "icons/location.svg",
+      "width": 24,
+      "height": 24,
+      "futureUseOnly": false
+    },
+    {
+      "file": "lines/l1.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#CE1126",
+      "label": "L1",
+      "textContrast": 5.63
+    },
+    {
+      "file": "lines/l2.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#93248F",
+      "label": "L2",
+      "textContrast": 7.27
+    },
+    {
+      "file": "lines/l3.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#1EB53A",
+      "label": "L3",
+      "textContrast": 7.73
+    },
+    {
+      "file": "lines/l4.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#F7A30E",
+      "label": "L4",
+      "textContrast": 10.2
+    },
+    {
+      "file": "lines/l5.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#005A97",
+      "label": "L5",
+      "textContrast": 7.22
+    },
+    {
+      "file": "lines/l9n.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#FB712B",
+      "label": "L9N",
+      "textContrast": 7.5
+    },
+    {
+      "file": "lines/l9s.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#FB712B",
+      "label": "L9S",
+      "textContrast": 7.5
+    },
+    {
+      "file": "lines/l10n.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#00A6D6",
+      "label": "L10N",
+      "textContrast": 7.43
+    },
+    {
+      "file": "lines/l10s.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#00A6D6",
+      "label": "L10S",
+      "textContrast": 7.43
+    },
+    {
+      "file": "lines/l11.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#89B94C",
+      "label": "L11",
+      "textContrast": 9.11
+    },
+    {
+      "file": "lines/fm.svg",
+      "width": 64,
+      "height": 40,
+      "color": "#004C38",
+      "label": "FM",
+      "textContrast": 10.04
+    },
+    {
+      "file": "markers/station.svg",
+      "width": 40,
+      "height": 40,
+      "color": "#005A97"
+    },
+    {
+      "file": "markers/station-interchange.svg",
+      "width": 40,
+      "height": 40,
+      "color": "#005A97"
+    },
+    {
+      "file": "markers/station-terminal.svg",
+      "width": 40,
+      "height": 40,
+      "color": "#005A97"
+    },
+    {
+      "file": "markers/train.svg",
+      "width": 40,
+      "height": 40,
+      "color": "#005A97"
+    },
+    {
+      "file": "map-trains/l1.svg",
+      "png": "map-trains/l1@3x.png",
+      "line": "L1",
+      "color": "#CE1126",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l2.svg",
+      "png": "map-trains/l2@3x.png",
+      "line": "L2",
+      "color": "#93248F",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l3.svg",
+      "png": "map-trains/l3@3x.png",
+      "line": "L3",
+      "color": "#1EB53A",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l4.svg",
+      "png": "map-trains/l4@3x.png",
+      "line": "L4",
+      "color": "#F7A30E",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l5.svg",
+      "png": "map-trains/l5@3x.png",
+      "line": "L5",
+      "color": "#005A97",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l9n.svg",
+      "png": "map-trains/l9n@3x.png",
+      "line": "L9N",
+      "color": "#FB712B",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l9s.svg",
+      "png": "map-trains/l9s@3x.png",
+      "line": "L9S",
+      "color": "#FB712B",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l10n.svg",
+      "png": "map-trains/l10n@3x.png",
+      "line": "L10N",
+      "color": "#00A6D6",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l10s.svg",
+      "png": "map-trains/l10s@3x.png",
+      "line": "L10S",
+      "color": "#00A6D6",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/l11.svg",
+      "png": "map-trains/l11@3x.png",
+      "line": "L11",
+      "color": "#89B94C",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    },
+    {
+      "file": "map-trains/fm.svg",
+      "png": "map-trains/fm@3x.png",
+      "line": "FM",
+      "color": "#004C38",
+      "width": 60,
+      "height": 50,
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "forward": "east",
+      "renderWidth": 36,
+      "renderHeight": 30
+    }
+  ]
+}

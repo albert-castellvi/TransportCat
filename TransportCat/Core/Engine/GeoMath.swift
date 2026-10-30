@@ -16,6 +16,24 @@ enum GeoMath {
         return sqrt(x * x + dLat * dLat) * earthRadiusMeters
     }
 
+    /// Initial great-circle bearing from `a` to `b`, in degrees clockwise
+    /// from north (north 0, east 90, south 180, west 270), normalized to
+    /// 0..<360. The result is the direction of travel at `a`, the bearing the
+    /// map rotates a train marker with. Coincident points have no direction
+    /// and return 0.
+    static func bearingDegrees(from a: GeoPoint, to b: GeoPoint) -> Double {
+        let lat1 = a.latitude * .pi / 180
+        let lat2 = b.latitude * .pi / 180
+        let dLon = (b.longitude - a.longitude) * .pi / 180
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        // atan2 is 0 at north and grows clockwise; the remainder folds the
+        // negative half onto the 180..<360 range the map expects.
+        let degrees = atan2(y, x) * 180 / .pi
+        let normalized = degrees.truncatingRemainder(dividingBy: 360)
+        return normalized < 0 ? normalized + 360 : normalized
+    }
+
     /// Cumulative distances along a polyline, starting at 0.
     static func cumulativeDistances(of points: [GeoPoint]) -> [Double] {
         guard !points.isEmpty else { return [] }

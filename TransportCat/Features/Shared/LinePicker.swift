@@ -1,6 +1,14 @@
 import SwiftUI
 
-/// Horizontal selector of metro lines, styled as TMB-like line chips.
+extension MetroLine {
+    /// Lowercased asset key shared by the `train-`, `badge-`, `station-` and
+    /// `terminal-` image sets produced by `scripts/render-assets.sh` (S7):
+    /// "L9N" is `badge-l9n`, "FM" is `train-fm`.
+    var assetKey: String { displayName.lowercased() }
+}
+
+/// Horizontal selector of metro lines, one pre-rendered TMB-style badge per
+/// line (S5).
 struct LinePicker: View {
     @Binding var selectedLineCode: String
 
@@ -14,14 +22,19 @@ struct LinePicker: View {
                             selectedLineCode = line.code
                         }
                     } label: {
-                        Text(line.displayName)
-                            .font(.subheadline.bold())
-                            .foregroundColor(isSelected ? .white : Color(hex: line.colorHex))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(
-                                Capsule().fill(isSelected ? Color(hex: line.colorHex) : Color(hex: line.colorHex).opacity(0.15))
-                            )
+                        // The badge image already carries the line color and
+                        // its label, so unselected lines are only dimmed.
+                        Image("badge-\(line.assetKey)")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 32)
+                            .opacity(isSelected ? 1 : 0.45)
+                            .overlay {
+                                if isSelected {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(.white, lineWidth: 2)
+                                }
+                            }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Línia \(line.displayName)")

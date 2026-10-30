@@ -7,7 +7,7 @@ struct AlertBanner: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Afectacions actives", systemImage: "exclamationmark.triangle.fill")
+            Label("Afectacions actives", image: "icon-alert")
                 .font(.footnote.bold())
             ForEach(alerts.prefix(2)) { alert in
                 Text(summary(of: alert))

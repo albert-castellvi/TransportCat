@@ -8,15 +8,15 @@ struct RootView: View {
         TabView {
             MapScreen()
                 .tabItem {
-                    Label("Mapa", systemImage: "map")
+                    Label("Mapa", image: "tab-map")
                 }
             DiagramScreen()
                 .tabItem {
-                    Label("Xarxa", systemImage: "tram.fill")
+                    Label("Xarxa", image: "tab-network")
                 }
             AlertsScreen()
                 .tabItem {
-                    Label("Avisos", systemImage: "exclamationmark.triangle")
+                    Label("Avisos", image: "tab-alert")
                 }
         }
         .environmentObject(app)
