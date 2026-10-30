@@ -49,6 +49,12 @@ final class AppModel: ObservableObject {
     /// the UI can tell "stale but real" from "never loaded".
     @Published private(set) var alertsUpdatedAt: Date?
 
+    /// Bus incidents (`/alerts/bus/channels/WEB`, spec S7). Same lifecycle as
+    /// the metro alerts: loaded by `startAlertsPolling`, kept on a failure.
+    @Published var busAlerts: [ServiceAlert] = []
+    /// Time of the last successful bus alerts load; nil until one succeeds.
+    @Published private(set) var busAlertsUpdatedAt: Date?
+
     /// Alerts poll period. TMB refreshes the alert feed on the order of
     /// minutes, so a minute keeps incidents visible without hammering the API.
     static let alertsPollIntervalNanoseconds: UInt64 = 60_000_000_000
@@ -88,6 +94,28 @@ final class AppModel: ObservableObject {
                 "alerts": alerts.count,
             ])
         }
+
+        // Spec S7: the bus feed is a separate endpoint, so it gets its own
+        // attempt. One of the two failing must never blank the other's chips.
+        let busStart = pollClock.now
+        do {
+            let loaded = try await client.busAlerts()
+            busAlerts = loaded
+            busAlertsUpdatedAt = Date()
+            addPollBreadcrumb("bus alerts", data: [
+                "line": "bus alerts",
+                "latency_ms": elapsedMilliseconds(since: busStart),
+                "ok": true,
+                "alerts": loaded.count,
+            ])
+        } catch {
+            addPollBreadcrumb("bus alerts failed", data: [
+                "line": "bus alerts",
+                "latency_ms": elapsedMilliseconds(since: busStart),
+                "ok": false,
+                "alerts": busAlerts.count,
+            ])
+        }
     }
 
     /// Loads the alerts immediately and then every minute until the task is
@@ -110,6 +138,15 @@ final class AppModel: ObservableObject {
     /// count only the ones happening now.
     func activeAlerts(affecting lineCode: String, now: Date = Date()) -> [ServiceAlert] {
         alerts(affecting: lineCode).filter { $0.isActive(now: now) }
+    }
+
+    /// Bus incidents of the line that are in force right now (spec S7), with
+    /// the same rule as the metro ones: scheduled disruptions are in the feed
+    /// long before they matter.
+    func activeBusAlerts(affecting lineCode: String, now: Date = Date()) -> [ServiceAlert] {
+        busAlerts
+            .filter { $0.lineCodes.contains(lineCode) }
+            .filter { $0.isActive(now: now) }
     }
 }
 

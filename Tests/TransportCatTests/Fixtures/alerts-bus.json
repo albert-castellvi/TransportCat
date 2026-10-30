@@ -1,0 +1,477 @@
+{
+ "data": {
+  "alerts": [
+   {
+    "begin": 1745791200000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1745359200000,
+     "end": 1794224700000,
+     "linePublishedList": [],
+     "modified": 1793274345000,
+     "publish": true,
+     "textCa": "A partir del 2/11, la línia torna a efectuar la parada 3312 - Sant Antoni Maria Claret - Felip II.",
+     "textDe": "",
+     "textEn": "From this date, the stop 3312 - Sant Antoni Maria Claret - Felip II is cancelled.\nAlternative stops: 384 - Sant Antoni Maria Claret - Espronceda. ",
+     "textEs": "A partir del 2/11 la línea vuelve a realizar la parada 3312 - Sant Antoni Maria Claret - Felip II. ",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir del 2/11, la línia torna a efectuar la parada 3312 - Sant Antoni Maria Claret - Felip II.",
+     "textVoiceEn": "From this date, the stop 3312 - Sant Antoni Maria Claret - Felip II is cancelled.\nAlternative stops: 384 - Sant Antoni Maria Claret - Espronceda. ",
+     "textVoiceEs": "A partir del 2/11 la línea vuelve a realizar la parada 3312 - Sant Antoni Maria Claret - Felip II. "
+    },
+    "code": "968_TMP_25",
+    "end": 1793574000000,
+    "id": 126095,
+    "linesAffected": [
+     {
+      "commercialLineId": "H8",
+      "companyId": "001",
+      "id": 208914,
+      "lineId": "208",
+      "ways": [
+       {
+        "id": 284856,
+        "stops": [
+         {
+          "id": 136474,
+          "nearStop": "Sant Antoni Maria Claret - Espronceda",
+          "nearStopCode": 384,
+          "stopId": 3312,
+          "stopName": "Sant Antoni Maria Claret - Felip II"
+         }
+        ],
+        "wayId": 1,
+        "wayName": "Ernest Lluch"
+       }
+      ]
+     }
+    ],
+    "modified": 1793273669000,
+    "routesAffected": [
+     {
+      "id": 75770,
+      "routeName": "Carrer de Sant Antoni Maria Claret"
+     }
+    ],
+    "routesAlternative": [],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 3,
+    "typeName": "Parada anul·lada amb parada alternativa nova"
+   },
+   {
+    "begin": 1765494000000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1765062000000,
+     "end": 1893452400000,
+     "linePublishedList": [],
+     "modified": 1765783565000,
+     "publish": true,
+     "textCa": "A partir d'aquesta data, la parada 1618 - Carrer número 4 - Carrer F queda anul·lada temporalment.",
+     "textDe": "",
+     "textEn": "From this date, the stop 1618 - Carrer número 4 - Carrer F is cancelled.",
+     "textEs": "A partir de esta fecha, la parada 1618 - Carrer número 4 - Carrer F queda anulada temporalmente.",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir d'aquesta data, la parada 1618 - Carrer número 4 - Carrer F queda anul·lada temporalment.",
+     "textVoiceEn": "From this date, the stop 1618 - Carrer número 4 - Carrer F is cancelled.",
+     "textVoiceEs": "A partir de esta fecha, la parada 1618 - Carrer número 4 - Carrer F queda anulada temporalmente."
+    },
+    "code": "1224_TMP_25",
+    "end": 1766530800000,
+    "id": 132775,
+    "linesAffected": [
+     {
+      "commercialLineId": "21",
+      "companyId": "001",
+      "id": 229650,
+      "lineId": "21",
+      "ways": [
+       {
+        "id": 312880,
+        "stops": [
+         {
+          "id": 150357,
+          "stopId": 1618,
+          "stopName": "Carrer número 4 - Carrer F"
+         }
+        ],
+        "wayId": 1,
+        "wayName": "Paral·lel"
+       }
+      ]
+     },
+     {
+      "commercialLineId": "109",
+      "companyId": "001",
+      "id": 229651,
+      "lineId": "109",
+      "ways": [
+       {
+        "id": 312881,
+        "stops": [
+         {
+          "id": 150358,
+          "stopId": 1618,
+          "stopName": "Carrer número 4 - Carrer F"
+         }
+        ],
+        "wayId": 1,
+        "wayName": "Hospital Clínic"
+       }
+      ]
+     }
+    ],
+    "modified": 1768203480000,
+    "routesAffected": [
+     {
+      "id": 78773,
+      "routeName": "Carrer Número 4"
+     }
+    ],
+    "routesAlternative": [],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 2,
+    "typeName": "Parada anul·lada sense parada alternativa"
+   },
+   {
+    "begin": 1773183600000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1772807880000,
+     "end": 1924988340000,
+     "linePublishedList": [],
+     "modified": 1773212257000,
+     "publish": true,
+     "textCa": "A partir d'aquesta data, la línia H12 canvia el recorregut temporalment a l'avinguda Meridiana, carrer d'Aragó, carrer de Bilbao.<br>\nParades anul·lades: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nParades alternatives: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86.",
+     "textDe": "",
+     "textEn": "From this date, the line H12 changes its route temporally to Avinguda Meridiana, Carrer d'Aragó, Carrer de Bilbao.<br>\nCancelled stops: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nAlternative stops: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86. ",
+     "textEs": "A partir de esta fecha, la línea H12 cambia el recorrido temporalmente en la avenida Meridiana, calle de Aragó, calle de Bilbao.<br>\nParadas anuladas: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nParadas alternativas: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86.",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir d'aquesta data, la línia H12 canvia el recorregut temporalment a l'avinguda Meridiana, carrer d'Aragó, carrer de Bilbao.<br>\nParades anul·lades: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nParades alternatives: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86.",
+     "textVoiceEn": "From this date, the line H12 changes its route temporally to Avinguda Meridiana, Carrer d'Aragó, Carrer de Bilbao.<br>\nCancelled stops: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nAlternative stops: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86. ",
+     "textVoiceEs": "A partir de esta fecha, la línea H12 cambia el recorrido temporalmente en la avenida Meridiana, calle de Aragó, calle de Bilbao.<br>\nParadas anuladas: 385 - Gran Via - Bilbao, 795 - Gran Via - Llacuna.<br>\nParadas alternativas: 567 - Bilbao - Andrade, 9610 - Av. Meridiana, 82-86."
+    },
+    "code": "1282_TMP_26",
+    "end": 1893452400000,
+    "id": 134760,
+    "linesAffected": [
+     {
+      "commercialLineId": "H12",
+      "companyId": "001",
+      "id": 236661,
+      "lineId": "212",
+      "ways": [
+       {
+        "id": 322327,
+        "stops": [
+         {
+          "id": 155357,
+          "nearStop": "Bilbao, 217",
+          "nearStopCode": 9465,
+          "stopId": 385,
+          "stopName": "Gran Via - Bilbao"
+         },
+         {
+          "id": 155358,
+          "nearStop": "Av. Meridiana, 82-86",
+          "nearStopCode": 9610,
+          "stopId": 795,
+          "stopName": "Gran Via - Llacuna"
+         }
+        ],
+        "wayId": 0,
+        "wayName": "Besòs Verneda"
+       }
+      ]
+     }
+    ],
+    "modified": 1772798493000,
+    "routesAffected": [
+     {
+      "id": 79193,
+      "routeName": "Gran Via de les Corts Catalanes"
+     }
+    ],
+    "routesAlternative": [
+     {
+      "id": 74249,
+      "routeName": "Avinguda Meridiana"
+     },
+     {
+      "id": 74250,
+      "routeName": "Carrer Aragó"
+     },
+     {
+      "id": 74251,
+      "routeName": "Carrer de Bilbao"
+     }
+    ],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 7,
+    "typeName": "Modificació del recorregut amb anul·lació de parada/es i amb parades alternatives existents"
+   },
+   {
+    "begin": 1772751600000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1772457000000,
+     "end": 1893452400000,
+     "linePublishedList": [],
+     "modified": 1772457129000,
+     "publish": true,
+     "textCa": "A partir d'aquesta data, s'anul·la la parada 9633 - Pg Vall d'Hebron 115.<br>\nParada alternativa: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte.",
+     "textDe": "",
+     "textEn": "From this date, the stop 9633 - Pg Vall d'Hebron 115 is cancelled.<br>\nAlternative stop: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte.",
+     "textEs": "A partir de esta fecha, se anula la parada 9633 - Pg Vall d'Hebron 115.<br>\nParada alternativa: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte.",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir d'aquesta data, s'anul·la la parada 9633 - Pg Vall d'Hebron 115.<br>\nParada alternativa: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte.",
+     "textVoiceEn": "From this date, the stop 9633 - Pg Vall d'Hebron 115 is cancelled.<br>\nAlternative stop: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte.",
+     "textVoiceEs": "A partir de esta fecha, se anula la parada 9633 - Pg Vall d'Hebron 115.<br>\nParada alternativa: 2890 - Pg Vall d'Hebron - Trueba - Final de trajecte."
+    },
+    "code": "1289_TMP_26",
+    "end": 1893452400000,
+    "id": 134923,
+    "linesAffected": [
+     {
+      "commercialLineId": "V17",
+      "companyId": "001",
+      "id": 237265,
+      "lineId": "217",
+      "ways": [
+       {
+        "id": 322951,
+        "stops": [
+         {
+          "id": 155792,
+          "nearStop": "Pg Vall d'Hebron - Trueba - Final de trajecte",
+          "nearStopCode": 2890,
+          "stopId": 9633,
+          "stopName": "Pg Vall d'Hebron 115"
+         }
+        ],
+        "wayId": 0,
+        "wayName": "Vall d'Hebron"
+       },
+       {
+        "id": 322952,
+        "stops": [
+         {
+          "id": 155793,
+          "nearStop": "Pg Vall d'Hebron - Trueba - Final de trajecte",
+          "nearStopCode": 2890,
+          "stopId": 9633,
+          "stopName": "Pg Vall d'Hebron 115"
+         }
+        ],
+        "wayId": 1,
+        "wayName": "Port Vell"
+       }
+      ]
+     }
+    ],
+    "modified": 1772452983000,
+    "routesAffected": [],
+    "routesAlternative": [],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 4,
+    "typeName": "Parada anul·lada amb parada alternativa existent"
+   },
+   {
+    "begin": 1773874800000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1774458600000,
+     "end": 1893452400000,
+     "linePublishedList": [],
+     "modified": 1774458639000,
+     "publish": true,
+     "textCa": "A partir d'avui, s'anul·la la parada 932 - Trav de Gràcia - Muntaner per obres.<br>\nParada alternativa: 8869 - Casanova, 211-268.",
+     "textDe": "",
+     "textEn": "Starting today, stop 932—Trav de Gràcia–Muntaner—is closed due to construction.<br>\nAlternative stop: 8869—Casanova, 211–268.",
+     "textEs": "A partir de hoy, se anula la parada 932 - Trav de Gràcia - Muntaner por obras.<br>\nParada alternativa: 8869 - Casanova, 211-268.",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir d'avui, s'anul·la la parada 932 - Trav de Gràcia - Muntaner per obres.<br>\nParada alternativa: 8869 - Casanova, 211-268.",
+     "textVoiceEn": "Starting today, stop 932—Trav de Gràcia–Muntaner—is closed due to construction.<br>\nAlternative stop: 8869—Casanova, 211–268.",
+     "textVoiceEs": "A partir de hoy, se anula la parada 932 - Trav de Gràcia - Muntaner por obras.<br>\nParada alternativa: 8869 - Casanova, 211-268."
+    },
+    "code": "1304_TMP_26",
+    "end": 1793228400000,
+    "id": 135316,
+    "linesAffected": [
+     {
+      "commercialLineId": "27",
+      "companyId": "001",
+      "id": 238951,
+      "lineId": "27",
+      "ways": [
+       {
+        "id": 325803,
+        "stops": [
+         {
+          "id": 156678,
+          "nearStop": "Casanova, 211-268",
+          "nearStopCode": 8869,
+          "stopId": 932,
+          "stopName": "Trav de Gràcia - Muntaner"
+         }
+        ],
+        "wayId": 0,
+        "wayName": "Roquetes"
+       }
+      ]
+     },
+     {
+      "commercialLineId": "D40",
+      "companyId": "001",
+      "id": 238950,
+      "lineId": "240",
+      "ways": [
+       {
+        "id": 325802,
+        "stops": [
+         {
+          "id": 156677,
+          "nearStop": "Casanova, 211-268",
+          "nearStopCode": 8869,
+          "stopId": 932,
+          "stopName": "Trav de Gràcia - Muntaner"
+         }
+        ],
+        "wayId": 0,
+        "wayName": "Canyelles"
+       }
+      ]
+     }
+    ],
+    "modified": 1793193512000,
+    "routesAffected": [
+     {
+      "id": 79373,
+      "routeName": "Travessera de Gràcia"
+     }
+    ],
+    "routesAlternative": [],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 3,
+    "typeName": "Parada anul·lada amb parada alternativa nova"
+   },
+   {
+    "begin": 1775685600000,
+    "categories": {
+     "messageType": "ALTERATION"
+    },
+    "causeId": 1,
+    "causeName": "Obres",
+    "channelInfoTO": {
+     "allLines": false,
+     "allStops": false,
+     "allWays": false,
+     "begin": 1775685600000,
+     "end": 1893452400000,
+     "linePublishedList": [],
+     "modified": 1775650334000,
+     "publish": true,
+     "textCa": "A partir d'aquesta data, la línia 121 canvia el seu recorregut, temporalment, al carrer de Puig i Xoriguer.<br>\nParada anul·lada: 9491 - Puigxuriguer, 42.<br>\nParada alternativa: 2067 - Vila i Vilà - Puigxuriguer.",
+     "textDe": "",
+     "textEn": "From this date, the line 121 changes its route, temporally, to Carrer de Puig i Xoriguer.<br>\nCancelled stop: 9491 - Puigxuriguer, 42.<br>\nAlternative stop: 2067 - Vila i Vilà - Puigxuriguer. ",
+     "textEs": "A partir de esta fecha, la línea 121 cambia su recorrido, temporalmente, en la calle de Puig i Xoriguer.<br>\nParada anulada: 9491 - Puigxuriguer, 42.<br>\nParada alternativa: 2067 - Vila i Vilà - Puigxuriguer.",
+     "textFr": "",
+     "textIt": "",
+     "textVoiceCa": "A partir d'aquesta data, la línia 121 canvia el seu recorregut, temporalment, al carrer de Puig i Xoriguer.<br>\nParada anul·lada: 9491 - Puigxuriguer, 42.<br>\nParada alternativa: 2067 - Vila i Vilà - Puigxuriguer.",
+     "textVoiceEn": "From this date, the line 121 changes its route, temporally, to Carrer de Puig i Xoriguer.<br>\nCancelled stop: 9491 - Puigxuriguer, 42.<br>\nAlternative stop: 2067 - Vila i Vilà - Puigxuriguer. ",
+     "textVoiceEs": "A partir de esta fecha, la línea 121 cambia su recorrido, temporalmente, en la calle de Puig i Xoriguer.<br>\nParada anulada: 9491 - Puigxuriguer, 42.<br>\nParada alternativa: 2067 - Vila i Vilà - Puigxuriguer."
+    },
+    "code": "1321_TMP_26",
+    "end": 1893452400000,
+    "id": 135785,
+    "linesAffected": [
+     {
+      "commercialLineId": "121",
+      "companyId": "001",
+      "id": 240295,
+      "lineId": "121",
+      "ways": [
+       {
+        "id": 328106,
+        "stops": [
+         {
+          "id": 157691,
+          "nearStop": "Vila i Vilà - Puigxuriguer",
+          "nearStopCode": 2067,
+          "stopId": 9491,
+          "stopName": "Puigxuriguer, 42"
+         }
+        ],
+        "wayId": 0,
+        "wayName": "Poble Sec"
+       }
+      ]
+     }
+    ],
+    "modified": 1775648225000,
+    "routesAffected": [
+     {
+      "id": 79534,
+      "routeName": "Carrer de Puigxuriguer"
+     }
+    ],
+    "routesAlternative": [],
+    "scheduled": true,
+    "stopsAffected": [],
+    "term": 3,
+    "typeId": 7,
+    "typeName": "Modificació del recorregut amb anul·lació de parada/es i amb parades alternatives existents"
+   }
+  ]
+ }
+}

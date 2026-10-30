@@ -306,6 +306,155 @@ final class IncidentIndexTests: XCTestCase {
         XCTAssertEqual(index[136]?.map(\.kind), [.escalator, .elevator])
     }
 
+    // MARK: - Bus alert kinds (S7)
+
+    /// A bus alert as `BusAlertParser` produces it: no effect code, kind in
+    /// `typeName`, affected stops by code.
+    private func busAlert(
+        id: String,
+        typeName: String?,
+        stationCodes: [Int],
+        stationNames: [String] = [],
+        line: String = "212",
+        text: String? = nil,
+        effectCode: String? = nil
+    ) -> ServiceAlert {
+        ServiceAlert(
+            id: id,
+            lineCodes: [line],
+            stationNames: stationNames,
+            beginDate: nil,
+            endDate: nil,
+            text: text,
+            stationCodes: stationCodes,
+            effectCode: effectCode,
+            typeName: typeName
+        )
+    }
+
+    private func incidents(for alerts: [ServiceAlert], at stationCode: Int = 385) -> [StationIncident] {
+        let index = IncidentIndex.incidents(
+            for: alerts,
+            stations: [
+                Station(
+                    code: stationCode,
+                    name: "Gran Via - Bilbao",
+                    orderInLine: 1,
+                    lineCode: "212",
+                    latitude: 41.38000000,
+                    longitude: 2.17000000,
+                    id: nil,
+                    accessible: nil
+                ),
+            ],
+            lineCode: "212"
+        )
+        return index[stationCode] ?? []
+    }
+
+    func testStopClosedTypeNameBecomesAStopClosedIncident() {
+        let incidents = incidents(for: [
+            busAlert(id: "9001", typeName: "Parada anul·lada sense parada alternativa", stationCodes: [385]),
+        ])
+        XCTAssertEqual(incidents.map(\.kind), [.stopClosed])
+        XCTAssertEqual(incidents.first?.title, "Parada anul·lada")
+    }
+
+    func testDetourTypeNameBecomesADetourIncident() {
+        let incidents = incidents(for: [
+            busAlert(
+                id: "9002",
+                typeName: "Modificació del recorregut amb anul·lació de parada/es i amb parades alternatives existents",
+                stationCodes: [385]
+            ),
+        ])
+        XCTAssertEqual(incidents.map(\.kind), [.detour])
+        XCTAssertEqual(incidents.first?.title, "Recorregut modificat")
+    }
+
+    func testBusKindMatchingIgnoresCaseDiacriticsAndPunctuation() {
+        // TMB spells the middle dot differently across payloads, and the case
+        // and accents of the type name are not stable either.
+        for typeName in ["Parada anul.lada sense parada alternativa", "PARADA ANUL·LADA", "parada anul-lada?"] {
+            let incidents = incidents(for: [busAlert(id: "9003", typeName: typeName, stationCodes: [385])])
+            XCTAssertEqual(incidents.first?.kind, .stopClosed, "type name \(typeName) must read as stopClosed")
+        }
+        // A highlighted H12 detour from the real feed never wins over its own
+        // "recorregut" wording.
+        let real = incidents(for: [
+            busAlert(
+                id: "134760",
+                typeName: "Modificació del recorregut amb anul·lació de parada/es i amb parades alternatives existents",
+                stationCodes: [385]
+            ),
+        ])
+        XCTAssertEqual(real.first?.kind, .detour)
+    }
+
+    func testUnrecognisedBusTypeNameFallsBackToTheText() {
+        let incidents = incidents(for: [
+            busAlert(
+                id: "9004",
+                typeName: "Servei especial",
+                stationCodes: [385],
+                text: "El servei acaba a les 22 h. Més informació a la web."
+            ),
+        ])
+        XCTAssertEqual(incidents.first?.kind, .other)
+        XCTAssertEqual(incidents.first?.title, "El servei acaba a les 22 h")
+    }
+
+    func testMetroKindsAreUnchangedWhenAnEffectCodeIsPresent() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        // An effect code always wins over the type name, so a metro alert that
+        // happens to carry a type name keeps its facility kind.
+        let metro = [
+            alert(id: "9005", begin: now, end: now, entranceNames: [], effectCode: "PP8", text: "Ascensor fora de servei"),
+        ]
+        let index = IncidentIndex.incidents(
+            for: metro,
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(index[136]?.map(\.kind), [.elevator])
+        XCTAssertEqual(index[136]?.first?.title, "Ascensor fora de servei")
+        // Bus alerts carry no effect code, so the type name decides and the
+        // stop still has to be covered by the alert.
+        let busWithoutTypeName = incidents(for: [busAlert(id: "9006", typeName: nil, stationCodes: [385])])
+        XCTAssertEqual(busWithoutTypeName.map(\.kind), [.other])
+        XCTAssertEqual(busWithoutTypeName.first?.title, "Incidència a l'estació")
+    }
+
+    func testBusAlertsFromTheRealFeedIndexThroughBusStops() throws {
+        let alerts = try BusAlertParser.alerts(from: Fixtures.data("alerts-bus"))
+        // A date inside the H12 detour's validity window, taken from the feed.
+        let detour = try XCTUnwrap(alerts.first { $0.id == "134760" })
+        let now = try XCTUnwrap(detour.beginDate).addingTimeInterval(60)
+        let stop = BusStop(
+            code: 385,
+            name: "Gran Via - Bilbao",
+            address: "",
+            order: 1,
+            directionID: 1,
+            directionName: "Anada",
+            destinationName: "Besòs Verneda",
+            distanceFromPrevious: 0,
+            latitude: 41.38000000,
+            longitude: 2.17000000,
+            routeID: 4893833
+        )
+        let index = IncidentIndex.incidents(
+            for: alerts,
+            stations: [stop.asStation(lineCode: "212")],
+            lineCode: "212",
+            now: now
+        )
+        // Only the H12 alert covers the stop, and it is a detour.
+        XCTAssertEqual(index[385]?.map(\.alertID), ["134760"])
+        XCTAssertEqual(index[385]?.map(\.kind), [.detour])
+    }
+
     // MARK: - Derived title of a generic incident (S5)
 
     func testOtherIncidentTitleIsTheFirstSentenceOfTheText() throws {
