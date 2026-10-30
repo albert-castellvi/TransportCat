@@ -41,6 +41,7 @@ final class AssetCatalogTests: XCTestCase {
             "tab-map", "tab-network", "tab-alert",
             "icon-accessible", "icon-alert",
             "icon-escalator", "icon-elevator", "icon-entrance",
+            "icon-realtime-off",
         ] {
             assertImageExists(name)
         }
