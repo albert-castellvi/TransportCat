@@ -1,19 +1,37 @@
 import SwiftUI
 
-/// Detail of one station: live arrivals polled directly from i-Metro.
+/// Detail of one station: active incidents of the line plus live arrivals
+/// polled directly from i-Metro.
 struct StationDetailView: View {
     let station: Station
     let line: MetroLine
 
+    @EnvironmentObject private var app: AppModel
     @State private var arrivals: [Arrival] = []
     @State private var errorMessage: String?
     /// Distinguishes "fetch still running" from "fetch done, no trains".
     @State private var hasLoaded = false
     @Environment(\.dismiss) private var dismiss
 
+    /// Incidents of this station on this line, from the alerts feed (S4).
+    private var incidents: [StationIncident] {
+        IncidentIndex.incidents(
+            for: app.alerts,
+            stations: [station],
+            lineCode: line.code
+        )[station.code] ?? []
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                if !incidents.isEmpty {
+                    Section("Incidències") {
+                        ForEach(incidents) { incident in
+                            IncidentRow(incident: incident)
+                        }
+                    }
+                }
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
@@ -80,5 +98,30 @@ struct StationDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+/// One incident of a station: kind icon, title and the full alert text (S4).
+private struct IncidentRow: View {
+    let incident: StationIncident
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(incident.kind.incidentIconAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+                .foregroundStyle(Color(hex: "F59E0B"))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(incident.title)
+                    .font(.body.weight(.bold))
+                if let text = incident.text, !text.isEmpty {
+                    Text(text)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

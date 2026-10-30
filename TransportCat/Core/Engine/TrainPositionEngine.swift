@@ -174,6 +174,38 @@ struct TrainPositionEngine {
         GeoMath.point(at: distance, points: points, cumulative: cumulativePolyline)
     }
 
+    /// S2: route distance expressed in station-order index units, for the
+    /// diagram's continuous vertical position.
+    ///
+    /// `0` is the first station, `1` the second, `1.5` halfway between the
+    /// second and the third. Between two consecutive stations the index is
+    /// interpolated linearly in the route distances, so the diagram spacing
+    /// follows the real track distances instead of a fixed row pitch. The
+    /// result is clamped to `0...(stations - 1)`: before the first station or
+    /// past the last one there is nothing to interpolate.
+    ///
+    /// Two stations projected onto the same route distance share that point
+    /// (the geometry doubles back or a station is duplicated); that pair
+    /// contributes no interval instead of dividing by zero, which keeps the
+    /// result non-decreasing.
+    func stationIndexPosition(atRouteDistance distance: Double) -> Double {
+        guard let first = stationDistances.first, let last = stationDistances.last else { return 0 }
+        let lastIndex = Double(stationDistances.count - 1)
+        guard distance.isFinite else { return distance < 0 ? 0 : lastIndex }
+        if distance <= first { return 0 }
+        if distance >= last { return lastIndex }
+
+        for index in 1..<stationDistances.count {
+            let lower = stationDistances[index - 1]
+            let upper = stationDistances[index]
+            guard upper > lower else { continue }
+            if distance <= upper {
+                return Double(index - 1) + (distance - lower) / (upper - lower)
+            }
+        }
+        return lastIndex
+    }
+
     /// Bearing of the travel direction at `distance` meters along the route,
     /// in degrees clockwise from north, normalized to 0..<360 (S2).
     ///

@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "idiom": "universal",
+      "filename": "icon-escalator@3x.png",
+      "scale": "3x",
+        "properties": {
+          "template-rendering-intent": "template"
+        }
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

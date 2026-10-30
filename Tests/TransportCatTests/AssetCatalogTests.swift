@@ -37,7 +37,11 @@ final class AssetCatalogTests: XCTestCase {
     }
 
     func testTabAndStatusIconsExist() {
-        for name in ["tab-map", "tab-network", "tab-alert", "icon-accessible", "icon-alert"] {
+        for name in [
+            "tab-map", "tab-network", "tab-alert",
+            "icon-accessible", "icon-alert",
+            "icon-escalator", "icon-elevator", "icon-entrance",
+        ] {
             assertImageExists(name)
         }
     }
