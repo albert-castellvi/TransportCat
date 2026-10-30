@@ -283,7 +283,7 @@ struct BusDiagramScreen: View {
 
 /// Everything one bus diagram row shows, and the height it occupies. A row with
 /// incidents is one `incidentLineHeight` taller per incident, and the bus
-/// overlay uses the same numbers to place the pills (spec S8).
+/// overlay uses the same numbers to place the bus markers (spec S8).
 private struct BusDiagramRowPlan: Identifiable {
     /// Position in the direction: the identity the rows are rendered by. A stop
     /// code repeats between the two directions, the index of one direction
@@ -528,16 +528,20 @@ private struct BusNoServiceCard: View {
     }
 }
 
-/// A bus placed in the diagram, at the y its route distance gives.
+/// A bus placed in the diagram, at the y its route distance gives, turned the
+/// way it travels along the spine.
 private struct BusDiagramPlacement: Identifiable {
     let id: String
     let y: CGFloat
+    /// True toward the last stop of the direction, i.e. down the rows.
+    let forward: Bool
 }
 
 /// Draws the live buses on the spine of the diagram (spec S8). It shares the
 /// rows' coordinate space through the overlay it is attached to: every y is
 /// measured from the top of the first row, so rows and buses cannot drift
-/// apart. Buses do not carry a heading on screen, so the pills stay upright.
+/// apart. The buses are the same pictograms the map uses, turned 90 degrees so
+/// they lie along the vertical spine (spec S2).
 private struct BusTrainOverlay: View {
     let direction: BusDirection
     let line: BusLine
@@ -550,7 +554,7 @@ private struct BusTrainOverlay: View {
         // them.
         ZStack(alignment: .topLeading) {
             ForEach(placements()) { bus in
-                BusDiagramPill(line: line)
+                BusDiagramMarker(line: line, forward: bus.forward)
                     .position(x: BusDiagramRow.spineCenterX, y: bus.y)
                     .accessibilityHidden(true)
             }
@@ -579,25 +583,31 @@ private struct BusTrainOverlay: View {
             let fraction = index - Double(lower)
             let y = tops[lower] + CGFloat(fraction) * rows[lower].height
                 + BusDiagramRow.baseHeight / 2
-            return BusDiagramPlacement(id: position.id, y: y)
+            return BusDiagramPlacement(
+                id: position.id,
+                y: y,
+                forward: position.train.forward
+            )
         }
     }
 }
 
-/// The bus itself on the spine: the line name in a pill of the line colour,
-/// ringed in white so it separates from the spine it sits on (spec S8).
-private struct BusDiagramPill: View {
+/// The bus itself on the spine: the same `bus-<colorHex>` pictogram the map
+/// draws, turned along the spine, ringed by nothing because the art already
+/// carries its own white outline (spec S2, S8). No name chip here: every row
+/// already says which line it is.
+private struct BusDiagramMarker: View {
     let line: BusLine
+    let forward: Bool
 
     var body: some View {
-        Text(line.name)
-            .font(.system(size: 11, weight: .heavy))
-            // Same rule as the arrival pills: the text follows the fill.
-            .foregroundStyle(HexLuminance.isLight(line.colorHex) ? Color.black : Color.white)
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-            .frame(width: 40, height: 24)
-            .background(Capsule().fill(Color(hex: line.colorHex)))
-            .overlay(Capsule().stroke(.white, lineWidth: 2))
+        Image(BusMarker.assetName(for: line))
+            .resizable()
+            .scaledToFit()
+            .frame(
+                width: BusMarker.markerSize.width,
+                height: BusMarker.markerSize.height
+            )
+            .rotationEffect(.degrees(forward ? 90 : -90))
     }
 }
