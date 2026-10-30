@@ -69,7 +69,10 @@ final class TMBClient {
         components.queryItems = queryItems
         guard let url = components.url else { throw TMBError.invalidURL }
 
-        let (data, response) = try await session.data(from: url)
+        // The arrivals poll runs every 20 s; the 60 s URLSession default would
+        // freeze the trains for several cycles behind one stalled request.
+        let request = URLRequest(url: url, timeoutInterval: Self.requestTimeoutSeconds)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw TMBError.unexpectedPayload("no HTTP response")
         }
@@ -80,4 +83,5 @@ final class TMBClient {
     }
 
     static let baseURL = "https://api.tmb.cat/v1"
+    static let requestTimeoutSeconds: TimeInterval = 10
 }

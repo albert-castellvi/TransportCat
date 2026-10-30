@@ -130,7 +130,8 @@ final class LineState {
     /// Logs a failed request and reports it to Sentry as a non-fatal event,
     /// so a blank map in the field can be traced to its cause.
     private static func report(_ error: Error, _ request: String, line: String) {
-        log.error("Line \(line, privacy: .public) \(request, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+        log.error("Line \(line, privacy: .public) \(request, privacy: .public) failed: \(SecretRedactor.redact(String(describing: error)), privacy: .public)")
+        guard !error.isTransientNetworkFailure else { return }
         SentrySDK.capture(error: error) { scope in
             scope.setTag(value: request, key: "tmb.request")
             scope.setTag(value: line, key: "tmb.line")
