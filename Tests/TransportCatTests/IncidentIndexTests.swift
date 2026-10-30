@@ -41,6 +41,7 @@ final class IncidentIndexTests: XCTestCase {
         stationNames: [String] = [],
         entranceNames: [String] = [],
         effectCode: String? = "PP9",
+        effectType: String? = nil,
         text: String? = nil
     ) -> ServiceAlert {
         ServiceAlert(
@@ -52,7 +53,8 @@ final class IncidentIndexTests: XCTestCase {
             text: text,
             stationCodes: stationCodes,
             entranceNames: entranceNames,
-            effectCode: effectCode
+            effectCode: effectCode,
+            effectType: effectType
         )
     }
 
@@ -107,6 +109,64 @@ final class IncidentIndexTests: XCTestCase {
         XCTAssertEqual(alerts[1].stationCodes, [120, 517])
     }
 
+    // MARK: - Effect type and severity (S5)
+
+    func testEffectTypeIsParsedFromCategories() throws {
+        let old = try AlertParser.alerts(from: Fixtures.data("alerts"))
+        // PP1 closes the line between stations: a traffic disruption.
+        XCTAssertEqual(try XCTUnwrap(old.first { $0.id == "228295" }).effectType, "TRAFFIC")
+        // PP2 closes corridors: infrastructure, not a service interruption.
+        XCTAssertEqual(try XCTUnwrap(old.first { $0.id == "224755" }).effectType, "INFRASTRUCTURE")
+
+        let live = try liveAlerts()
+        // Every alert of the live capture is a facility-level one.
+        XCTAssertEqual(live.count, 9)
+        for alert in live {
+            XCTAssertEqual(alert.effectType, "INFRASTRUCTURE", "unexpected effect type on \(alert.id)")
+        }
+        // 224755 appears in both captures and keeps decoding the same way.
+        XCTAssertEqual(try XCTUnwrap(live.first { $0.id == "224755" }).effectType, "INFRASTRUCTURE")
+    }
+
+    func testSeverityIsServiceOnlyForTrafficAlerts() throws {
+        let old = try AlertParser.alerts(from: Fixtures.data("alerts"))
+        XCTAssertEqual(try XCTUnwrap(old.first { $0.id == "228295" }).severity, .service)
+        XCTAssertEqual(try XCTUnwrap(old.first { $0.id == "224755" }).severity, .facility)
+
+        for alert in try liveAlerts() {
+            XCTAssertEqual(alert.severity, .facility, "unexpected severity on \(alert.id)")
+        }
+        // The comparison is case-insensitive and tolerates an absent type.
+        XCTAssertEqual(alert(id: "3001", begin: nil, end: nil, effectType: "traffic").severity, .service)
+        XCTAssertEqual(alert(id: "3002", begin: nil, end: nil, effectType: nil).severity, .facility)
+    }
+
+    func testSeverityOrderingPutsServiceAboveFacility() {
+        XCTAssertGreaterThan(AlertSeverity.service, .facility)
+        XCTAssertLessThan(AlertSeverity.facility, .service)
+        XCTAssertEqual(AlertSeverity.facility.rawValue, 0)
+        XCTAssertEqual(AlertSeverity.service.rawValue, 1)
+        XCTAssertEqual([AlertSeverity.facility, .service, .facility].max(), .service)
+    }
+
+    func testIsActiveCoversTheDateBoundaries() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let day: TimeInterval = 24 * 60 * 60
+
+        // No date at all: the alert has always been and always will be active.
+        XCTAssertTrue(alert(id: "4001", begin: nil, end: nil).isActive(now: now))
+        XCTAssertTrue(alert(id: "4002", begin: now.addingTimeInterval(-day), end: nil).isActive(now: now))
+        XCTAssertTrue(alert(id: "4003", begin: nil, end: now.addingTimeInterval(day)).isActive(now: now))
+        // A begin date in the future is not active yet.
+        XCTAssertFalse(alert(id: "4004", begin: now.addingTimeInterval(1), end: nil).isActive(now: now))
+        // An end date in the past is no longer active.
+        XCTAssertFalse(alert(id: "4005", begin: nil, end: now.addingTimeInterval(-1)).isActive(now: now))
+        // Both boundaries are inclusive: beginning now and ending now are active.
+        XCTAssertTrue(alert(id: "4006", begin: now, end: nil).isActive(now: now))
+        XCTAssertTrue(alert(id: "4007", begin: nil, end: now).isActive(now: now))
+        XCTAssertTrue(alert(id: "4008", begin: now, end: now).isActive(now: now))
+    }
+
     // MARK: - Index (S3)
 
     func testLineOneIndexKeepsOnlyStationsWithIncidents() throws {
@@ -134,8 +194,12 @@ final class IncidentIndexTests: XCTestCase {
 
         let atCatalunya = try XCTUnwrap(index[126]?.first)
         XCTAssertEqual(atCatalunya.id, "227008-126")
-        // PP2 (corridors closed) has no dedicated icon or title.
-        XCTAssertEqual(atCatalunya.title, "Incidència a l'estació")
+        // PP2 (corridors closed) has no dedicated icon or title: the title is
+        // the first sentence of the alert text.
+        XCTAssertEqual(
+            atCatalunya.title,
+            "A partir d'avui,i fins al 30 de desembre, els passadissos que…"
+        )
     }
 
     func testInterchangeAlertCoversBothLinesWithoutLeakingCodes() throws {
@@ -240,6 +304,73 @@ final class IncidentIndexTests: XCTestCase {
         )
         XCTAssertEqual(index[136]?.map(\.alertID), ["1001", "1002"])
         XCTAssertEqual(index[136]?.map(\.kind), [.escalator, .elevator])
+    }
+
+    // MARK: - Derived title of a generic incident (S5)
+
+    func testOtherIncidentTitleIsTheFirstSentenceOfTheText() throws {
+        let alerts = try liveAlerts()
+        let now = try liveNow(alerts)
+        // 227008 covers Catalunya on L1 (code 126) and on L3 (code 326).
+        let index = IncidentIndex.incidents(
+            for: alerts,
+            stations: [station(code: 126, name: "Catalunya", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        let incident = try XCTUnwrap(index[126]?.first)
+        XCTAssertEqual(incident.kind, .other)
+        // Cut at the first ". " (dot dropped) and then at a word boundary inside
+        // 70 characters; the markup never reaches the title.
+        XCTAssertEqual(
+            incident.title,
+            "A partir d'avui,i fins al 30 de desembre, els passadissos que…"
+        )
+        XCTAssertFalse(incident.title.contains("<"))
+        XCTAssertFalse(incident.title.contains("\n"))
+        // The full text of the incident still carries both sentences.
+        XCTAssertEqual(incident.text?.hasSuffix("segueix les indicacions dels cartells a l'estació Catalunya."), true)
+    }
+
+    func testOtherIncidentTitleTruncatesTextWithoutASentenceBreak() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let longText = "Aquest avís explica una obra molt llarga sense cap punt final enlloc que permeti tallar el títol"
+        let longIndex = IncidentIndex.incidents(
+            for: [alert(id: "5001", begin: nil, end: nil, effectCode: "PP2", text: longText)],
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(
+            longIndex[136]?.first?.title,
+            "Aquest avís explica una obra molt llarga sense cap punt final enlloc…"
+        )
+
+        // Exactly 70 characters is short enough to stay whole.
+        let exactText = "Text de setanta caràcters exactes per provar el límit del títol d avís"
+        let exactIndex = IncidentIndex.incidents(
+            for: [alert(id: "5002", begin: nil, end: nil, effectCode: "PP2", text: exactText)],
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(exactIndex[136]?.first?.title, exactText)
+    }
+
+    func testOtherIncidentTitleFallsBackWhenTheTextIsMissing() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let alerts = [
+            alert(id: "5003", begin: nil, end: nil, effectCode: "PP2", text: nil),
+            alert(id: "5004", begin: nil, end: nil, effectCode: "PP2", text: "   "),
+        ]
+        let index = IncidentIndex.incidents(
+            for: alerts,
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(index[136]?.map(\.title), ["Incidència a l'estació", "Incidència a l'estació"])
+        XCTAssertNil(index[136]?.first?.text)
     }
 
     func testAccessClosedWithoutEntranceUsesThePlainTitle() {

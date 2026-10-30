@@ -20,5 +20,10 @@ struct RootView: View {
                 }
         }
         .environmentObject(app)
+        // Incidents load at launch and refresh every minute, whichever tab is
+        // open: the map and Xarxa need them without a visit to Avisos (S1).
+        .task {
+            await app.startAlertsPolling()
+        }
     }
 }

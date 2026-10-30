@@ -4,6 +4,33 @@ import OSLog
 import Sentry
 import SwiftUI
 
+/// Monotonic clock for poll latency: wall-clock time would report nonsense
+/// after an NTP step or a timezone change.
+private let pollClock = ContinuousClock()
+
+/// Milliseconds elapsed since `start`, truncated. `Duration` has no portable
+/// ratio operator, so its components are converted by hand.
+private func elapsedMilliseconds(since start: ContinuousClock.Instant) -> Int {
+    let elapsed = pollClock.now - start
+    let components = elapsed.components
+    let milliseconds = Double(components.seconds) * 1_000
+        + Double(components.attoseconds) / 1_000_000_000_000_000
+    return Int(milliseconds)
+}
+
+/// Sentry breadcrumb for one poll (spec S4): category `poll`, with the latency
+/// and counters that explain a slow or empty refresh.
+///
+/// Breadcrumbs only: a transient network failure stays out of the event stream,
+/// exactly as before, so the breadcrumb trail still shows the last attempts
+/// when a real error is captured.
+private func addPollBreadcrumb(_ message: String, data: [String: Any]) {
+    let crumb = Breadcrumb(level: .info, category: "poll")
+    crumb.message = message
+    crumb.data = data
+    SentrySDK.addBreadcrumb(crumb)
+}
+
 /// App-wide model: owns the TMB client and the service alerts feed.
 @MainActor
 final class AppModel: ObservableObject {
@@ -17,6 +44,14 @@ final class AppModel: ObservableObject {
     @Published var alerts: [ServiceAlert] = []
     @Published var alertsErrorMessage: String?
     @Published var isLoadingAlerts = false
+    /// Time of the last successful alerts load; nil until one succeeds.
+    /// A failed refresh keeps the previous alerts and leaves this untouched, so
+    /// the UI can tell "stale but real" from "never loaded".
+    @Published private(set) var alertsUpdatedAt: Date?
+
+    /// Alerts poll period. TMB refreshes the alert feed on the order of
+    /// minutes, so a minute keeps incidents visible without hammering the API.
+    static let alertsPollIntervalNanoseconds: UInt64 = 60_000_000_000
 
     init(infoDictionary: [String: Any]? = Bundle.main.infoDictionary) {
         self.client = try? TMBClient.fromBundle(infoDictionary: infoDictionary)
@@ -27,21 +62,54 @@ final class AppModel: ObservableObject {
     }
 
     /// Fetches service alerts; failures surface as a message, never a crash.
+    /// Only a successful load stamps `alertsUpdatedAt` (spec S1).
     func refreshAlerts() async {
         guard let client else { return }
         isLoadingAlerts = true
         defer { isLoadingAlerts = false }
+        let start = pollClock.now
         do {
-            alerts = try await client.alerts()
+            let loaded = try await client.alerts()
+            alerts = loaded
+            alertsUpdatedAt = Date()
             alertsErrorMessage = nil
+            addPollBreadcrumb("alerts", data: [
+                "line": "alerts",
+                "latency_ms": elapsedMilliseconds(since: start),
+                "ok": true,
+                "alerts": loaded.count,
+            ])
         } catch {
             alertsErrorMessage = error.localizedDescription
+            addPollBreadcrumb("alerts failed", data: [
+                "line": "alerts",
+                "latency_ms": elapsedMilliseconds(since: start),
+                "ok": false,
+                "alerts": alerts.count,
+            ])
+        }
+    }
+
+    /// Loads the alerts immediately and then every minute until the task is
+    /// cancelled (spec S1): every tab sees the incidents without opening Avisos
+    /// first, and they do not go stale while the app stays on the map.
+    func startAlertsPolling() async {
+        while !Task.isCancelled {
+            await refreshAlerts()
+            try? await Task.sleep(nanoseconds: Self.alertsPollIntervalNanoseconds)
         }
     }
 
     /// Alerts that mention the given line code.
     func alerts(affecting lineCode: String) -> [ServiceAlert] {
         alerts.filter { $0.lineCodes.contains(lineCode) }
+    }
+
+    /// Alerts of the line that are in force right now (spec S3): scheduled
+    /// disruptions are in the feed long before they affect a trip, so the chips
+    /// count only the ones happening now.
+    func activeAlerts(affecting lineCode: String, now: Date = Date()) -> [ServiceAlert] {
+        alerts(affecting: lineCode).filter { $0.isActive(now: now) }
     }
 }
 
@@ -63,6 +131,14 @@ final class LineState {
     private(set) var isLoadingTopology = false
     private(set) var isPolling = false
     private(set) var errorMessage: String?
+    /// Time of the last successful arrivals poll; nil until one succeeds (S3).
+    private(set) var arrivalsUpdatedAt: Date?
+    /// Whether the last arrivals poll failed; a failure keeps the markers on the
+    /// last known data, so it downgrades the freshness instead of clearing it.
+    private(set) var lastPollFailed = false
+    /// A successful poll answered with no arrivals at all for the line: L9N,
+    /// L9S, L10N, L10S and FM have no live feed (S3, S8).
+    private(set) var isFeedEmpty = false
 
     /// Poll cycle for i-Metro arrivals, in seconds. 20 s keeps the request
     /// volume per visible line modest while staying visibly live.
@@ -174,19 +250,53 @@ final class LineState {
         isPolling = true
         defer { isPolling = false }
 
+        let start = pollClock.now
         let stationCodes = stations.map(\.code)
+        let fetched: [Int: [Arrival]]
         do {
-            arrivalsByStop = try await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes)
+            fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes)
         } catch {
+            lastPollFailed = true
             Self.report(error, "arrivals", line: line.code)
+            addPollBreadcrumb("arrivals failed", data: [
+                "line": line.code,
+                "latency_ms": elapsedMilliseconds(since: start),
+                "ok": false,
+                "arrivals": 0,
+                "trains": 0,
+            ])
             return
         }
 
-        let all = arrivalsByStop.values.flatMap { $0 }
+        arrivalsByStop = fetched
+        arrivalsUpdatedAt = Date()
+        lastPollFailed = false
+        let feedWasEmpty = isFeedEmpty
+        let all = fetched.values.flatMap { $0 }
+        isFeedEmpty = all.isEmpty
         let computed = engine?.positions(lineCode: line.code, arrivals: all) ?? []
         motion.update(with: computed, now: Date())
         positions = engine.map { motion.advance(to: Date(), engine: $0) } ?? []
+        addPollBreadcrumb("arrivals", data: [
+            "line": line.code,
+            "latency_ms": elapsedMilliseconds(since: start),
+            "ok": true,
+            "arrivals": all.count,
+            "trains": computed.count,
+        ])
+        if isFeedEmpty, !feedWasEmpty {
+            addPollBreadcrumb("feed empty", data: ["line": line.code])
+        }
         Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(computed.count) trains")
+    }
+
+    /// How old the arrivals behind the markers are (spec S3).
+    func freshness(now: Date = Date()) -> DataFreshness {
+        Freshness.level(
+            lastUpdate: arrivalsUpdatedAt,
+            now: now,
+            lastAttemptFailed: lastPollFailed
+        )
     }
 
     /// Advances the interpolated markers by one tick. Called by the one-second
