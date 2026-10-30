@@ -41,6 +41,14 @@ final class AppModel: ObservableObject {
     /// a configuration error instead of an empty feed.
     let client: TMBClient?
 
+    /// The timetable of the network, downloaded from the CI-published release
+    /// and cached (schedule S2b, S6). A missing or unreachable pack silently
+    /// turns every schedule feature off: nothing else in the app depends on it.
+    ///
+    /// The store is shared because the cache folder is: two screens of the same
+    /// line reuse the copy the first one downloaded.
+    let schedule = ScheduleStore.shared
+
     @Published var alerts: [ServiceAlert] = []
     @Published var alertsErrorMessage: String?
     @Published var isLoadingAlerts = false
@@ -61,6 +69,16 @@ final class AppModel: ObservableObject {
 
     init(infoDictionary: [String: Any]? = Bundle.main.infoDictionary) {
         self.client = try? TMBClient.fromBundle(infoDictionary: infoDictionary)
+        startScheduleRefresh()
+    }
+
+    /// Fetches the timetable index once, off the main thread: it is a few
+    /// kilobytes, it never blocks launch, and a failure only leaves the feature
+    /// off (schedule S2b).
+    nonisolated func startScheduleRefresh() {
+        Task.detached(priority: .background) {
+            await ScheduleStore.shared.refreshIndex()
+        }
     }
 
     var missingCredentialsMessage: String? {
@@ -177,6 +195,16 @@ final class LineState {
     /// L9S, L10N, L10S and FM have no live feed (S3, S8).
     private(set) var isFeedEmpty = false
 
+    /// True while the markers come from the timetable instead of the feed
+    /// (schedule S6): the line's feed is empty and the schedule pack has it.
+    /// The UI labels the markers accordingly, they are never presented as
+    /// observed trains.
+    private(set) var isTheoretical = false
+
+    /// This line's timetable, loaded once in `loadTopology` (schedule S6). Nil
+    /// when the bundle carries no pack or it has no entry for this line.
+    private(set) var scheduleLine: ScheduleLine?
+
     /// Poll cycle for i-Metro arrivals, in seconds. 20 s keeps the request
     /// volume per visible line modest while staying visibly live.
     static let pollIntervalSeconds: UInt64 = 20
@@ -227,6 +255,9 @@ final class LineState {
     func loadTopology() async {
         isLoadingTopology = true
         defer { isLoadingTopology = false }
+        // The timetable does not depend on the topology request, and it is what
+        // makes a line without a live feed drawable: ask for it first (S6).
+        await loadScheduleLine()
         do {
             let loadedStations = try await client.stations(lineCode: line.code)
             stations = loadedStations
@@ -254,6 +285,36 @@ final class LineState {
     }
 
     private static let log = Logger(subsystem: "cat.transport.app", category: "LineState")
+
+    /// Modes the schedule pack may file this line under: the metro entry keyed
+    /// by the numeric TMB code, plus the funicular for the FM line, whose
+    /// timetable is its own mode in the pack.
+    private var scheduleRequests: [(mode: ScheduleMode, code: Int)] {
+        guard let code = Int(line.code) else { return [] }
+        return line.code == "99"
+            ? [(mode: .funicular, code: code), (mode: .metro, code: code)]
+            : [(mode: .metro, code: code)]
+    }
+
+    /// Loads this line's timetable: the store answers from its cache, or
+    /// downloads this one line file, so the network and the JSON decoding both
+    /// happen outside a screen update (S8). Safe to call more than once; the
+    /// second call is a no-op.
+    ///
+    /// The store comes from `AppModel.shared` because the screens build this
+    /// state as `LineState(line:client:)` and an app without a timetable must
+    /// keep working unchanged: the property degrades to nil instead of forcing a
+    /// new parameter through every call site.
+    private func loadScheduleLine() async {
+        guard scheduleLine == nil else { return }
+        let store = AppModel.shared.schedule
+        for request in scheduleRequests {
+            if let line = await store.line(mode: request.mode, code: request.code) {
+                scheduleLine = line
+                return
+            }
+        }
+    }
 
     /// Logs a failed request and reports it to Sentry as a non-fatal event,
     /// so a blank map in the field can be traced to its cause.
@@ -311,20 +372,76 @@ final class LineState {
         let feedWasEmpty = isFeedEmpty
         let all = fetched.values.flatMap { $0 }
         isFeedEmpty = all.isEmpty
-        let computed = engine?.positions(lineCode: line.code, arrivals: all) ?? []
-        motion.update(with: computed, now: Date())
-        positions = engine.map { motion.advance(to: Date(), engine: $0) } ?? []
+        // A line whose feed is always empty but whose timetable is available is
+        // drawn from it instead of staying blank (schedule S6).
+        isTheoretical = isFeedEmpty && scheduleLine != nil && engine != nil
+        var trainCount = 0
+        if isTheoretical {
+            let scheduled = theoreticalPositions(now: Date())
+            positions = scheduled
+            trainCount = scheduled.count
+        } else {
+            let computed = engine?.positions(lineCode: line.code, arrivals: all) ?? []
+            motion.update(with: computed, now: Date())
+            positions = engine.map { motion.advance(to: Date(), engine: $0) } ?? []
+            trainCount = computed.count
+        }
         addPollBreadcrumb("arrivals", data: [
             "line": line.code,
             "latency_ms": elapsedMilliseconds(since: start),
             "ok": true,
             "arrivals": all.count,
-            "trains": computed.count,
+            "trains": trainCount,
+            "theoretical": isTheoretical,
         ])
         if isFeedEmpty, !feedWasEmpty {
             addPollBreadcrumb("feed empty", data: ["line": line.code])
         }
-        Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(computed.count) trains")
+        let mode = isTheoretical ? "theoretical" : "live"
+        Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(trainCount) trains, \(mode, privacy: .public)")
+    }
+
+    /// Scheduled positions of the trains the line should have right now, or an
+    /// empty list when there is no timetable for it (schedule S6).
+    private func theoreticalPositions(now: Date) -> [TrainPosition] {
+        guard let scheduleLine, let engine else { return [] }
+        return TheoreticalFleet.positions(line: scheduleLine, stations: stations, engine: engine, now: now)
+    }
+
+    /// Live arrivals at a station against the timetable of the same direction
+    /// (schedule S6, S3). `via` follows the map's convention: 1 travels toward
+    /// the line's last station, 2 toward the first. Nil when there is no
+    /// timetable for the line or no scheduled direction matching `via`, which
+    /// is what leaves the regularity tag off the screen.
+    func regularity(stationCode: Int, via: Int, now: Date) -> RegularityReport? {
+        guard let scheduleLine,
+              let directionID = scheduledDirectionID(via: via, schedule: scheduleLine) else { return nil }
+        let live = (arrivalsByStop[stationCode] ?? []).compactMap { arrival -> Date? in
+            guard let seconds = arrival.seconds else { return nil }
+            return now.addingTimeInterval(Double(seconds))
+        }
+        let scheduled = scheduleLine.arrivals(at: stationCode, directionID: directionID, on: now)
+        return Regularity.assess(live: live, scheduled: scheduled, now: now)
+    }
+
+    /// Scheduled direction that travels the way `via` says: a pattern that
+    /// starts at a lower station index than it ends is the forward one, and
+    /// station indexes come from the line's own station order (S6).
+    private func scheduledDirectionID(via: Int, schedule: ScheduleLine) -> Int? {
+        guard via == 1 || via == 2 else { return nil }
+        var indexByCode: [Int: Int] = [:]
+        for (index, station) in stations.enumerated() {
+            indexByCode[station.code] = index
+        }
+        let wantsForward = via == 1
+        return schedule.directions.first { direction in
+            direction.patterns.contains { pattern in
+                guard let first = pattern.stops.first.flatMap({ indexByCode[$0] }),
+                      let last = pattern.stops.last.flatMap({ indexByCode[$0] }),
+                      first != last else { return false }
+                return (last > first) == wantsForward
+            }
+        }?.id
     }
 
     /// How old the arrivals behind the markers are (spec S3).
@@ -336,10 +453,16 @@ final class LineState {
         )
     }
 
-    /// Advances the interpolated markers by one tick. Called by the one-second
-    /// ticker in `run()`; does nothing until the topology is loaded.
+    /// Advances the interpolated markers by one tick. Called by the 10 Hz
+    /// ticker in `run()`; does nothing until the topology is loaded. A line
+    /// drawn from its timetable is re-evaluated here, because a theoretical
+    /// train also has to move between polls (schedule S6).
     func tick() {
         guard let engine else { return }
+        if isTheoretical {
+            positions = theoreticalPositions(now: Date())
+            return
+        }
         positions = motion.advance(to: Date(), engine: engine)
     }
 }

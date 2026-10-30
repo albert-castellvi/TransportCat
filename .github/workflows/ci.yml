@@ -154,6 +154,13 @@ jobs:
           swift --version
           xcrun simctl list runtimes
 
+      # S1: `scripts/build-schedule-pack.py` is Python standard library only, so
+      # its unit tests run here, before the slow Xcode build and with no extra
+      # toolchain setup. The pack itself is not built in this job and not
+      # bundled in the app: `.github/workflows/schedule-pack.yml` publishes it.
+      - name: Run schedule pack builder tests
+        run: python3 -m unittest scripts/test_build_schedule_pack.py
+
       # `project.yml` is the source of truth; the .xcodeproj is gitignored.
       - name: Install XcodeGen
         run: brew install xcodegen && xcodegen --version

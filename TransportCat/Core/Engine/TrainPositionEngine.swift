@@ -35,6 +35,11 @@ struct TrainPosition: Identifiable, Equatable {
     /// rotates the train marker with it; it is never the direction of the
     /// line, so a backward train reports the reversed bearing.
     let heading: Double
+    /// True when the position comes from the timetable instead of the live
+    /// feed (schedule S5): the lines without real-time data are drawn from
+    /// their schedule and the UI labels them as theoretical. Defaults to
+    /// false, so every feed-derived position is unchanged.
+    var isTheoretical: Bool = false
 
     /// A copy of this position re-placed along the route, keeping every
     /// poll-derived field (countdown, dwelling state, direction). Used by
@@ -56,7 +61,8 @@ struct TrainPosition: Identifiable, Equatable {
             segmentEndDistance: segmentEndDistance,
             isDwelling: isDwelling,
             position: point,
-            heading: heading
+            heading: heading,
+            isTheoretical: isTheoretical
         )
     }
 }
@@ -99,6 +105,11 @@ struct TrainPositionEngine {
     /// Speed the engine was built with, in m/s. `TrainMotion` extrapolates
     /// with it between polls.
     var speed: Double { speedMetersPerSecond }
+
+    /// Cumulative route distance of each station, in the order the engine was
+    /// built with. Read-only: the theoretical fleet interpolates between these
+    /// distances, so a scheduled train sits exactly where a live one would.
+    var stationRouteDistances: [Double] { stationDistances }
 
     /// - Parameters:
     ///   - stations: stations of ONE line, already ordered by ORDRE_ESTACIO.
