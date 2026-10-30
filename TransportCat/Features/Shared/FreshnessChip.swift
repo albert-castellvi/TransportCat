@@ -64,25 +64,51 @@ struct FreshnessChip: View {
 /// The map draws it centered over the map, Xarxa as a block above the rows;
 /// both use this view so the wording and the icon can never differ.
 struct NoRealtimeDataCard: View {
+    /// A one-row strip for the map, where the card must not hide the line;
+    /// Xarxa keeps the centered block above its rows.
+    var compact = false
+
     var body: some View {
-        VStack(spacing: 8) {
-            Image("icon-realtime-off")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 32, height: 32)
-                .foregroundStyle(.secondary)
-            Text("Sense dades en temps real")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-            Text("TMB no publica les arribades d'aquesta línia.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        Group {
+            if compact {
+                HStack(spacing: 10) {
+                    icon(size: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sense dades en temps real")
+                            .font(.footnote.bold())
+                        Text("TMB no publica les arribades d'aquesta línia.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(10)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            } else {
+                VStack(spacing: 8) {
+                    icon(size: 32)
+                    Text("Sense dades en temps real")
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                    Text("TMB no publica les arribades d'aquesta línia.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(16)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            }
         }
-        .padding(16)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
         // It is a notice, not a control: the map stays pannable under it.
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
+    }
+
+    private func icon(size: CGFloat) -> some View {
+        Image("icon-realtime-off")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .foregroundStyle(.secondary)
     }
 }
