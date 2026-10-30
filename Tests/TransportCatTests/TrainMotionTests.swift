@@ -172,6 +172,31 @@ final class TrainMotionTests: XCTestCase {
         XCTAssertEqual(motion.advance(to: start.addingTimeInterval(1), engine: engine).count, 1)
     }
 
+    /// S2: the published heading belongs to the drawn point, not to the poll.
+    /// The marker eases between polls, so its bearing is recomputed at the
+    /// displayed distance and in the travel direction.
+    func testAdvancedHeadingMatchesTheEngineHeadingAtTheDisplayedDistance() throws {
+        let engine = try makeEngine()
+        var motion = TrainMotion()
+
+        let ahead = try XCTUnwrap(positions(engine, seconds: 50).first)
+        motion.update(with: [ahead], now: start)
+        _ = motion.advance(to: start, engine: engine)
+
+        // A poll that puts the target far ahead forces the marker to ease
+        // between two different distances.
+        let slow = try XCTUnwrap(positions(engine, seconds: 200).first)
+        motion.update(with: [slow], now: start)
+
+        for second in 1...5 {
+            let drawn = try XCTUnwrap(motion.advance(to: start.addingTimeInterval(Double(second)), engine: engine).first)
+            let expected = engine.heading(atRouteDistance: drawn.routeDistance, forward: drawn.forward)
+            XCTAssertEqual(drawn.heading, expected, accuracy: 1e-9, "second \(second)")
+            XCTAssertGreaterThanOrEqual(drawn.heading, 0)
+            XCTAssertLessThan(drawn.heading, 360)
+        }
+    }
+
     /// Pure value type: the same calls with the same dates give the same
     /// result.
     func testSameInputsProduceTheSameOutput() throws {

@@ -23,9 +23,11 @@ import Foundation
 ///   target at most `maxStepMetersPerSecond` per second of wall time, never
 ///   moves against the travel direction, and snaps when it is further than
 ///   `snapThresholdMeters` away.
-/// - Only `routeDistance` and `position` are interpolated; every other field
-///   (`secondsToArrival`, `isDwelling`, direction...) stays as of the last
-///   poll, because the feed only knows them once every 20 s.
+/// - Only `routeDistance`, `position` and `heading` are interpolated; every
+///   other field (`secondsToArrival`, `isDwelling`, direction...) stays as of
+///   the last poll, because the feed only knows them once every 20 s. The
+///   heading is interpolated like the position: it is the bearing at the drawn
+///   point, not the one measured at the poll.
 struct TrainMotion {
     /// Hard cap on how far a marker may move in one second, whatever the
     /// difference between the displayed point and the new poll.
@@ -94,7 +96,10 @@ struct TrainMotion {
             }
 
             let point = engine.point(atRouteDistance: displayed) ?? train.position
-            result.append(train.moved(toRouteDistance: displayed, position: point))
+            // S2: the bearing belongs to the drawn point and to the travel
+            // direction, so a marker easing into a curve turns with it.
+            let heading = engine.heading(atRouteDistance: displayed, forward: train.forward)
+            result.append(train.moved(toRouteDistance: displayed, position: point, heading: heading))
             advanced[id] = Track(train: train, displayed: displayed, targetTime: track.targetTime)
         }
         tracks = advanced
