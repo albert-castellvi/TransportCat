@@ -77,7 +77,8 @@ struct MapScreen: View {
                 }
             }
             ForEach(state.positions) { position in
-                Annotation("Tren \(position.destination)", coordinate: CLLocationCoordinate2D(latitude: position.position.latitude, longitude: position.position.longitude)) {
+                // Empty title: the destination is already on the marker.
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.position.latitude, longitude: position.position.longitude)) {
                     TrainDot(color: selectedLine.colorHex, destination: position.destination)
                 }
             }
@@ -173,17 +174,23 @@ struct TrainDot: View {
     let destination: String
 
     var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(Color(hex: color))
-                .frame(width: 16, height: 16)
-                .overlay(Circle().stroke(.white, lineWidth: 2))
-                .shadow(radius: 2)
-            Text(destination)
-                .font(.caption2.bold())
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(.thinMaterial, in: Capsule())
-        }
+        // MapKit centers an annotation on its coordinate, so the label hangs
+        // off the circle in an overlay (which adds nothing to the size): in an
+        // HStack the circle sat half a label away from the track.
+        Circle()
+            .fill(Color(hex: color))
+            .frame(width: 16, height: 16)
+            .overlay(Circle().stroke(.white, lineWidth: 2))
+            .shadow(radius: 2)
+            .overlay(alignment: .leading) {
+                Text(destination)
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.thinMaterial, in: Capsule())
+                    .fixedSize()
+                    .offset(x: 22)
+            }
+            .accessibilityLabel("Tren \(destination)")
     }
 }
