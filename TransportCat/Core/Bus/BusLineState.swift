@@ -56,6 +56,17 @@ final class BusLineState {
     private(set) var isLoading = false
     private(set) var errorMessage: String?
 
+    /// This line's timetable, loaded once in `loadTopology` (schedule S6). Nil
+    /// when the bundle carries no pack or it has no entry for this line.
+    private(set) var scheduleLine: ScheduleLine?
+    /// Observations of the last successful poll, per bus: the stops it was seen
+    /// approaching and the absolute instant the feed expects it there (poll
+    /// time plus its countdown).
+    private var observationsByBus: [Int: BusObservations] = [:]
+    /// Estimated offset of each bus, computed once per poll from the
+    /// observations above; empty when there is no timetable.
+    private var delays: [Int: DelayEstimate] = [:]
+
     /// Poll cycle, in seconds. iBus updates on the order of tens of seconds,
     /// so 20 s keeps a line visible without hammering the API (spec S5).
     static let pollIntervalSeconds: UInt64 = 20
@@ -132,6 +143,9 @@ final class BusLineState {
     func loadTopology() async {
         isLoading = true
         defer { isLoading = false }
+        // The timetable is independent of the topology requests and a failure
+        // to have one must not fail the screen (schedule S6).
+        await loadScheduleLine()
         do {
             let loadedStops = try await client.busStops(lineCode: line.code)
             let loadedRoutes = try await client.busRoutes(lineCode: line.code)
@@ -152,6 +166,18 @@ final class BusLineState {
     }
 
     private static let log = Logger(subsystem: "cat.transport.app", category: "BusLineState")
+
+    /// Loads this line's timetable: the store answers from its cache, or
+    /// downloads this one line file, so neither the network nor the JSON
+    /// decoding happens inside a screen update (schedule S8).
+    ///
+    /// The store comes from `AppModel.shared` because the screens build this
+    /// state as `BusLineState(line:client:)`: without a timetable the property
+    /// stays nil and every schedule feature degrades silently.
+    private func loadScheduleLine() async {
+        guard scheduleLine == nil else { return }
+        scheduleLine = await AppModel.shared.schedule.line(mode: .bus, code: line.code)
+    }
 
     /// Logs a failed request and reports it to Sentry as a non-fatal event, so
     /// a blank bus map in the field can be traced to its cause.
@@ -239,6 +265,8 @@ final class BusLineState {
 
         let now = Date()
         let all = fetched.values.flatMap { $0 }
+        observationsByBus = Self.observations(from: fetched, now: now)
+        delays = Self.estimates(for: observationsByBus, line: scheduleLine, now: now)
         let lineCode = String(line.code)
         for direction in directions {
             let trains = BusFleet.positions(direction: direction, arrivals: all, lineCode: lineCode).map(\.train)
@@ -255,6 +283,36 @@ final class BusLineState {
             "buses": buses,
         ])
         Self.log.info("Bus line \(self.line.name, privacy: .public): \(all.count) arrivals, \(buses) buses, \(self.positions.count) markers")
+    }
+
+    /// Estimated offset of one bus against the timetable, or nil when there is
+    /// no timetable, the bus cannot be matched to a scheduled trip, or the
+    /// match is too ambiguous to show (schedule S4, S6).
+    ///
+    /// Computed once per poll: the observations and the schedule work are the
+    /// same for every bus, so the UI only reads the dictionary.
+    func delay(forBus id: Int) -> DelayEstimate? {
+        delays[id]
+    }
+
+    /// Live arrivals at a stop against the timetable of the same direction
+    /// (schedule S6, S3). `directionID` is the iBus `id_sentit` the stop sheet
+    /// and the diagram already use (1 = Anada).
+    ///
+    /// The iBus direction and the GTFS `direction_id` are different spaces (1/2
+    /// against 0/1) and do not even agree in order, so the direction is matched
+    /// by name: `DESTI_SENTIT` of the line direction against the headsign of the
+    /// scheduled one, and, when the names differ, the only scheduled direction
+    /// whose patterns serve the stop. Nil when neither identifies one.
+    func regularity(stopCode: Int, directionID: Int, now: Date) -> RegularityReport? {
+        guard let scheduleLine else { return nil }
+        let destination = directions.first { $0.id == directionID }?.destinationName ?? ""
+        guard let direction = scheduleLine.direction(headsign: destination, stopCodes: [stopCode]) else { return nil }
+        let live = (arrivalsByStop[stopCode] ?? [])
+            .filter { $0.directionID == directionID }
+            .map { now.addingTimeInterval(Double($0.seconds)) }
+        let scheduled = scheduleLine.arrivals(at: stopCode, directionID: direction.id, on: now)
+        return Regularity.assess(live: live, scheduled: scheduled, now: now)
     }
 
     /// How old the arrivals behind the buses are (spec S9).
@@ -287,4 +345,58 @@ final class BusLineState {
         }
         return result.sorted { $0.id < $1.id }
     }
+
+    /// Every polled stop the bus has an ETA for, as absolute instants: the feed
+    /// answers with a countdown, and a countdown is only comparable with a
+    /// timetable once it is anchored to the poll's own time.
+    private static func observations(from fetched: [Int: [BusArrival]], now: Date) -> [Int: BusObservations] {
+        var result: [Int: BusObservations] = [:]
+        for (stopCode, arrivals) in fetched {
+            for arrival in arrivals {
+                guard let busID = arrival.busID else { continue }
+                var observation = result[busID] ?? BusObservations(destination: arrival.destination)
+                observation.stops.append((
+                    stopCode: stopCode,
+                    eta: now.addingTimeInterval(Double(arrival.seconds))
+                ))
+                result[busID] = observation
+            }
+        }
+        return result
+    }
+
+    /// One estimate per bus of the poll, computed against the timetable of the
+    /// scheduled direction its headsign (or, failing that, its observed stops)
+    /// identifies. Buses that cannot be matched are simply absent.
+    private static func estimates(
+        for observations: [Int: BusObservations],
+        line: ScheduleLine?,
+        now: Date
+    ) -> [Int: DelayEstimate] {
+        guard let line else { return [:] }
+        var result: [Int: DelayEstimate] = [:]
+        for (busID, observed) in observations {
+            guard let direction = line.direction(
+                headsign: observed.destination,
+                stopCodes: Set(observed.stops.map(\.stopCode))
+            ) else { continue }
+            guard let estimate = BusDelay.estimate(
+                observations: observed.stops,
+                line: line,
+                directionID: direction.id,
+                now: now
+            ) else { continue }
+            result[busID] = estimate
+        }
+        return result
+    }
+}
+
+/// What the last poll saw of one bus: the stops it was heading to, the instant
+/// the feed expects it there, and the destination that identifies its direction.
+private struct BusObservations {
+    var stops: [(stopCode: Int, eta: Date)] = []
+    /// `desti_trajecte` of the arrival: the iBus name of the direction, which
+    /// is what maps the bus onto a scheduled one.
+    let destination: String
 }

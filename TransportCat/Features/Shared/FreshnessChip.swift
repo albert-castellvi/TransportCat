@@ -39,6 +39,9 @@ struct FreshnessChip: View {
     private static let delayedColor = Color.orange
     private static let staleColor = Color.red
     private static let unavailableColor = Color.gray
+    /// A line drawn from the timetable rather than a live feed (spec S7): blue,
+    /// so it reads as information instead of a degraded live state.
+    private static let theoreticalColor = Color.blue
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -46,7 +49,8 @@ struct FreshnessChip: View {
             let lastUpdate = lineState?.arrivalsUpdatedAt ?? updatedAt
             let attemptFailed = lineState?.lastPollFailed ?? lastAttemptFailed
             let empty = lineState?.isFeedEmpty ?? feedEmpty
-            let status = status(now: now, lastUpdate: lastUpdate, attemptFailed: attemptFailed, feedEmpty: empty)
+            let theoretical = lineState?.isTheoretical ?? false
+            let status = status(now: now, lastUpdate: lastUpdate, attemptFailed: attemptFailed, feedEmpty: empty, theoretical: theoretical)
             HStack(spacing: 6) {
                 Circle()
                     .fill(status.color)
@@ -66,7 +70,12 @@ struct FreshnessChip: View {
     ///
     /// The level comes from `Freshness.level` exactly as the metro chip did
     /// through `LineState.freshness`, so both sources share one rule (S2, S5).
-    private func status(now: Date, lastUpdate: Date?, attemptFailed: Bool, feedEmpty: Bool) -> (color: Color, text: String) {
+    private func status(now: Date, lastUpdate: Date?, attemptFailed: Bool, feedEmpty: Bool, theoretical: Bool) -> (color: Color, text: String) {
+        // Trains computed from the timetable: the age of the schedule is not a
+        // data age, so the chip says what it is and shows no countdown (S7).
+        if theoretical {
+            return (Self.theoreticalColor, "Horari teòric")
+        }
         // A line TMB publishes no arrivals for is never "En directe", however
         // recent the last empty answer was (spec S8).
         if feedEmpty {
@@ -101,6 +110,9 @@ struct NoRealtimeDataCard: View {
     /// A one-row strip for the map, where the card must not hide the line;
     /// Xarxa keeps the centered block above its rows.
     var compact = false
+    /// The line has no live feed but the bundled timetable fills it in: the
+    /// second line says what is shown instead (spec S7).
+    var theoretical = false
 
     var body: some View {
         Group {
@@ -110,7 +122,7 @@ struct NoRealtimeDataCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Sense dades en temps real")
                             .font(.footnote.bold())
-                        Text("TMB no publica les arribades d'aquesta línia.")
+                        Text(secondLine)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -124,7 +136,7 @@ struct NoRealtimeDataCard: View {
                     Text("Sense dades en temps real")
                         .font(.headline)
                         .multilineTextAlignment(.center)
-                    Text("TMB no publica les arribades d'aquesta línia.")
+                    Text(secondLine)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -136,6 +148,14 @@ struct NoRealtimeDataCard: View {
         // It is a notice, not a control: the map stays pannable under it.
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Explanation under the title, shared by the compact and the full style so
+    /// the two can never say different things (S7).
+    private var secondLine: String {
+        theoretical
+            ? "Es mostra l'horari teòric."
+            : "TMB no publica les arribades d'aquesta línia."
     }
 
     private func icon(size: CGFloat) -> some View {

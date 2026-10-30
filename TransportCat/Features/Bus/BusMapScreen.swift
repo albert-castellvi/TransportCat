@@ -72,7 +72,12 @@ struct BusMapScreen: View {
         // navigation bar.
         .sheet(item: $selectedStop) { stop in
             if let line = store.selectedLine, let state = lineState {
-                BusStopSheet(stop: stop, line: line, incidents: incidents(for: stop, in: state, line: line))
+                BusStopSheet(
+                    stop: stop,
+                    line: line,
+                    incidents: incidents(for: stop, in: state, line: line),
+                    delays: delays(for: stop, in: state)
+                )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -289,6 +294,19 @@ struct BusMapScreen: View {
             stations: stations,
             lineCode: code
         )[stop.code] ?? []
+    }
+
+    /// The delay of each bus the sheet lists, estimated against the timetable
+    /// (spec S7). The ids are the ones this stop's arrivals already name, so
+    /// nothing is polled for the sheet: `delay(forBus:)` answers from the last
+    /// poll. Lines the schedule cannot place simply have no entry.
+    private func delays(for stop: BusStop, in state: BusLineState) -> [Int: DelayEstimate] {
+        var estimates: [Int: DelayEstimate] = [:]
+        for arrival in state.arrivalsByStop[stop.code] ?? [] {
+            guard let busID = arrival.busID, let estimate = state.delay(forBus: busID) else { continue }
+            estimates[busID] = estimate
+        }
+        return estimates
     }
 
     /// Fit the camera to the whole line on every change of line, so a long

@@ -92,10 +92,15 @@ struct DiagramScreen: View {
             stations: state.stations,
             lineCode: selectedLine.code
         )
+        // One clock per render for the regularity tags: the whole column is
+        // rebuilt on every poll, so the tags recompute with it and never per
+        // row (S7).
+        let now = Date()
         let rows = Self.rowPlan(
             stations: state.stations,
             incidents: incidents,
-            arrivalsByStop: state.arrivalsByStop
+            state: state,
+            now: now
         )
         let incidentCount = incidents.values.reduce(0) { $0 + $1.count }
         ScrollView {
@@ -110,7 +115,7 @@ struct DiagramScreen: View {
                 if state.isFeedEmpty {
                     // No arrivals feed for this line: say so above the rows
                     // instead of leaving a spine with no trains (spec S8).
-                    NoRealtimeDataCard()
+                    NoRealtimeDataCard(theoretical: state.isTheoretical)
                         .padding(.horizontal, 16)
                         .padding(.bottom, 8)
                 }
@@ -147,7 +152,8 @@ struct DiagramScreen: View {
     private static func rowPlan(
         stations: [Station],
         incidents: [Int: [StationIncident]],
-        arrivalsByStop: [Int: [Arrival]]
+        state: LineState,
+        now: Date
     ) -> [DiagramRowPlan] {
         stations.enumerated().map { index, station in
             DiagramRowPlan(
@@ -156,8 +162,51 @@ struct DiagramScreen: View {
                 isFirst: index == 0,
                 isLast: index == stations.count - 1,
                 incidents: incidents[station.code] ?? [],
-                arrivals: arrivalsByStop[station.code] ?? []
+                arrivals: state.arrivalsByStop[station.code] ?? [],
+                regularity: regularityTag(for: station, state: state, now: now)
             )
+        }
+    }
+
+    /// The worse regularity of the two directions of a station, as the tag the
+    /// row shows: a service gap outranks bunching, and anything else shows
+    /// nothing (spec S7).
+    private static func regularityTag(for station: Station, state: LineState, now: Date) -> DiagramRegularityTag? {
+        // Two live arrivals are the minimum for any verdict, so a station the
+        // feed does not even report twice is skipped instead of being asked.
+        let live = (state.arrivalsByStop[station.code] ?? []).filter { $0.seconds != nil }
+        guard live.count >= 2 else { return nil }
+        var bunched = false
+        for via in [1, 2] {
+            guard let report = state.regularity(stationCode: station.code, via: via, now: now) else { continue }
+            switch report.status {
+            case .gap:
+                guard let longestGap = report.longestGap else { continue }
+                return .gap(minutes: Int((longestGap / 60).rounded()))
+            case .bunched:
+                bunched = true
+            case .regular, .unknown:
+                break
+            }
+        }
+        return bunched ? .bunched : nil
+    }
+}
+
+/// Regularity problem of one station row, computed once per render (spec S7).
+/// The orange tag sits under the station name; nothing is drawn for a regular
+/// or unknown station.
+private enum DiagramRegularityTag {
+    /// No train for roughly that long in one of the directions.
+    case gap(minutes: Int)
+    /// Two trains arrived close together after a gap.
+    case bunched
+
+    /// Catalan wording of the tag, metro lines (S7).
+    var text: String {
+        switch self {
+        case .gap(let minutes): return "Buit de \(minutes) min"
+        case .bunched: return "Trens pegats"
         }
     }
 }
@@ -175,12 +224,25 @@ private struct DiagramRowPlan: Identifiable {
     let isLast: Bool
     let incidents: [StationIncident]
     let arrivals: [Arrival]
+    /// Regularity tag of the station, nil when there is nothing to report.
+    let regularity: DiagramRegularityTag?
 
     var id: Int { index }
 
+    /// A tag that replaces the accessible line costs the row nothing; one under
+    /// a station without it is a 14 pt line of its own, and the train overlay
+    /// reads the same number (S7).
     var height: CGFloat {
-        DiagramRow.baseHeight + DiagramRow.incidentLineHeight * CGFloat(incidents.count)
+        var height = DiagramRow.baseHeight + DiagramRow.incidentLineHeight * CGFloat(incidents.count)
+        if regularity != nil, !takesAccessibleLine {
+            height += DiagramRow.regularityLineHeight
+        }
+        return height
     }
+
+    /// True when the tag can sit on the line the "Accessible" label already
+    /// occupies, instead of adding one.
+    var takesAccessibleLine: Bool { station.accessible == true }
 }
 
 /// One station row of the diagram.
@@ -192,6 +254,8 @@ private struct DiagramRow: View {
     /// marker sits, so a train at a station is drawn on that marker (S6).
     static let baseHeight: CGFloat = 56
     static let incidentLineHeight: CGFloat = 18
+    /// Height of the regularity tag line when the row adds one (S7).
+    static let regularityLineHeight: CGFloat = 14
     static let horizontalPadding: CGFloat = 16
     static let markerSize: CGFloat = 24
     static let spineWidth: CGFloat = 5
@@ -225,7 +289,11 @@ private struct DiagramRow: View {
                     Text(row.station.name)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                    if row.station.accessible == true {
+                    if let regularity = row.regularity, row.takesAccessibleLine {
+                        // On the line of the accessible label, so it keeps that
+                        // label's intrinsic width and the pills stay right.
+                        regularityLine(regularity)
+                    } else if row.station.accessible == true {
                         Label("Accessible", image: "icon-accessible")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -242,6 +310,13 @@ private struct DiagramRow: View {
                 }
             }
             .frame(height: Self.baseHeight)
+            // Station without the accessible line: the tag gets its own line,
+            // which `DiagramRowPlan.height` already counted (S7).
+            if let regularity = row.regularity, !row.takesAccessibleLine {
+                regularityLine(regularity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: Self.regularityLineHeight)
+            }
             ForEach(incidents) { incident in
                 incidentLine(incident)
             }
@@ -308,6 +383,21 @@ private struct DiagramRow: View {
             .padding(2)
             .background(Circle().fill(.white))
             .offset(x: 3, y: 3)
+    }
+
+    /// The orange regularity tag: a small alert glyph and its wording (S7).
+    /// Not width-filling: the caller decides where the line sits.
+    private func regularityLine(_ regularity: DiagramRegularityTag) -> some View {
+        HStack(spacing: 4) {
+            Image("icon-alert")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 10, height: 10)
+            Text(regularity.text)
+                .lineLimit(1)
+        }
+        .font(.caption2.bold())
+        .foregroundStyle(incidentColor)
     }
 
     private func incidentLine(_ incident: StationIncident) -> some View {

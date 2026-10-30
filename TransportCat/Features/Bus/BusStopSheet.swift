@@ -9,6 +9,9 @@ struct BusStopSheet: View {
     /// incidents, but the arrivals listed below are all lines of the stop.
     let line: BusLine
     let incidents: [StationIncident]
+    /// Delay against the timetable of the buses already on screen, keyed by
+    /// `busID` (spec S7). Empty when the caller has no schedule to compare with.
+    let delays: [Int: DelayEstimate]
 
     @EnvironmentObject private var app: AppModel
     @State private var arrivals: [BusArrival] = []
@@ -23,10 +26,11 @@ struct BusStopSheet: View {
     /// than the map poll: a rider waiting at a stop wants the countdown to move.
     private static let refreshIntervalNanoseconds: UInt64 = 15_000_000_000
 
-    init(stop: BusStop, line: BusLine, incidents: [StationIncident]) {
+    init(stop: BusStop, line: BusLine, incidents: [StationIncident], delays: [Int: DelayEstimate] = [:]) {
         self.stop = stop
         self.line = line
         self.incidents = incidents
+        self.delays = delays
     }
 
     var body: some View {
@@ -123,6 +127,11 @@ struct BusStopSheet: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if let delay = delayLine(for: arrival) {
+                    Text(delay.text)
+                        .font(.caption)
+                        .foregroundStyle(delay.color)
+                }
                 if let rampOperational = arrival.rampOperational {
                     Text(rampOperational ? "rampa operativa" : "rampa amb incidència")
                         .font(.caption)
@@ -135,6 +144,25 @@ struct BusStopSheet: View {
                 .foregroundStyle(lineColor(for: arrival))
         }
         .padding(.vertical, 2)
+    }
+
+    /// The delay of one arrival against the timetable, as a small line under
+    /// the bus id. A low-confidence estimate is not something to tell a rider
+    /// waiting at the stop, so it is left out (spec S7).
+    private func delayLine(for arrival: BusArrival) -> (text: String, color: Color)? {
+        guard let busID = arrival.busID,
+              let estimate = delays[busID],
+              estimate.confidence != .low else { return nil }
+        let seconds = estimate.seconds
+        if abs(seconds) < 60 {
+            return ("En hora", .green)
+        }
+        // Never "0 min": a bus rounded to zero minutes is "En hora" above.
+        let minutes = max(1, Int((Double(abs(seconds)) / 60).rounded()))
+        if seconds > 0 {
+            return ("+\(minutes) min tard · estimat", Color(hex: "F59E0B"))
+        }
+        return ("\(minutes) min d'avanç · estimat", .secondary)
     }
 
     /// The badge of the arriving line, from the catalog when it holds it. The

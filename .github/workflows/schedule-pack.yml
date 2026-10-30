@@ -1,0 +1,163 @@
+# Schedule pack — S1 of `odd/tasks/schedule-delay.md`.
+#
+# The app does not bundle the timetable: it reads it from the rolling release
+# `schedule-latest` of this repository
+# (https://github.com/<owner>/<repo>/releases/download/schedule-latest/<file>).
+# This workflow rebuilds that pack from TMB's static GTFS and republishes the
+# assets, so a timetable change on TMB's side reaches the app without an app
+# release. The assets are public: the app reads them anonymously, no token.
+#
+# Trigger: a daily schedule plus manual dispatch. The runner is `ubuntu-latest`
+# because `scripts/build-schedule-pack.py` is Python 3 standard library only.
+#
+# Credentials: `TMB_APP_ID` and `TMB_APP_KEY` are the same secrets the
+# signed-archive job of `ci.yml` consumes for the binary, and they live in the
+# `release` environment (Settings → Environments → release; deployment rule:
+# branch `main` only), so this job declares that environment to read them.
+# The builder takes them from the environment only, never from argv, and never
+# prints them or the request URL.
+#
+# Publishing rules:
+#   * the pack is built into `dist/schedule/` and its sizes are printed;
+#   * `index.json` carries the GTFS `feed_version` as `feedVersion`; when the
+#     published `index.json` already carries it, this run uploads nothing, so
+#     the daily schedule is a no-op most days;
+#   * otherwise the release `schedule-latest` is created when missing and the
+#     whole pack is uploaded with `--clobber`, line files first and
+#     `index.json` last: the app resolves every line through the index, so a
+#     half-uploaded pack is never visible;
+#   * assets of lines that disappeared from the feed are deleted afterwards, so
+#     a stale line file cannot be served for ever;
+#   * no asset is ever deleted before the new pack is built and uploaded.
+#
+# Manual runs share the job's concurrency group with the daily run, so two
+# publications can never interleave.
+
+name: Schedule pack
+
+on:
+  schedule:
+    # 04:17 UTC daily. TMB publishes the static feed a few times a year; the
+    # daily check is what turns "new timetable" into "new pack" without a human.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: schedule-pack
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: schedule-latest
+  PACK_DIR: dist/schedule
+
+jobs:
+  publish:
+    name: Build and publish the schedule pack
+    runs-on: ubuntu-latest
+    # The TMB API credentials are `release` environment secrets (see above).
+    environment: release
+    # Download of the feed, parse of stop_times and ~120 asset uploads.
+    timeout-minutes: 30
+    env:
+      TMB_APP_ID: ${{ secrets.TMB_APP_ID }}
+      TMB_APP_KEY: ${{ secrets.TMB_APP_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The builder is covered by unittest (S1); a pack is never published from
+      # a builder whose own tests fail.
+      - name: Test the schedule pack builder
+        run: python3 -m unittest scripts/test_build_schedule_pack.py
+
+      - name: Build the schedule pack
+        run: |
+          set -o pipefail
+          python3 scripts/build-schedule-pack.py --out "$PACK_DIR"
+          echo "Pack files: $(find "$PACK_DIR" -name '*.json' | wc -l | tr -d ' ')"
+          echo "Pack size: $(du -sh "$PACK_DIR" | cut -f1)"
+
+      # The published index is the only thing that says which timetable the app
+      # is serving, so `feedVersion` decides whether this run has work to do.
+      - name: Compare with the published pack
+        id: published
+        run: |
+          set -o pipefail
+          scratch="$(mktemp -d)"
+          previous=""
+          if gh release download "$RELEASE_TAG" --pattern index.json --dir "$scratch" 2>/dev/null; then
+            previous="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("feedVersion") or "")' "$scratch/index.json")"
+          else
+            echo "No published index.json yet."
+          fi
+          current="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("feedVersion") or "")' "$PACK_DIR/index.json")"
+          echo "Published feedVersion: ${previous:-<none>}"
+          echo "Built feedVersion: ${current:-<none>}"
+          if [ -n "$previous" ] && [ -n "$current" ] && [ "$previous" = "$current" ]; then
+            echo "Feed ${current} is already published: nothing to upload."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Schedule pack unchanged"
+              echo ""
+              echo "The published pack already carries \`feedVersion ${current}\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure the rolling release exists
+        if: steps.published.outputs.changed == 'true'
+        run: |
+          set -o pipefail
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists."
+            exit 0
+          fi
+          # Pre-release: the repository's "Latest" release badge stays with
+          # the app releases, not with this data release.
+          gh release create "$RELEASE_TAG" \
+            --prerelease \
+            --title "Schedule pack (rolling)" \
+            --notes "Rolling GTFS schedule pack consumed by the app. Rebuilt and republished by .github/workflows/schedule-pack.yml; never edit these assets by hand."
+
+      - name: Upload the pack
+        if: steps.published.outputs.changed == 'true'
+        run: |
+          set -o pipefail
+          files=()
+          for file in "$PACK_DIR"/*.json; do
+            if [ "$(basename "$file")" != "index.json" ]; then
+              files+=("$file")
+            fi
+          done
+          # Line files first, index.json last: see the header.
+          gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
+          gh release upload "$RELEASE_TAG" "$PACK_DIR/index.json" --clobber
+          {
+            echo "### Schedule pack published"
+            echo ""
+            echo "Release: \`$RELEASE_TAG\`"
+            echo ""
+            echo "Files: $(find "$PACK_DIR" -name '*.json' | wc -l | tr -d ' ') · size: $(du -sh "$PACK_DIR" | cut -f1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A line that vanished from the feed (renamed, merged or withdrawn) must
+      # not stay downloadable under the old index. This runs after the upload,
+      # so the pack is complete before anything is removed.
+      - name: Delete assets of lines that disappeared
+        if: steps.published.outputs.changed == 'true'
+        run: |
+          set -o pipefail
+          removed=0
+          for name in $(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name'); do
+            if [ ! -f "$PACK_DIR/$name" ]; then
+              echo "Deleting stale asset $name"
+              gh release delete-asset "$RELEASE_TAG" "$name" --yes
+              removed=$((removed + 1))
+            fi
+          done
+          echo "Deleted $removed stale asset(s)."
