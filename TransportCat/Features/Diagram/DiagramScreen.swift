@@ -109,7 +109,7 @@ private struct DiagramRow: View {
                     .font(.subheadline.weight(.semibold))
                 if let accessible = station.accessible {
                     if accessible {
-                        Label("Accessible", systemImage: "figure.roll")
+                        Label("Accessible", image: "icon-accessible")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

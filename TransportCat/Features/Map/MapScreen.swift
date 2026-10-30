@@ -8,6 +8,13 @@ struct MapScreen: View {
     @State private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
+    /// Camera bearing of the visible map region, in degrees clockwise from
+    /// north. The train pictograms are rotated against it so they keep facing
+    /// along the track whatever the user does with the map (S2).
+    @State private var cameraHeading: Double = 0
+    /// Latitude span currently on screen, used to decide whether the train
+    /// labels are drawn at all (S3).
+    @State private var latitudeSpan: Double = MapScreen.barcelonaRegion.span.latitudeDelta
     // Named type instead of `Self` on purpose: a stored-property initializer has
     // no instance context, so the spelled-out type name is the form that is
     // guaranteed to compile.
@@ -60,6 +67,7 @@ struct MapScreen: View {
 
     @ViewBuilder
     private func lineMap(state: LineState, client: TMBClient) -> some View {
+        let terminalCodes = Self.terminalStationCodes(in: state.stations)
         Map(position: $cameraPosition) {
             if let geometry = state.geometry {
                 MapPolyline(coordinates: geometry.points.map { point in
@@ -72,18 +80,27 @@ struct MapScreen: View {
                     Button {
                         selectedStation = station
                     } label: {
-                        StationDot(color: selectedLine.colorHex)
+                        StationMarker(line: selectedLine, terminal: terminalCodes.contains(station.code))
                     }
                 }
             }
             ForEach(state.positions) { position in
                 // Empty title: the destination is already on the marker.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.position.latitude, longitude: position.position.longitude)) {
-                    TrainDot(color: selectedLine.colorHex, destination: position.destination)
+                    TrainMarker(
+                        imageName: "train-\(trainLine(for: position).assetKey)",
+                        destination: position.destination,
+                        rotation: position.heading - 90 - cameraHeading,
+                        showLabel: latitudeSpan < Self.labelSpanThreshold
+                    )
                 }
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        .onMapCameraChange(frequency: .onEnd) { context in
+            cameraHeading = context.camera.heading
+            latitudeSpan = context.region.span.latitudeDelta
+        }
         .overlay(alignment: .bottomTrailing) {
             if state.isPolling {
                 ProgressView()
@@ -153,43 +170,69 @@ struct MapScreen: View {
         center: CLLocationCoordinate2D(latitude: 41.3925, longitude: 2.1649),
         span: MKCoordinateSpan(latitudeDelta: 0.16, longitudeDelta: 0.14)
     )
-}
 
-/// Small colored station dot used on the map.
-struct StationDot: View {
-    let color: String
+    /// Below this visible latitude span the destination labels are drawn; above
+    /// it they overlapped each other on the busy lines (S3).
+    private static let labelSpanThreshold = 0.05
 
-    var body: some View {
-        Circle()
-            .fill(Color(hex: color))
-            .frame(width: 12, height: 12)
-            .overlay(Circle().stroke(.white, lineWidth: 2))
-            .shadow(radius: 1)
+    /// The line a train marker belongs to: the code of the position itself,
+    /// falling back to the line on screen when the feed reports an unknown one.
+    private func trainLine(for position: TrainPosition) -> MetroLine {
+        MetroLine.line(forCode: position.lineCode) ?? selectedLine
+    }
+
+    /// Codes of the two end stations of the shown line, which get the terminal
+    /// marker instead of the plain one (S4).
+    private static func terminalStationCodes(in stations: [Station]) -> Set<Int> {
+        guard let first = stations.min(by: { $0.orderInLine < $1.orderInLine }),
+              let last = stations.max(by: { $0.orderInLine < $1.orderInLine }) else { return [] }
+        return [first.code, last.code]
     }
 }
 
-/// Moving train marker with its destination label.
-struct TrainDot: View {
-    let color: String
-    let destination: String
+/// Station marker on the map: the pre-rendered dot tinted with the line color
+/// (S4), 18 pt for a normal station and 22 pt for a terminal.
+private struct StationMarker: View {
+    let line: MetroLine
+    let terminal: Bool
 
     var body: some View {
-        // MapKit centers an annotation on its coordinate, so the label hangs
-        // off the circle in an overlay (which adds nothing to the size): in an
-        // HStack the circle sat half a label away from the track.
-        Circle()
-            .fill(Color(hex: color))
-            .frame(width: 16, height: 16)
-            .overlay(Circle().stroke(.white, lineWidth: 2))
-            .shadow(radius: 2)
-            .overlay(alignment: .leading) {
-                Text(destination)
-                    .font(.caption2.bold())
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.thinMaterial, in: Capsule())
-                    .fixedSize()
-                    .offset(x: 22)
+        Image("\(terminal ? "terminal" : "station")-\(line.assetKey)")
+            .resizable()
+            .frame(width: size, height: size)
+    }
+
+    private var size: CGFloat { terminal ? 22 : 18 }
+}
+
+/// Moving train marker with its destination label (S1).
+private struct TrainMarker: View {
+    let imageName: String
+    let destination: String
+    /// Rotation applied to the pictogram: `heading - 90 - cameraHeading`, the
+    /// assets face east and the map may be rotated by the user.
+    let rotation: Double
+    let showLabel: Bool
+
+    var body: some View {
+        // MapKit centers an annotation on its coordinate, so only the image is
+        // rotated and `rotationEffect` keeps the layout size at 36x30 pt: the
+        // label lives in an overlay on that unrotated frame, which adds nothing
+        // to the marker size and always stays upright.
+        Image(imageName)
+            .resizable()
+            .frame(width: 36, height: 30)
+            .rotationEffect(.degrees(rotation))
+            .overlay(alignment: .bottom) {
+                if showLabel {
+                    Text(destination)
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.thinMaterial, in: Capsule())
+                        .fixedSize()
+                        .offset(y: 24)
+                }
             }
             .accessibilityLabel("Tren \(destination)")
     }
