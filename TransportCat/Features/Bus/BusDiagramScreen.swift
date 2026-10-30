@@ -62,8 +62,13 @@ struct BusDiagramScreen: View {
         // The stop sheet comes from the stack itself and declares its detents
         // here, not inside the presented view (spec S9), as MapScreen does.
         .sheet(item: $selectedStop) { stop in
-            if let line = lineState?.line {
-                BusStopSheet(stop: stop, line: line, incidents: incidents(for: stop, line: line))
+            if let state = lineState {
+                BusStopSheet(
+                    stop: stop,
+                    line: state.line,
+                    incidents: incidents(for: stop, line: state.line),
+                    delays: delays(for: stop, in: state)
+                )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -163,8 +168,9 @@ struct BusDiagramScreen: View {
             let rows = Self.rowPlan(
                 stops: direction.stops,
                 incidents: incidents,
-                arrivalsByStop: state.arrivalsByStop,
-                directionID: direction.id
+                state: state,
+                direction: direction,
+                now: Date()
             )
             let incidentCount = incidents.values.reduce(0) { $0 + $1.count }
             ScrollView {
@@ -251,21 +257,50 @@ struct BusDiagramScreen: View {
     private static func rowPlan(
         stops: [BusStop],
         incidents: [Int: [StationIncident]],
-        arrivalsByStop: [Int: [BusArrival]],
-        directionID: Int
+        state: BusLineState,
+        direction: BusDirection,
+        now: Date
     ) -> [BusDiagramRowPlan] {
+        // Regularity needs the arrivals of polled stops; the rest have nothing
+        // to assess (spec S7).
+        let polledCodes = Set(direction.polledStops.map(\.code))
         stops.enumerated().map { index, stop in
             // Only polled stops have arrivals at all, and only those of the
             // direction on screen get a pill (spec S5, S8).
-            let arrivals = (arrivalsByStop[stop.code] ?? []).filter { $0.directionID == directionID }
+            let arrivals = (state.arrivalsByStop[stop.code] ?? []).filter { $0.directionID == direction.id }
             return BusDiagramRowPlan(
                 index: index,
                 stop: stop,
                 isFirst: index == 0,
                 isLast: index == stops.count - 1,
                 incidents: incidents[stop.code] ?? [],
-                arrival: arrivals.min(by: { $0.seconds < $1.seconds })
+                arrival: arrivals.min(by: { $0.seconds < $1.seconds }),
+                // Two arrivals of the direction are the minimum for a verdict,
+                // so a stop with less is not asked at all (S3, S7).
+                regularity: polledCodes.contains(stop.code) && arrivals.count >= 2
+                    ? regularityTag(stopCode: stop.code, directionID: direction.id, state: state, now: now)
+                    : nil
             )
+        }
+    }
+
+    /// The orange tag of a bus stop row: a service gap outranks bunching, and a
+    /// regular or unknown report shows nothing (spec S7).
+    private static func regularityTag(
+        stopCode: Int,
+        directionID: Int,
+        state: BusLineState,
+        now: Date
+    ) -> BusDiagramRegularityTag? {
+        guard let report = state.regularity(stopCode: stopCode, directionID: directionID, now: now) else { return nil }
+        switch report.status {
+        case .gap:
+            guard let longestGap = report.longestGap else { return nil }
+            return .gap(minutes: Int((longestGap / 60).rounded()))
+        case .bunched:
+            return .bunched
+        case .regular, .unknown:
+            return nil
         }
     }
 
@@ -278,6 +313,34 @@ struct BusDiagramScreen: View {
             stations: [stop.asStation(lineCode: lineCode)],
             lineCode: lineCode
         )[stop.code] ?? []
+    }
+
+    /// The delay of each bus the sheet lists, estimated against the timetable
+    /// (spec S7): the ids this stop's arrivals already name, read from the last
+    /// poll, so the sheet never triggers a request of its own.
+    private func delays(for stop: BusStop, in state: BusLineState) -> [Int: DelayEstimate] {
+        var estimates: [Int: DelayEstimate] = [:]
+        for arrival in state.arrivalsByStop[stop.code] ?? [] {
+            guard let busID = arrival.busID, let estimate = state.delay(forBus: busID) else { continue }
+            estimates[busID] = estimate
+        }
+        return estimates
+    }
+}
+
+/// Regularity problem of one bus stop row, computed once per render (spec S7).
+private enum BusDiagramRegularityTag {
+    /// No bus of this direction for roughly that long.
+    case gap(minutes: Int)
+    /// Two buses arrived close together after a gap.
+    case bunched
+
+    /// Catalan wording of the tag, bus lines (S7).
+    var text: String {
+        switch self {
+        case .gap(let minutes): return "Buit de \(minutes) min"
+        case .bunched: return "Busos pegats"
+        }
     }
 }
 
@@ -296,11 +359,21 @@ private struct BusDiagramRowPlan: Identifiable {
     /// Soonest bus of this direction at this stop; nil when the stop was not
     /// polled or no bus is announced (spec S5).
     let arrival: BusArrival?
+    /// Regularity tag of the stop, nil when there is nothing to report.
+    let regularity: BusDiagramRegularityTag?
 
     var id: Int { index }
 
+    /// A row that shows the tag is one 14 pt line taller, and the bus overlay
+    /// reads the same number, so the spine stays continuous (spec S7). The
+    /// address line is kept: unlike the metro rows, the bus rows have no
+    /// decorative line the tag could take over.
     var height: CGFloat {
-        BusDiagramRow.baseHeight + BusDiagramRow.incidentLineHeight * CGFloat(incidents.count)
+        var height = BusDiagramRow.baseHeight + BusDiagramRow.incidentLineHeight * CGFloat(incidents.count)
+        if regularity != nil {
+            height += BusDiagramRow.regularityLineHeight
+        }
+        return height
     }
 }
 
@@ -313,6 +386,8 @@ private struct BusDiagramRow: View {
     /// sits, so a bus at a stop is drawn on that marker (spec S8).
     static let baseHeight: CGFloat = 56
     static let incidentLineHeight: CGFloat = 18
+    /// Height of the regularity tag line when the row shows one (spec S7).
+    static let regularityLineHeight: CGFloat = 14
     static let horizontalPadding: CGFloat = 16
     static let spineWidth: CGFloat = 5
     static let incidentBarWidth: CGFloat = 4
@@ -366,6 +441,10 @@ private struct BusDiagramRow: View {
                 }
             }
             .frame(height: Self.baseHeight)
+            if let regularity = row.regularity {
+                regularityLine(regularity)
+                    .frame(height: Self.regularityLineHeight)
+            }
             ForEach(incidents) { incident in
                 incidentLine(incident)
             }
@@ -438,6 +517,21 @@ private struct BusDiagramRow: View {
             .padding(2)
             .background(Circle().fill(.white))
             .offset(x: 3, y: 3)
+    }
+
+    /// The orange regularity tag: a small alert glyph and its wording (S7).
+    private func regularityLine(_ regularity: BusDiagramRegularityTag) -> some View {
+        HStack(spacing: 4) {
+            Image("icon-alert")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 10, height: 10)
+            Text(regularity.text)
+                .lineLimit(1)
+        }
+        .font(.caption2.bold())
+        .foregroundStyle(incidentColor)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func incidentLine(_ incident: StationIncident) -> some View {

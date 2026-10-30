@@ -110,7 +110,8 @@ struct MapScreen: View {
                         imageName: "train-\(trainLine(for: position).assetKey)",
                         destination: position.destination,
                         rotation: position.heading - 90 - cameraHeading,
-                        showLabel: latitudeSpan < Self.labelSpanThreshold
+                        showLabel: latitudeSpan < Self.labelSpanThreshold,
+                        theoretical: position.isTheoretical
                     )
                 }
             }
@@ -142,7 +143,7 @@ struct MapScreen: View {
             // so the reason is stated, in a compact strip at the top so it does
             // not cover the line itself (spec S8).
             if state.isFeedEmpty {
-                NoRealtimeDataCard(compact: true)
+                NoRealtimeDataCard(compact: true, theoretical: state.isTheoretical)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
@@ -242,6 +243,9 @@ private struct TrainMarker: View {
     /// assets face east and the map may be rotated by the user.
     let rotation: Double
     let showLabel: Bool
+    /// A train computed from the timetable, not a live one: drawn faded so the
+    /// rider can tell it apart at a glance (spec S7).
+    let theoretical: Bool
 
     var body: some View {
         // MapKit centers an annotation on its coordinate, so only the image is
@@ -253,6 +257,7 @@ private struct TrainMarker: View {
             .resizable()
             .frame(width: 42, height: 18.67)
             .rotationEffect(.degrees(rotation))
+            .opacity(theoretical ? 0.7 : 1)
             .overlay(alignment: .bottom) {
                 if showLabel {
                     Text(destination)
