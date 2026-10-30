@@ -2,7 +2,7 @@ import XCTest
 @testable import TransportCat
 
 final class TrainPositionEngineTests: XCTestCase {
-    // Synthetic straight line: three stations, 500 m apart, along a
+    // Synthetic straight line: three stations, ~504.6 m apart, along a
     // north-south polyline with intermediate vertices between stations.
     // Station order 1,2,3 = south to north (latitudes increasing).
     private var stations: [Station] {
@@ -45,30 +45,49 @@ final class TrainPositionEngineTests: XCTestCase {
         ])
     }
 
-    private func makeEngine(speed: Double = 9.2) throws -> TrainPositionEngine {
+    private func makeEngine(speed: Double = TrainPositionEngine.defaultSpeedMetersPerSecond) throws -> TrainPositionEngine {
         try XCTUnwrap(TrainPositionEngine.make(stations: stations, geometry: geometry, speedMetersPerSecond: speed))
+    }
+
+    /// One arrival at station 2 of the synthetic line. `serviceCode` and
+    /// `trajectCode` default to one identifiable train.
+    private func arrival(
+        stationCode: Int = 2,
+        destination: String = "Nord",
+        seconds: Int,
+        serviceCode: String? = "7",
+        trajectCode: String? = "0011",
+        via: Int? = 1
+    ) -> Arrival {
+        Arrival(
+            stationCode: stationCode,
+            lineCode: "1",
+            destination: destination,
+            seconds: seconds,
+            rawText: "x",
+            serviceCode: serviceCode,
+            trajectCode: trajectCode,
+            via: via
+        )
     }
 
     func testSegmentLengthIsDistanceBetweenStations() throws {
         let engine = try makeEngine()
-        // Halfway progress: an arrival at station 2 with exactly half the
-        // segment duration remaining puts the train at the segment midpoint.
-        let segmentMeters = GeoMath.distanceMeters(
-            from: GeoPoint(latitude: 41.34467731, longitude: 2.10724192),
-            to: GeoPoint(latitude: 41.34921585, longitude: 2.10724192)
-        )
-        let halfDuration = Int(segmentMeters / 9.2 / 2)
-        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Nord", seconds: halfDuration, rawText: "x")
-        let positions = engine.positions(lineCode: "1", arrivals: [arrival])
+        // 55 s of countdown over a 63 s segment at the default 8 m/s is half
+        // the segment already covered.
+        let position = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(seconds: 55)]).first)
 
-        XCTAssertEqual(positions.count, 1)
-        let position = try XCTUnwrap(positions.first)
         XCTAssertTrue(position.forward)
         XCTAssertEqual(position.segmentProgress, 0.5, accuracy: 0.01)
         // Midpoint latitude between station 1 and 2.
         XCTAssertEqual(position.position.latitude, 41.34694658, accuracy: 0.0005)
         // Longitude unchanged on this straight north-south line.
         XCTAssertEqual(position.position.longitude, 2.10724192, accuracy: 1e-6)
+        // What the smoother needs: the station being approached, and a drawn
+        // point halfway along the segment.
+        XCTAssertEqual(position.segmentEndDistance, 504.6, accuracy: 1.0)
+        XCTAssertEqual(position.routeDistance, position.segmentEndDistance / 2, accuracy: 5)
+        XCTAssertFalse(position.isDwelling)
     }
 
     func testStationsProjectOntoSegmentWhenPolylineIsSparse() throws {
@@ -87,47 +106,39 @@ final class TrainPositionEngineTests: XCTestCase {
         )
         XCTAssertEqual(routeSegment, 600, accuracy: 5)
 
-        // Half the travel time left: progress = 1 - seconds / duration, so the
-        // progress the engine reports reveals the segment length it derived.
-        let seconds = Int(routeSegment / speed / 2)
-        let arrival = Arrival(stationCode: 12, lineCode: "1", destination: "North", seconds: seconds, rawText: "x")
+        // 60 s of countdown on the 75 s segment: half of it already covered.
+        let arrival = Arrival(stationCode: 12, lineCode: "1", destination: "North", seconds: 60, rawText: "1 min")
         let position = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival]).first)
 
-        XCTAssertTrue(position.segmentProgress > 0 && position.segmentProgress < 1)
-        let derivedMeters = Double(seconds) / (1 - position.segmentProgress) * speed
-        XCTAssertEqual(derivedMeters, routeSegment, accuracy: 20)
-        XCTAssertEqual(derivedMeters, 600, accuracy: 20)
-        // Drawn between the two stations, not on the far vertex.
+        XCTAssertEqual(position.segmentProgress, 0.5, accuracy: 0.02)
+        // Drawn between the two stations, not pinned on either of them.
         XCTAssertGreaterThan(position.position.latitude, 41.34360000)
         XCTAssertLessThan(position.position.latitude, 41.34900000)
+        XCTAssertEqual(position.position.latitude, 41.3463, accuracy: 0.0005)
     }
 
     func testDirectionBackwardTowardFirstStation() throws {
         let engine = try makeEngine()
-        let segmentMeters = GeoMath.distanceMeters(
-            from: GeoPoint(latitude: 41.34921585, longitude: 2.10724192),
-            to: GeoPoint(latitude: 41.35375440, longitude: 2.10724192)
-        )
-        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Sud", seconds: Int(segmentMeters / 9.2 / 4), rawText: "x")
-        let positions = engine.positions(lineCode: "1", arrivals: [arrival])
+        // No via: the destination name is the fallback direction source.
+        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Sud", seconds: 50, rawText: "x")
+        let position = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival]).first)
 
-        let position = try XCTUnwrap(positions.first)
         XCTAssertFalse(position.forward)
-        // Approaching station 2 from the north: ~3/4 of the way down. The
-        // synthetic vertices are not metrically exact (138.7 m spacing vs the
-        // 125 m assumption), so allow a 2% tolerance.
+        // Approaching station 2 from the north with a quarter of the segment
+        // left, so three quarters of it are already covered (S8).
         XCTAssertEqual(position.segmentProgress, 0.75, accuracy: 0.02)
-        XCTAssertEqual(position.position.latitude, 41.3526725, accuracy: 0.0005)
+        // Close to station 2 (41.3492), not to station 3 (41.3538).
+        XCTAssertEqual(position.position.latitude, 41.35035, accuracy: 0.0005)
     }
 
-    func testOverdueArrivalClampsToPreviousStation() throws {
+    func testFarFutureArrivalClampsToPreviousStation() throws {
         let engine = try makeEngine()
-        // 10_000 s remaining over a 500 m segment: raw progress far below 0.
-        let arrival = Arrival(stationCode: 2, lineCode: "1", destination: "Nord", seconds: 10_000, rawText: "x")
-        let positions = engine.positions(lineCode: "1", arrivals: [arrival])
-        let position = try XCTUnwrap(positions.first)
-        XCTAssertEqual(position.segmentProgress, 0.0, accuracy: 1e-9)
-        XCTAssertEqual(position.position.latitude, 41.34467731, accuracy: 0.0005)
+        // A countdown far beyond the segment duration would place the train
+        // behind the station it just left; the ratio clamp holds it at 95% of
+        // the segment remaining, i.e. 5% traveled.
+        let position = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(seconds: 10_000)]).first)
+        XCTAssertEqual(position.segmentProgress, 0.05, accuracy: 1e-9)
+        XCTAssertEqual(position.position.latitude, 41.3449, accuracy: 0.0005)
     }
 
     func testNonNumericArrivalSkipped() throws {
@@ -162,10 +173,73 @@ final class TrainPositionEngineTests: XCTestCase {
     func testPositionsAreDeterministic() throws {
         let engine = try makeEngine()
         let arrivals = [
-            Arrival(stationCode: 2, lineCode: "1", destination: "Nord", seconds: 60, rawText: "x"),
-            Arrival(stationCode: 3, lineCode: "1", destination: "Sud", seconds: 120, rawText: "x"),
+            Arrival(stationCode: 2, lineCode: "1", destination: "Nord", seconds: 60, rawText: "1 min"),
+            Arrival(stationCode: 3, lineCode: "1", destination: "Sud", seconds: 120, rawText: "2 min"),
         ]
         XCTAssertEqual(engine.positions(lineCode: "1", arrivals: arrivals), engine.positions(lineCode: "1", arrivals: arrivals))
+    }
+
+    /// S1: the same train shows up at every station it will reach. Only the
+    /// next one may be drawn, and the countdown stays out of the identity.
+    func testArrivalsOfTheSameTrainCollapseToOnePosition() throws {
+        let engine = try makeEngine()
+        let arrivals = [
+            arrival(stationCode: 3, seconds: 120),
+            arrival(stationCode: 2, seconds: 30),
+        ]
+        let positions = engine.positions(lineCode: "1", arrivals: arrivals)
+
+        XCTAssertEqual(positions.count, 1)
+        let position = try XCTUnwrap(positions.first)
+        XCTAssertEqual(position.id, "1-7-0011")
+        XCTAssertEqual(position.nextStationCode, 2)
+        XCTAssertEqual(position.secondsToArrival, 30)
+    }
+
+    func testTrainIdentityIgnoresTheCountdown() throws {
+        let engine = try makeEngine()
+        let first = engine.positions(lineCode: "1", arrivals: [arrival(seconds: 30)])
+        let second = engine.positions(lineCode: "1", arrivals: [arrival(seconds: 45)])
+
+        XCTAssertEqual(first.map(\.id), ["1-7-0011"])
+        XCTAssertEqual(second.map(\.id), ["1-7-0011"])
+    }
+
+    /// Without a service code an arrival cannot be attributed to a train.
+    func testArrivalsWithoutServiceCodeAreNeverCollapsed() throws {
+        let engine = try makeEngine()
+        let arrivals = [
+            arrival(stationCode: 2, seconds: 30, serviceCode: nil, trajectCode: nil, via: nil),
+            arrival(stationCode: 3, seconds: 120, serviceCode: nil, trajectCode: nil, via: nil),
+        ]
+        let positions = engine.positions(lineCode: "1", arrivals: arrivals)
+
+        XCTAssertEqual(positions.count, 2)
+        XCTAssertEqual(Set(positions.map(\.id)).count, 2)
+    }
+
+    /// S2: `codi_via` wins over the destination name.
+    func testViaOverridesTheDestinationName() throws {
+        let engine = try makeEngine()
+        // "Sud" is the first station, but via 1 says the train travels toward
+        // the last one.
+        let forward = arrival(destination: "Sud", seconds: 60, serviceCode: "1", trajectCode: "0011", via: 1)
+        let forwardPosition = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [forward]).first)
+        XCTAssertTrue(forwardPosition.forward)
+
+        // "Nord" is the last station, but via 2 says the opposite.
+        let backward = arrival(destination: "Nord", seconds: 60, serviceCode: "2", trajectCode: "0012", via: 2)
+        let backwardPosition = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [backward]).first)
+        XCTAssertFalse(backwardPosition.forward)
+    }
+
+    func testDwellingThresholdIsFifteenSeconds() throws {
+        let engine = try makeEngine()
+        let dwelling = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(seconds: 15)]).first)
+        XCTAssertTrue(dwelling.isDwelling)
+
+        let moving = try XCTUnwrap(engine.positions(lineCode: "1", arrivals: [arrival(seconds: 16)]).first)
+        XCTAssertFalse(moving.isDwelling)
     }
 }
 

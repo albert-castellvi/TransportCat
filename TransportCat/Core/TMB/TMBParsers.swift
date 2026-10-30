@@ -128,14 +128,22 @@ enum MetroParser {
                       let stationCode = JSONValue.int(from: stationDict["codi_estacio"]) else {
                     continue
                 }
+                // One entry per via/sentit: the direction (1 = toward the
+                // last station, 2 = toward the first) lives on the station
+                // entry, not on each train.
+                let via = JSONValue.int(from: stationDict["codi_via"])
                 var stationArrivals: [Arrival] = []
-                // One entry per via/sentit, so the same station repeats and
-                // its arrivals must be appended, never overwritten.
+                // A station repeats once per via/sentit, so its arrivals must
+                // be appended, never overwritten.
                 for trajecte in JSONValue.array(from: stationDict["linies_trajectes"]) ?? [] {
                     guard let trajecteDict = JSONValue.dictionary(from: trajecte),
                           let destination = JSONValue.string(from: trajecteDict["desti_trajecte"]) else {
                         continue
                     }
+                    // `codi_trajecte` ("0011", "0012") identifies the route
+                    // variant; the engine pairs it with `codi_servei` to tell
+                    // one physical train from another (S1).
+                    let trajectCode = JSONValue.string(from: trajecteDict["codi_trajecte"])
                     for train in JSONValue.array(from: trajecteDict["propers_trens"]) ?? [] {
                         guard let trainDict = JSONValue.dictionary(from: train),
                               let arrivalMillis = JSONValue.int(from: trainDict["temps_arribada"]) else {
@@ -150,7 +158,9 @@ enum MetroParser {
                             destination: destination,
                             seconds: seconds,
                             rawText: Arrival.countdownText(seconds: seconds),
-                            serviceCode: JSONValue.string(from: trainDict["codi_servei"])
+                            serviceCode: JSONValue.string(from: trainDict["codi_servei"]),
+                            trajectCode: trajectCode,
+                            via: via
                         ))
                     }
                 }

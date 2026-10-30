@@ -1,7 +1,11 @@
 import Foundation
 
-/// A computed train position on a line.
+/// A computed train position on a line: one instance per physical train.
 struct TrainPosition: Identifiable, Equatable {
+    /// Stable identity of the train run (S1): line, service code and route
+    /// code. Never contains the countdown, so the same train keeps its `id`
+    /// across polls and the UI can animate it instead of replacing it.
+    let id: String
     let lineCode: String
     /// Destination as reported by iBus, which also encodes the direction.
     let destination: String
@@ -12,26 +16,63 @@ struct TrainPosition: Identifiable, Equatable {
     let nextStationCode: Int
     /// Seconds until the arrival iBus reported.
     let secondsToArrival: Int
-    /// Fraction of the current segment already traveled, clamped to [0, 1].
+    /// Fraction of the current segment already traveled, clamped to
+    /// [0.05, 1] by the progress formula (S3).
     let segmentProgress: Double
+    /// Distance in meters along the route polyline of this position. This is
+    /// the value `TrainMotion` interpolates between polls.
+    let routeDistance: Double
+    /// Route distance of the station the train is approaching: the marker is
+    /// never drawn past it, because the train waits at the platform.
+    let segmentEndDistance: Double
+    /// True while the train is stopped at the station (`secondsToArrival`
+    /// of 15 s or less, the threshold calibrated against the live feed, S3).
+    let isDwelling: Bool
     /// Computed geographic position of the train.
     let position: GeoPoint
 
-    var id: String { "\(lineCode)-\(destination)-\(nextStationCode)-\(secondsToArrival)" }
+    /// A copy of this position re-placed along the route, keeping every
+    /// poll-derived field (countdown, dwelling state, direction). Used by
+    /// `TrainMotion` to publish an interpolated marker.
+    func moved(toRouteDistance distance: Double, position point: GeoPoint) -> TrainPosition {
+        TrainPosition(
+            id: id,
+            lineCode: lineCode,
+            destination: destination,
+            forward: forward,
+            nextStationCode: nextStationCode,
+            secondsToArrival: secondsToArrival,
+            segmentProgress: segmentProgress,
+            routeDistance: distance,
+            segmentEndDistance: segmentEndDistance,
+            isDwelling: isDwelling,
+            position: point
+        )
+    }
 }
 
 /// Computes train positions on one line from iBus arrivals.
 ///
-/// Model (spec S6): an arrival at station `i` with `secondsToArrival` means a
-/// train is currently on the segment between stations `i-1` and `i`. Its
-/// progress along that segment is `1 - secondsToArrival / segmentDuration`,
-/// where the segment duration is estimated from the segment's length over a
-/// constant line speed (TMB provides no timetable feed). Direction is derived
-/// by matching the arrival's destination with the first or last station name.
-/// The result is fully deterministic, which is what its tests assert.
+/// Model: an arrival at station `i` with `secondsToArrival` means a train is
+/// currently on the segment between station `i-1` and `i` when it travels
+/// forward, or between `i+1` and `i` when it travels backward. Its progress
+/// along that segment is `1 - clamp((seconds - 45) / max(20, segmentDuration -
+/// 45), 0, 0.95)`, where the segment duration is the segment length over a
+/// constant line speed (TMB provides no timetable feed). The 45 s offset and
+/// the 0.95 cap keep the marker off the platform until the arrival is real,
+/// and the 20 s floor keeps very short segments usable.
+///
+/// Direction comes from `codi_via` (1 = toward the last station, 2 = toward
+/// the first) and falls back to matching the destination name with the two
+/// terminals. Arrivals of the same train (`codi_servei` + `codi_trajecte`) at
+/// several stations collapse into one position, the one with the smallest
+/// countdown. The result is fully deterministic, which is what its tests
+/// assert.
 struct TrainPositionEngine {
-    /// Average commercial speed of Barcelona metro trains, m/s (~33 km/h).
-    static let defaultSpeedMetersPerSecond: Double = 9.2
+    /// Average commercial speed of Barcelona metro trains, m/s (~29 km/h).
+    /// Calibrated against the live feed: 9.2 m/s left 88% of the trains
+    /// clamped at the start of their segment (S3).
+    static let defaultSpeedMetersPerSecond: Double = 8.0
 
     /// Per-station cumulative distance along the geometry polyline.
     /// Stations are projected perpendicularly onto the nearest polyline
@@ -44,6 +85,10 @@ struct TrainPositionEngine {
     private let points: [GeoPoint]
     private let stations: [Station]
     private let speedMetersPerSecond: Double
+
+    /// Speed the engine was built with, in m/s. `TrainMotion` extrapolates
+    /// with it between polls.
+    var speed: Double { speedMetersPerSecond }
 
     /// - Parameters:
     ///   - stations: stations of ONE line, already ordered by ORDRE_ESTACIO.
@@ -113,49 +158,93 @@ struct TrainPositionEngine {
         return TrainPositionEngine(stations: projected, geometry: geometry, speedMetersPerSecond: speedMetersPerSecond)
     }
 
-    /// Computes all positions derivable from the given arrivals. Arrivals may
-    /// come from any subset of stops; stops that were never polled simply
-    /// contribute nothing. Deterministic.
+    /// Geographic point `distance` meters along the route polyline, clamped to
+    /// its ends. The interpolation `TrainMotion` uses between polls.
+    func point(atRouteDistance distance: Double) -> GeoPoint? {
+        GeoMath.point(at: distance, points: points, cumulative: cumulativePolyline)
+    }
+
+    /// Computes all positions derivable from the given arrivals, one per
+    /// physical train. Arrivals may come from any subset of stops; stops that
+    /// were never polled simply contribute nothing. Sorted by `id`, because a
+    /// dictionary's order is not deterministic and the output must be.
     func positions(lineCode: String, arrivals: [Arrival]) -> [TrainPosition] {
-        var result: [TrainPosition] = []
+        // S1: collapse the arrivals of the same train onto the one with the
+        // smallest countdown, which is the next station it will reach.
+        var nextArrivalByID: [String: Arrival] = [:]
         for arrival in arrivals {
             guard let seconds = arrival.seconds else { continue }
-            guard let nextIndex = stations.firstIndex(where: { $0.code == arrival.stationCode }) else { continue }
-            // Direction from destination: match against terminal station names.
-            let forward: Bool
-            if arrival.destination.caseInsensitiveCompare(stations[stations.count - 1].name) == .orderedSame {
-                forward = true
-            } else if arrival.destination.caseInsensitiveCompare(stations[0].name) == .orderedSame {
-                forward = false
-            } else {
-                // Unknown destination: assume forward as a benign default.
-                forward = true
+            let id = identifier(for: arrival, seconds: seconds, lineCode: lineCode)
+            if let current = nextArrivalByID[id], let currentSeconds = current.seconds, currentSeconds <= seconds {
+                continue
             }
+            nextArrivalByID[id] = arrival
+        }
+
+        var result: [TrainPosition] = []
+        for (id, arrival) in nextArrivalByID {
+            guard let seconds = arrival.seconds else { continue }
+            guard let nextIndex = stations.firstIndex(where: { $0.code == arrival.stationCode }) else { continue }
+            let forward = isForward(arrival)
             // Index of the previous station along the travel direction.
             let previousIndex = forward ? nextIndex - 1 : nextIndex + 1
             guard stations.indices.contains(previousIndex) else { continue }
 
             let segmentLength = abs(stationDistances[nextIndex] - stationDistances[previousIndex])
             let segmentDuration = segmentLength / speedMetersPerSecond
-            let rawProgress = segmentDuration > 0 ? 1.0 - Double(seconds) / segmentDuration : 0
-            let progress = min(max(rawProgress, 0), 1)
+            // S3: the train keeps covering the last 45 s and the final 5% of
+            // the segment without the marker landing on the platform.
+            let remainingRatio = min(max((Double(seconds) - 45) / max(20, segmentDuration - 45), 0), 0.95)
+            let progress = 1 - remainingRatio
 
-            let startDistance = forward ? stationDistances[previousIndex] : stationDistances[nextIndex]
-            let endDistance = forward ? stationDistances[nextIndex] : stationDistances[previousIndex]
-            let distance = startDistance + (endDistance - startDistance) * progress
-            guard let position = GeoMath.point(at: distance, points: points, cumulative: cumulativePolyline) else {
-                continue
-            }
+            // S8: both directions interpolate from the station already left
+            // to the station being approached, so an arriving backward train
+            // is drawn beside the station it is about to reach.
+            let distance = stationDistances[previousIndex]
+                + (stationDistances[nextIndex] - stationDistances[previousIndex]) * progress
+            guard let geoPoint = point(atRouteDistance: distance) else { continue }
+
             result.append(TrainPosition(
+                id: id,
                 lineCode: lineCode,
                 destination: arrival.destination,
                 forward: forward,
                 nextStationCode: arrival.stationCode,
                 secondsToArrival: seconds,
                 segmentProgress: progress,
-                position: position
+                routeDistance: distance,
+                segmentEndDistance: stationDistances[nextIndex],
+                isDwelling: seconds <= 15,
+                position: geoPoint
             ))
         }
-        return result
+        return result.sorted { $0.id < $1.id }
+    }
+
+    /// S1: identity of the train run. `codi_servei` plus `codi_trajecte`
+    /// identify one physical train, so the countdown is deliberately absent.
+    /// Arrivals without a service code cannot be collapsed: their identity
+    /// includes the station and the countdown.
+    private func identifier(for arrival: Arrival, seconds: Int, lineCode: String) -> String {
+        guard let serviceCode = arrival.serviceCode else {
+            return "\(lineCode)-\(arrival.destination)-\(arrival.stationCode)-\(seconds)"
+        }
+        return "\(lineCode)-\(serviceCode)-\(arrival.trajectCode ?? "")"
+    }
+
+    /// S2: direction along the station order. `codi_via` wins; matching the
+    /// destination against the two terminal names is only the fallback for
+    /// feeds without a via, and an unknown destination defaults to forward.
+    private func isForward(_ arrival: Arrival) -> Bool {
+        if let via = arrival.via {
+            return via == 1
+        }
+        if arrival.destination.caseInsensitiveCompare(stations[stations.count - 1].name) == .orderedSame {
+            return true
+        }
+        if arrival.destination.caseInsensitiveCompare(stations[0].name) == .orderedSame {
+            return false
+        }
+        return true
     }
 }

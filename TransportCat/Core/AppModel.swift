@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import OSLog
 import Sentry
 import SwiftUI
@@ -70,6 +71,10 @@ final class LineState {
     private let client: TMBClient
     private(set) var engine: TrainPositionEngine?
 
+    /// Smooth, per-second movement between the 20 s polls (S4). Not observed:
+    /// only `positions`, the value it publishes, drives the UI.
+    @ObservationIgnored private var motion = TrainMotion()
+
     init(line: MetroLine, client: TMBClient) {
         self.line = line
         self.client = client
@@ -82,6 +87,15 @@ final class LineState {
             await loadTopology()
         }
         guard engine != nil else { return }
+        // One-second ticker between polls: the markers move continuously
+        // instead of jumping on every arrivals response (S4).
+        let ticker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                self?.tick()
+            }
+        }
+        defer { ticker.cancel() }
         while !Task.isCancelled {
             await pollArrivals()
             do {
@@ -149,8 +163,11 @@ final class LineState {
     }
 
     /// Requests arrivals for the whole line in one call and recomputes train
-    /// positions. Failures are tolerated: a stop missing from the response
-    /// just keeps its previous arrivals.
+    /// positions. The response covers every station of the line, so a station
+    /// missing from it has no trains: keeping its older arrivals would leave a
+    /// ghost that wins the one-marker-per-train collapse with a stale
+    /// countdown. A failed poll changes nothing: the markers keep moving on
+    /// the last known data instead of being re-anchored to it.
     func pollArrivals() async {
         guard !stations.isEmpty else { return }
         isPolling = true
@@ -158,18 +175,23 @@ final class LineState {
 
         let stationCodes = stations.map(\.code)
         do {
-            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes)
-            var updated = arrivalsByStop
-            for (code, arrivals) in fetched where !arrivals.isEmpty {
-                updated[code] = arrivals
-            }
-            arrivalsByStop = updated
+            arrivalsByStop = try await client.metroArrivals(lineCode: line.code, stationCodes: stationCodes)
         } catch {
             Self.report(error, "arrivals", line: line.code)
+            return
         }
 
         let all = arrivalsByStop.values.flatMap { $0 }
-        positions = engine?.positions(lineCode: line.code, arrivals: all) ?? []
-        Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(self.positions.count) trains")
+        let computed = engine?.positions(lineCode: line.code, arrivals: all) ?? []
+        motion.update(with: computed, now: Date())
+        positions = engine.map { motion.advance(to: Date(), engine: $0) } ?? []
+        Self.log.info("Line \(self.line.code, privacy: .public): \(all.count) arrivals, \(computed.count) trains")
+    }
+
+    /// Advances the interpolated markers by one tick. Called by the one-second
+    /// ticker in `run()`; does nothing until the topology is loaded.
+    func tick() {
+        guard let engine else { return }
+        positions = motion.advance(to: Date(), engine: engine)
     }
 }
