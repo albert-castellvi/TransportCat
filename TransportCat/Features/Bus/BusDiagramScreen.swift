@@ -264,7 +264,7 @@ struct BusDiagramScreen: View {
         // Regularity needs the arrivals of polled stops; the rest have nothing
         // to assess (spec S7).
         let polledCodes = Set(direction.polledStops.map(\.code))
-        stops.enumerated().map { index, stop in
+        return stops.enumerated().map { index, stop in
             // Only polled stops have arrivals at all, and only those of the
             // direction on screen get a pill (spec S5, S8).
             let arrivals = (state.arrivalsByStop[stop.code] ?? []).filter { $0.directionID == direction.id }
