@@ -1,5 +1,32 @@
 import Foundation
 
+extension Error {
+    /// A dropped, slow or cancelled connection: expected on a phone, so it is
+    /// logged but not reported to Sentry.
+    var isTransientNetworkFailure: Bool {
+        guard let urlError = self as? URLError else { return false }
+        switch urlError.code {
+        case .timedOut, .notConnectedToInternet, .networkConnectionLost,
+             .cannotConnectToHost, .dnsLookupFailed, .cancelled:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+/// Hides TMB credentials: they travel in the query string, so any error that
+/// embeds the failing URL would otherwise carry them into Sentry.
+enum SecretRedactor {
+    static func redact(_ text: String) -> String {
+        text.replacingOccurrences(
+            of: "(app_id|app_key)=[^&\\s\"',)]+",
+            with: "$1=[redacted]",
+            options: .regularExpression
+        )
+    }
+}
+
 /// Errors surfaced by the TMB API layer.
 enum TMBError: LocalizedError, Equatable {
     case missingCredentials
