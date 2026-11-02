@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// What a tab shows: the existing metro screens, the bus ones or the FGC ones
-/// (spec S1, S6).
+/// What a tab shows: the existing metro screens, the bus ones, the FGC ones
+/// or all operators at once (spec S1, S6, S8).
 ///
 /// Persisted as its raw value in `UserDefaults` under "appMode", so the app
 /// reopens on the mode the rider used last. Both `RootView` and `ModeSelector`
@@ -13,10 +13,14 @@ enum AppMode: String {
     /// Ferrocarrils de la Generalitat (spec S6). Its screens read
     /// `FGCNetworkState.shared` instead of the TMB model.
     case fgc
+    /// The global mode (spec S8): metro, FGC and the favorite bus routes on
+    /// one map. Its screens read `GlobalNetworkState.shared` for the metro
+    /// side and `FGCNetworkState.shared` for the FGC side.
+    case global
 }
 
-/// Capsule row "Metro | Bus | FGC" (spec S1, S6), the selected one in the
-/// prototype's white-on-black style. The caller's header supplies the
+/// Capsule row "Metro | Bus | FGC | Tot" (spec S1, S6, S8), the selected one
+/// in the prototype's white-on-black style. The caller's header supplies the
 /// horizontal padding.
 struct ModeSelector: View {
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
@@ -36,6 +40,7 @@ struct ModeSelector: View {
             chip("Metro", .metro)
             chip("Bus", .bus)
             chip("FGC", .fgc)
+            chip("Tot", .global)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // A tap on the other mode is a choice, so it clicks (polish pass).
