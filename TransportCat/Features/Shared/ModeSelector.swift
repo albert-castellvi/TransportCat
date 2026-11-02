@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// What a tab shows: the existing metro screens or the new bus ones (spec S1).
+/// What a tab shows: the existing metro screens, the bus ones or the FGC ones
+/// (spec S1, S6).
 ///
 /// Persisted as its raw value in `UserDefaults` under "appMode", so the app
 /// reopens on the mode the rider used last. Both `RootView` and `ModeSelector`
@@ -9,10 +10,14 @@ import SwiftUI
 enum AppMode: String {
     case metro
     case bus
+    /// Ferrocarrils de la Generalitat (spec S6). Its screens read
+    /// `FGCNetworkState.shared` instead of the TMB model.
+    case fgc
 }
 
-/// Capsule row "Metro | Bus" (spec S1), the selected one in the prototype's
-/// white-on-black style. The caller's header supplies the horizontal padding.
+/// Capsule row "Metro | Bus | FGC" (spec S1, S6), the selected one in the
+/// prototype's white-on-black style. The caller's header supplies the
+/// horizontal padding.
 struct ModeSelector: View {
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -30,6 +35,7 @@ struct ModeSelector: View {
         HStack(spacing: 8) {
             chip("Metro", .metro)
             chip("Bus", .bus)
+            chip("FGC", .fgc)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // A tap on the other mode is a choice, so it clicks (polish pass).
@@ -38,7 +44,7 @@ struct ModeSelector: View {
     }
 
     /// One capsule. Unselected chips are dimmed by their dark background
-    /// instead of being hidden, so the rider always sees both modes.
+    /// instead of being hidden, so the rider always sees every mode.
     private func chip(_ title: String, _ selection: AppMode) -> some View {
         let isSelected = mode == selection
         return Button {
