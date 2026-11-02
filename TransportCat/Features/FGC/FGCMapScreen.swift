@@ -13,6 +13,7 @@ import SwiftUI
 ///
 /// Spec S11 lives here too: the rider's dot when location is authorized, and
 /// the router's line, place and vehicle focuses.
+@MainActor
 struct FGCMapScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The line chips write this key and both FGC screens read it, so the map

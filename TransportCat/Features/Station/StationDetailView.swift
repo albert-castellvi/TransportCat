@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Detail of one station: active incidents of the line plus live arrivals
 /// polled directly from i-Metro.
+@MainActor
 struct StationDetailView: View {
     let station: Station
     let line: MetroLine

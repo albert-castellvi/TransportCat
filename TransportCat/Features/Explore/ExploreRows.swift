@@ -70,6 +70,7 @@ struct ExploreLineResult: Identifiable {
         }
     }
 
+    @MainActor
     var isFavorite: Bool {
         switch kind {
         case .metro(let line):
@@ -83,6 +84,7 @@ struct ExploreLineResult: Identifiable {
 
     /// Stars the line in the store its operator uses (S4): metro/FGC in
     /// `FavoritesStore`, bus in the catalog's own favorites.
+    @MainActor
     func toggleFavorite() {
         switch kind {
         case .metro(let line):

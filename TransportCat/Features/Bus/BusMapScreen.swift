@@ -18,6 +18,7 @@ import UIKit
 /// It mirrors `MapScreen` on purpose — same header shape, same chips, same
 /// camera bookkeeping — so switching mode with the selector at the top changes
 /// the data and never the layout.
+@MainActor
 struct BusMapScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

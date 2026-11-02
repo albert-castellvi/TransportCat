@@ -3,6 +3,7 @@ import SwiftUI
 /// Sheet of one bus stop (spec S6), opened from a stop dot on the bus map: the
 /// stop's address, its incidents and every bus the iBus feed expects next, of
 /// any line, refreshed while the sheet stays open.
+@MainActor
 struct BusStopSheet: View {
     let stop: BusStop
     /// Line the rider was looking at: it colors the countdowns and owns the

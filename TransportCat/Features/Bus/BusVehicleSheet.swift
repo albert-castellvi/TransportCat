@@ -8,6 +8,7 @@ import SwiftUI
 /// the next poll updates the next stop and the countdown in place. The
 /// "Seguir" button writes the same `followingVehicleID` binding the FGC map
 /// uses, and the map owns the camera bookkeeping.
+@MainActor
 struct BusVehicleSheet: View {
     /// Live state of the line the bus runs on. A `BusLineState` is per screen
     /// (unlike `FGCNetworkState.shared`), so the map hands its own over.

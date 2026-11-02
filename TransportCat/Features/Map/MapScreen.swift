@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Live map of one line: physical route as a polyline overlay, stations and
 /// computed train positions as annotations.
+@MainActor
 struct MapScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

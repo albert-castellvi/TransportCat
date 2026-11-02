@@ -5,6 +5,7 @@ import SwiftUI
 /// their next arrivals, and the places around the rider. Wired into `RootView`
 /// as the fourth tab by the S8 worker; everything it needs is a shared store,
 /// so it takes no arguments.
+@MainActor
 struct ExploreScreen: View {
     @EnvironmentObject private var app: AppModel
     @State private var query = ""

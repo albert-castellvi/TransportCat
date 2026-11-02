@@ -19,6 +19,7 @@ extension IncidentKind {
 /// stations as rows on a colored spine, live trains drawn on that spine at
 /// their continuous position, station incidents inside the row, and the next
 /// arrivals per station as pills.
+@MainActor
 struct DiagramScreen: View {
     @EnvironmentObject private var app: AppModel
     /// The same persisted selection as the metro map, so the map and the
@@ -485,6 +486,7 @@ private struct DiagramTrain: Identifiable {
 /// Draws the live trains on the spine of the diagram (S6). It shares the rows'
 /// coordinate space through the overlay it is attached to: every y is measured
 /// from the top of the first row, so rows and trains cannot drift apart.
+@MainActor
 private struct TrainOverlay: View {
     let state: LineState
     let line: MetroLine

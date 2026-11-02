@@ -8,6 +8,7 @@ import SwiftUI
 /// station and the countdown keep updating while the sheet is open. The
 /// camera mechanics stay in `MapScreen`; the sheet only flips
 /// `followingTrainID`, exactly as the FGC sheet does.
+@MainActor
 struct MetroTrainSheet: View {
     /// `TrainPosition.id` of the train on screen.
     let trainID: String

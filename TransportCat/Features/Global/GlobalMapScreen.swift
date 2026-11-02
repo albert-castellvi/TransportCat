@@ -15,6 +15,7 @@ import SwiftUI
 /// A vehicle tap hands the rider to the operator's own map with its follow
 /// sheet through `AppRouter.open(.vehicle(...))` (S10); an incident marker
 /// opens the shared `IncidentSheet` (S7).
+@MainActor
 struct GlobalMapScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

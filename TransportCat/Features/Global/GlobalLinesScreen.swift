@@ -8,6 +8,7 @@ import SwiftUI
 ///
 /// The header carries the mode selector so the rider can leave the global
 /// mode from here, as on the other Línies screens.
+@MainActor
 struct GlobalLinesScreen: View {
     @EnvironmentObject private var app: AppModel
 

@@ -4,6 +4,7 @@ import SwiftUI
 /// at this station or announcing it as a next stop, each as line badge,
 /// destination and punctuality. It reads the shared `FGCNetworkState`, exactly
 /// like the map's train sheet, so the data never forks.
+@MainActor
 struct FGCStationSheet: View {
     let place: Place
 

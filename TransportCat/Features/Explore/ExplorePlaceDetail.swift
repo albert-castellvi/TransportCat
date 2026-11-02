@@ -81,6 +81,7 @@ enum ExplorePlaceBridge {
 
     /// The catalog line behind the sheet's colors, or a neutral stand-in when
     /// the catalog has not loaded yet (the sheet only reads colors and names).
+    @MainActor
     static func busLine(for place: Place) -> BusLine {
         if let line = BusCatalogStore.shared.lines.first(where: { line in
             place.lineCodes.contains { $0.caseInsensitiveCompare(line.name) == .orderedSame }
