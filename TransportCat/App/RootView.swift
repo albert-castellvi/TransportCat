@@ -6,6 +6,7 @@ struct RootView: View {
     /// Metro or bus (spec S1). The same key the `ModeSelector` chips write, so
     /// picking a mode on one tab switches both of them.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var mode: AppMode {
         AppMode(rawValue: modeRaw) ?? .metro
@@ -16,10 +17,15 @@ struct RootView: View {
             Group {
                 if mode == .bus {
                     BusMapScreen()
+                        .transition(.opacity)
                 } else {
                     MapScreen()
+                        .transition(.opacity)
                 }
             }
+            // Metro <-> bus is a cut today: fade the two screens into each
+            // other instead (polish pass), nothing when Reduce Motion is on.
+            .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             .tabItem {
                 Label("Mapa", image: "tab-map")
             }
@@ -28,10 +34,13 @@ struct RootView: View {
             Group {
                 if mode == .bus {
                     BusDiagramScreen()
+                        .transition(.opacity)
                 } else {
                     DiagramScreen()
+                        .transition(.opacity)
                 }
             }
+            .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             .tabItem {
                 Label("Línies", image: "tab-network")
             }

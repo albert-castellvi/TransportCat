@@ -41,7 +41,10 @@ struct BusDiagramScreen: View {
                 guard let client = app.client else { return }
                 await store.load(client: client)
             }
-            .task(id: store.selectedLineCode) {
+            // Keyed on the resolved line, not the stored code: `selectedLineCode`
+            // is restored from UserDefaults before the catalog loads, so the task
+            // would exit through the guard and never re-run when the line arrives.
+            .task(id: store.selectedLine?.code) {
                 guard let client = app.client, let line = store.selectedLine else { return }
                 let state = BusLineState(line: line, client: client)
                 self.lineState = state

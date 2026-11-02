@@ -5,6 +5,7 @@ import SwiftUI
 /// computed train positions as annotations.
 struct MapScreen: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
@@ -33,7 +34,12 @@ struct MapScreen: View {
                 LinePicker(selectedLineCode: $selectedLineCode)
                 chipsRow
                 mapArea
+                    // The placeholder and the map swap with a short fade when
+                    // the line's state first arrives (polish pass).
+                    .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             }
+            // Changing the line is a selection, so it clicks (polish pass).
+            .sensoryFeedback(.selection, trigger: selectedLineCode)
             .navigationTitle("Mapa")
             .navigationBarTitleDisplayMode(.inline)
             // The loader task must live on the always-visible container: the
@@ -62,15 +68,22 @@ struct MapScreen: View {
         HStack(spacing: 8) {
             if let state = lineState {
                 FreshnessChip(lineState: state)
+                    .transition(AppMotion.chipTransition)
             }
             IncidentsChip(
                 lineCode: selectedLineCode,
                 lineDisplayName: selectedLine.displayName
             )
+            .transition(AppMotion.chipTransition)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 16)
         .padding(.bottom, 8)
+        // The freshness chip joins the row the moment the line's state exists:
+        // fade and shrink it in instead of a pop (polish pass).
+        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
+        // Same for the incidents chip when the alerts feed first answers.
+        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.alertsUpdatedAt)
     }
 
     @ViewBuilder
@@ -79,8 +92,10 @@ struct MapScreen: View {
             ConfigurationNotice(message: message)
         } else if let client = app.client, let state = lineState {
             lineMap(state: state, client: client)
+                .transition(.opacity)
         } else {
-            ProgressView("Carregant…")
+            MapLoadingPlaceholder()
+                .transition(.opacity)
         }
     }
 
@@ -153,6 +168,11 @@ struct MapScreen: View {
         .onChange(of: state.stations.map(\.code)) { _, _ in
             fitCamera(to: state.stations)
         }
+        // A line change swaps the polyline, the stations and the trains
+        // wholesale, and they arrive with the first poll: fade the overlays
+        // in on the change instead of popping them onto an empty map
+        // (polish pass, no Map rebuild).
+        .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.stations.map(\.code))
     }
 
     /// Refit the camera on the stations of the line currently shown, so a long

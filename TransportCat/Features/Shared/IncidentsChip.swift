@@ -49,6 +49,7 @@ struct IncidentsChip: View {
     var body: some View {
         if feedUpdatedAt == nil, app.isLoadingAlerts || app.alertsErrorMessage == nil {
             loadingCapsule
+                .transition(AppMotion.chipTransition)
         } else {
             let active = activeAlerts()
             if active.isEmpty {
@@ -56,6 +57,7 @@ struct IncidentsChip: View {
                 EmptyView()
             } else {
                 chip(active: active)
+                    .transition(AppMotion.chipTransition)
             }
         }
     }
