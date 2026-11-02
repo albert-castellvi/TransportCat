@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ca</string>
+	<key>CFBundleDisplayName</key>
+	<string>TransportCat</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Spec S22: single-target watchOS app (no WatchKit extension), companion
+	     of the iOS app. No App Group and no entitlements file: the watch keeps
+	     its own cache and reads its own TMB credentials. -->
+	<key>WKApplication</key>
+	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>cat.transport.app</string>
+	<!-- TMB public API credentials, injected at build time exactly like the
+	     app's Info.plist. Never committed with real values. -->
+	<key>TMBAppId</key>
+	<string>$(TMB_APP_ID)</string>
+	<key>TMBAppKey</key>
+	<string>$(TMB_APP_KEY)</string>
+</dict>
+</plist>

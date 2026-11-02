@@ -25,16 +25,52 @@ struct TransportCatApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // Spec S14: every 60 s alerts poll flows through the watcher,
-            // which notifies the new alerts of the favorite lines once.
-            RootView()
-                .onReceive(AppModel.shared.$alerts) { alerts in
-                    IncidentWatcher.shared.handleAlertsUpdate(metro: alerts)
-                }
-                .onReceive(AppModel.shared.$busAlerts) { busAlerts in
-                    IncidentWatcher.shared.handleAlertsUpdate(bus: busAlerts)
-                }
+            // Spec S22: the phone mirrors the favorite places to the watch.
+            WatchFavoritesSyncView {
+                // Spec S14: every 60 s alerts poll flows through the watcher,
+                // which notifies the new alerts of the favorite lines once.
+                RootView()
+                    .onReceive(AppModel.shared.$alerts) { alerts in
+                        IncidentWatcher.shared.handleAlertsUpdate(metro: alerts)
+                    }
+                    .onReceive(AppModel.shared.$busAlerts) { busAlerts in
+                        IncidentWatcher.shared.handleAlertsUpdate(bus: busAlerts)
+                    }
+            }
         }
+    }
+}
+
+/// Keeps the Apple Watch in sync with the favorite places (spec S22).
+///
+/// A small view rather than a modifier on `RootView` because the favorites are
+/// observed from SwiftUI: reading `FavoritesStore.shared.favoritePlaces` in
+/// `body` is what makes this view re-evaluate, and therefore `onChange` fire,
+/// when the rider stars or unstars a place.
+private struct WatchFavoritesSyncView<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .task {
+                // Activate the session and push the current list at launch.
+                // The hop keeps the call valid whichever isolation SwiftUI
+                // gives the task closure.
+                #if canImport(WatchConnectivity)
+                await MainActor.run {
+                    WatchSync.shared.start(places: FavoritesStore.shared.favoritePlaces)
+                }
+                #endif
+            }
+            .onChange(of: FavoritesStore.shared.favoritePlaces) { _, places in
+                #if canImport(WatchConnectivity)
+                Task { @MainActor in WatchSync.shared.sync(places) }
+                #endif
+            }
     }
 }
 
