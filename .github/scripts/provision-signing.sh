@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# TransportCat — create the iOS distribution certificate and the App Store
-# provisioning profile through the App Store Connect REST API (S11 / T8).
+# TransportCat — create one App ID and one App Store provisioning profile per
+# bundle, plus at most one distribution certificate per run, through the App
+# Store Connect REST API (S23 / T12; originally S11 / T8).
 #
 # Why this exists
 # ---------------
@@ -13,18 +14,25 @@
 # fastlane `match` / `spaceship` do with an API key, *before* the archive runs:
 #
 #   0. ES256 JWT, signed with the already-installed .p8, openssl only.
-#   1. App ID      GET  /v1/bundleIds?filter[identifier]=<bundle>
-#                  POST /v1/bundleIds                            (if missing)
-#      Capability  GET  /v1/bundleIds/<id>/bundleIdCapabilities
-#                                                 (409 = already enabled)
 #   2. Certificate GET  /v1/certificates?filter[certificateType]=DISTRIBUTION
 #                  POST /v1/certificates  certificateType=DISTRIBUTION + CSR
 #                  -> certificateContent (base64 DER leaf) -> .p12 with a
 #                     random export password -> temporary job keychain
-#   3. Profile     GET  /v1/profiles?filter[name]=<profile>&include=bundleId
+#                  Runs ONCE per invocation, before the bundle loop, so every
+#                  profile of this run is bound to the same certificate.
+#   1+3. Per bundle in $BUNDLES ("bundle|profile name|env var"), in order:
+#     1. App ID    GET  /v1/bundleIds?filter[identifier]=<bundle>
+#                  POST /v1/bundleIds                            (if missing)
+#     3. Profile   GET  /v1/profiles?filter[name]=<profile>&include=bundleId
 #                  GET  /v1/profiles/<id>/certificates
 #                  POST /v1/profiles  IOS_APP_STORE + bundleId + certificate
 #                  -> profileContent -> installed in the runner profiles dir
+#
+# The three bundles are the iOS app, its widget extension and its watchOS app.
+# WatchOS bundle ids are registered with platform IOS in App Store Connect (the
+# bundleIds platform enum has no watchOS value) and their App Store profiles use
+# profileType IOS_APP_STORE as well, because the watch app ships inside the iOS
+# app and is distributed with it.
 #
 # Deliberately non-destructive: nothing is ever revoked, deleted or updated in
 # the developer portal. The only writes are POSTs that create missing records.
@@ -38,15 +46,24 @@
 #   ASC_KEY_ID, ASC_ISSUER_ID          required; the App Store Connect API key
 #   ASC_KEY_PATH                       default $HOME/private_keys/AuthKey_<ID>.p8
 #   APPLE_TEAM_ID                      default QP5A6D4Y4P
-#   BUNDLE_ID                          default cat.transport.app
-#   APP_NAME                           default TransportCat
-#   PROFILE_NAME                       default "TransportCat App Store CI"
+#   BUNDLES                            optional override; one
+#                                      "bundle|profile name|env var" per line
+#                                      (default: app, widgets, watch below)
+#   APP_NAME                           default TransportCat (App ID name and
+#                                      certificate CSP subject)
 #   ASC_API_BASE                       override for tests only
 #
 # Outputs (written to $GITHUB_ENV):
-#   PROFILE_NAME            read by the archive/export steps (profile specifier)
+#   TRANSPORTCAT_PROFILE_SPECIFIER          app profile name (archive/export)
+#   TRANSPORTCAT_WIDGETS_PROFILE_SPECIFIER  widget extension profile name
+#   TRANSPORTCAT_WATCH_PROFILE_SPECIFIER    watchOS app profile name
 #   SIGNING_KEYCHAIN_PATH   read by the keychain cleanup step
-#   SIGNING_IDENTITY        SHA-1 of the certificate the profile is bound to
+#   SIGNING_IDENTITY        SHA-1 of the certificate every profile is bound to
+#
+# The env-var column is deliberate: the archive and export steps must receive
+# each profile under the per-target build setting that project.yml reads, and a
+# fixed mapping here keeps the contract in one place instead of guessing names
+# from bundle ids.
 #
 # A pre-existing distribution certificate is reused only when its private key
 # is already in a searched keychain (the workflow imports it with
@@ -59,9 +76,12 @@ ASC_API_BASE="${ASC_API_BASE:-https://api.appstoreconnect.apple.com}"
 ASC_KEY_ID="${ASC_KEY_ID:?ASC_KEY_ID must be set}"
 ASC_ISSUER_ID="${ASC_ISSUER_ID:?ASC_ISSUER_ID must be set}"
 TEAM_ID="${APPLE_TEAM_ID:-QP5A6D4Y4P}"
-BUNDLE_ID="${BUNDLE_ID:-cat.transport.app}"
 APP_NAME="${APP_NAME:-TransportCat}"
-PROFILE_NAME="${PROFILE_NAME:-TransportCat App Store CI}"
+# One line per embedded bundle: "<bundle id>|<profile name>|<env var>". The app
+# comes first so its profile keeps the original variable name.
+BUNDLES="${BUNDLES:-cat.transport.app|TransportCat App Store CI|TRANSPORTCAT_PROFILE_SPECIFIER
+cat.transport.app.widgets|TransportCat Widgets App Store CI|TRANSPORTCAT_WIDGETS_PROFILE_SPECIFIER
+cat.transport.app.watchkitapp|TransportCat Watch App Store CI|TRANSPORTCAT_WATCH_PROFILE_SPECIFIER}"
 KEY_PATH="${ASC_KEY_PATH:-$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8}"
 
 WORK="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/drivy-signing"
@@ -310,8 +330,10 @@ JWT=""
 refresh_token
 info "ASC API JWT minted (ES256, 20 min) — value never printed."
 
-# --- 1. App ID -------------------------------------------------------------
+# --- 1. App ID (per bundle) -------------------------------------------------
+# Reads BUNDLE_ID / APP_NAME; sets BUNDLE_RESOURCE_ID.
 
+ensure_app_id() {
 info "Ensuring App ID $BUNDLE_ID exists in team $TEAM_ID..."
 api_call GET "/v1/bundleIds?filter%5Bidentifier%5D=${BUNDLE_ID}&limit=200"
 case "$API_STATUS" in
@@ -359,11 +381,15 @@ else
 fi
 
 [ -n "$BUNDLE_RESOURCE_ID" ] || die "Could not resolve the App ID resource id."
+}
 
 
 
-# --- 2. Distribution certificate -------------------------------------------
+# --- 2. Distribution certificate (once per run) ----------------------------
+# Sets CERT_RESOURCE_ID, SIGNING_IDENTITY, cert_expiry and KEYCHAIN. Every
+# profile created below is bound to this one certificate.
 
+ensure_certificate() {
 info "Looking for an existing Apple Distribution certificate in team $TEAM_ID..."
 api_call GET "/v1/certificates?filter%5BcertificateType%5D=DISTRIBUTION&limit=200"
 case "$API_STATUS" in
@@ -498,7 +524,7 @@ PY
     -inkey "$WORK/csr-key.pem" \
     -in "$WORK/certificate.pem" \
     -out "$WORK/signing.p12" \
-    -name "$PROFILE_NAME" \
+    -name "${APP_NAME} CI Distribution" \
     -passout "file:$WORK/p12.pass" 2>"$WORK/openssl-pkcs12-error" \
     || die "openssl could not export the .p12." "$(cat "$WORK/openssl-pkcs12-error")"
   chmod 600 "$WORK/signing.p12"
@@ -561,9 +587,16 @@ PY
            "security find-identity output: $(security find-identity -v -p codesigning "$KEYCHAIN")"
   info "Codesigning identity available: Apple Distribution."
 fi
+}
 
-# --- 3. App Store provisioning profile -------------------------------------
 
+
+# --- 3. App Store provisioning profile (per bundle) ------------------------
+# Uses BUNDLE_RESOURCE_ID (ensure_app_id) and CERT_RESOURCE_ID
+# (ensure_certificate). Sets PROFILE_RESOURCE_ID, profile_uuid and
+# profile_expiry, and installs the .mobileprovision on the runner.
+
+ensure_profile() {
 info "Looking for an App Store provisioning profile '$PROFILE_NAME' for $BUNDLE_ID..."
 api_call GET "/v1/profiles?filter%5Bname%5D=$(printf '%s' "$PROFILE_NAME" | sed 's/ /%20/g')&include=bundleId&limit=200"
 [ "$API_STATUS" = "200" ] || die "GET /v1/profiles failed (HTTP $API_STATUS)." "$(response_snippet)"
@@ -648,24 +681,81 @@ profiles_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
 mkdir -p "$profiles_dir"
 cp "$WORK/profile.mobileprovision" "$profiles_dir/${profile_uuid}.mobileprovision"
 info "Installed App Store profile '$PROFILE_NAME' (UUID $profile_uuid, expires ${profile_expiry:-unknown})."
+}
 
-# --- 4. Hand the values the archive/export steps need ----------------------
+
+
+# --- 4. Main: one certificate, then App ID + profile per bundle ------------
+
+# Normalize the BUNDLES list: strip CRs, edge blanks and empty lines. Profile
+# names may contain spaces, so only the line edges are trimmed.
+BUNDLES="$(printf '%s\n' "$BUNDLES" \
+  | sed -e 's/\r$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d')"
+[ -n "$BUNDLES" ] || die "BUNDLES is empty; expected 'bundle|profile name|env var' lines."
+
+# The certificate is resolved or created once, before any profile, so all of
+# them are bound to the same Apple Distribution identity and at most one
+# certificate is created per run (the .p12 private key is imported from the
+# secret, or created once and reused in-memory by the loop below).
+ensure_certificate
+
+bundle_ids=()
+profile_names=()
+profile_env_names=()
+bundle_resource_ids=()
+profile_resource_ids=()
+profile_uuids=()
+profile_expiries=()
+
+# Here-string, not a pipe: the loop must run in this shell so the arrays and
+# BUNDLE_RESOURCE_ID survive each iteration.
+while IFS='|' read -r BUNDLE_ID PROFILE_NAME PROFILE_ENV_VAR; do
+  [ -n "$BUNDLE_ID" ] || continue
+  [ -n "${PROFILE_NAME:-}" ] || die "BUNDLES line for '$BUNDLE_ID' has no profile name."
+  [ -n "${PROFILE_ENV_VAR:-}" ] || die "BUNDLES line for '$BUNDLE_ID' has no env var name."
+  info ""
+  info "=== Bundle $BUNDLE_ID -> profile '$PROFILE_NAME' (exported as $PROFILE_ENV_VAR) ==="
+  ensure_app_id
+  ensure_profile
+  bundle_ids+=("$BUNDLE_ID")
+  profile_names+=("$PROFILE_NAME")
+  profile_env_names+=("$PROFILE_ENV_VAR")
+  bundle_resource_ids+=("$BUNDLE_RESOURCE_ID")
+  profile_resource_ids+=("$PROFILE_RESOURCE_ID")
+  profile_uuids+=("$profile_uuid")
+  profile_expiries+=("${profile_expiry:-unknown}")
+done <<<"$BUNDLES"
+
+bundle_count="${#bundle_ids[@]}"
+[ "$bundle_count" -gt 0 ] || die "BUNDLES produced no bundle to provision."
+
+# --- 5. Hand the values the archive/export steps need ----------------------
 
 {
-  echo "PROFILE_NAME=$PROFILE_NAME"
   echo "SIGNING_KEYCHAIN_PATH=$KEYCHAIN"
   echo "SIGNING_IDENTITY=$SIGNING_IDENTITY"
+  i=0
+  while [ "$i" -lt "$bundle_count" ]; do
+    echo "${profile_env_names[$i]}=${profile_names[$i]}"
+    i=$((i + 1))
+  done
 } >>"$GITHUB_ENV"
 
 {
   echo "### Signing material provisioned via ASC API"
   echo ""
-  echo "- App ID: \`$BUNDLE_ID\` (resource \`$BUNDLE_RESOURCE_ID\`, Sign in with Apple enabled)"
   echo "- Certificate: Apple Distribution \`$CERT_RESOURCE_ID\` (expires ${cert_expiry:-unknown})"
-  echo "- Profile: \`$PROFILE_NAME\` \`$PROFILE_RESOURCE_ID\` (UUID \`$profile_uuid\`, expires ${profile_expiry:-unknown})"
-  echo "- Signing is manual: \`CODE_SIGN_IDENTITY=\"Apple Distribution\"\`, \`PROVISIONING_PROFILE_SPECIFIER=\"$PROFILE_NAME\"\`"
+  i=0
+  while [ "$i" -lt "$bundle_count" ]; do
+    echo "- App ID: \`${bundle_ids[$i]}\` (resource \`${bundle_resource_ids[$i]}\`)"
+    echo "  Profile: \`${profile_names[$i]}\` \`${profile_resource_ids[$i]}\` (UUID \`${profile_uuids[$i]}\`, expires ${profile_expiries[$i]})"
+    echo "  Exported as \`${profile_env_names[$i]}\`"
+    i=$((i + 1))
+  done
+  echo "- Signing is manual: \`CODE_SIGN_IDENTITY=\"Apple Distribution\"\`, per-target \`PROVISIONING_PROFILE_SPECIFIER\`"
   echo ""
   echo "The certificate private key and the .p12 password exist only on this runner."
 } >>"$GITHUB_STEP_SUMMARY"
 
-info "Signing material ready: identity 'Apple Distribution', profile '$PROFILE_NAME'."
+info ""
+info "Signing material ready: identity 'Apple Distribution', $bundle_count profile(s)."
