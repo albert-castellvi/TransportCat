@@ -53,6 +53,10 @@ targets:
     dependencies:
       - package: Sentry
         product: Sentry
+      # Spec S20: the widget extension and the Live Activity ship inside the
+      # app bundle.
+      - target: TransportCatWidgets
+        embed: true
     settings:
       base:
         PRODUCT_NAME: TransportCat
@@ -69,6 +73,75 @@ targets:
         CODE_SIGN_STYLE: $(TRANSPORTCAT_CODE_SIGN_STYLE)
         CODE_SIGN_IDENTITY: $(TRANSPORTCAT_CODE_SIGN_IDENTITY)
         PROVISIONING_PROFILE_SPECIFIER: $(TRANSPORTCAT_PROFILE_SPECIFIER)
+
+  # Spec S20: widgets + Live Activity. An app extension embedded in
+  # `TransportCat`, with its own bundle id and its own App Store profile.
+  # The source set is explicit: the extension folder plus only the shared
+  # files the App Intents, the arrivals fetcher and the widget need. Core
+  # files that pull in Sentry, `Features/` types, UserNotifications,
+  # BackgroundTasks or `UIApplication` stay out.
+  TransportCatWidgets:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: TransportCatWidgets
+        excludes:
+          - Info.plist
+      # Spec S15 App Intents, compiled unchanged by the extension.
+      - path: TransportCat/Intents
+      # Live Activity attributes shared by both targets (the controller is
+      # app-only and is not listed).
+      - path: TransportCat/Core/LiveActivity/ArrivalActivityAttributes.swift
+      # Core closure of the Intents + widget (imports and type references).
+      - path: TransportCat/Core/TMB/JSONValue.swift
+      - path: TransportCat/Core/TMB/TMBClient.swift
+      - path: TransportCat/Core/TMB/TMBClient+Bus.swift
+      - path: TransportCat/Core/TMB/TMBClient+Places.swift
+      - path: TransportCat/Core/TMB/TMBCredentials.swift
+      - path: TransportCat/Core/TMB/TMBError.swift
+      - path: TransportCat/Core/TMB/TMBParsers.swift
+      - path: TransportCat/Core/TMB/TMBPlaceParsers.swift
+      - path: TransportCat/Core/Bus/BusModels.swift
+      - path: TransportCat/Core/Bus/BusParsers.swift
+      - path: TransportCat/Core/FGC/FGCClient.swift
+      - path: TransportCat/Core/FGC/FGCModels.swift
+      - path: TransportCat/Core/FGC/FGCParsers.swift
+      - path: TransportCat/Core/Models/Arrival.swift
+      - path: TransportCat/Core/Models/LineGeometry.swift
+      - path: TransportCat/Core/Models/MetroLine.swift
+      - path: TransportCat/Core/Models/ServiceAlert.swift
+      - path: TransportCat/Core/Models/Station.swift
+      - path: TransportCat/Core/Cache/DiskCache.swift
+      - path: TransportCat/Core/Engine/GeoMath.swift
+      - path: TransportCat/Core/Places/GeoPoint+Place.swift
+      - path: TransportCat/Core/Places/Place.swift
+      - path: TransportCat/Core/Places/PlaceCatalogStore.swift
+      - path: TransportCat/Core/Places/PlaceIndex.swift
+      - path: TransportCat/Core/Favorites/FavoritesStore.swift
+      - path: TransportCat/Core/ColorFromHex.swift
+      - path: TransportCat/Core/HexLuminance.swift
+    settings:
+      base:
+        PRODUCT_NAME: TransportCatWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: cat.transport.app.widgets
+        INFOPLIST_FILE: TransportCatWidgets/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+        # The extension shares the app's certificate; only the profile is its
+        # own (CI passes TRANSPORTCAT_WIDGETS_PROFILE_SPECIFIER on the archive
+        # command line, as it does for the app target).
+        TRANSPORTCAT_WIDGETS_CODE_SIGN_STYLE: Automatic
+        TRANSPORTCAT_WIDGETS_CODE_SIGN_IDENTITY: Apple Development
+        TRANSPORTCAT_WIDGETS_PROFILE_SPECIFIER: ""
+        CODE_SIGN_STYLE: $(TRANSPORTCAT_CODE_SIGN_STYLE)
+        CODE_SIGN_IDENTITY: $(TRANSPORTCAT_CODE_SIGN_IDENTITY)
+        PROVISIONING_PROFILE_SPECIFIER: $(TRANSPORTCAT_WIDGETS_PROFILE_SPECIFIER)
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG WIDGET_EXTENSION
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: WIDGET_EXTENSION
 
   TransportCatTests:
     type: bundle.unit-test
