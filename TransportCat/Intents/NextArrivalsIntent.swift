@@ -22,7 +22,7 @@ struct NextArrivalsIntent: AppIntent {
         guard let client = try? TMBClient.fromBundle() else {
             // A build without TMB credentials cannot answer; the same calm
             // empty state the dialog uses for a feed with nothing incoming.
-            return .result(dialog: NextArrivalsFetcher.noArrivalsText)
+            return .result(dialog: IntentDialog(stringLiteral: NextArrivalsFetcher.noArrivalsText))
         }
         let arrivals = await NextArrivalsFetcher.nextArrivals(
             for: place.place,
@@ -30,7 +30,9 @@ struct NextArrivalsIntent: AppIntent {
             now: now
         )
         return .result(
-            dialog: NextArrivalsFetcher.dialog(for: place.place, arrivals: arrivals, now: now)
+            dialog: IntentDialog(
+                stringLiteral: NextArrivalsFetcher.dialog(for: place.place, arrivals: arrivals, now: now)
+            )
         )
     }
 
