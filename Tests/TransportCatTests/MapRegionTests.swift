@@ -4,6 +4,9 @@ import XCTest
 
 /// S5: the map camera fits the stations of the selected line, instead of
 /// staying on the fixed Barcelona region and cutting long lines such as L5 off.
+/// `MapScreen` is main-actor isolated, so its `region(fitting:)` helper can
+/// only be reached from tests running on the main actor.
+@MainActor
 final class MapRegionTests: XCTestCase {
     private func station(code: Int, latitude: Double, longitude: Double) -> Station {
         Station(code: code, name: "S\(code)", orderInLine: code, lineCode: "5",

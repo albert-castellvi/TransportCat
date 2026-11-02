@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Detail of one station: active incidents of the line plus live arrivals
 /// polled directly from i-Metro.
+@MainActor
 struct StationDetailView: View {
     let station: Station
     let line: MetroLine
@@ -20,6 +21,11 @@ struct StationDetailView: View {
             stations: [station],
             lineCode: line.code
         )[station.code] ?? []
+    }
+
+    /// The station as a favoritable place (spec S12 star).
+    private var favoritePlace: Place {
+        ExplorePlaceBridge.place(for: station, line: line)
     }
 
     var body: some View {
@@ -76,6 +82,10 @@ struct StationDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
+                }
+                // The favorite star of the place detail (spec S12).
+                ToolbarItem(placement: .primaryAction) {
+                    FavoriteStarButton(place: favoritePlace)
                 }
             }
             .task {

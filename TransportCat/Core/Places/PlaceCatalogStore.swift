@@ -1,0 +1,131 @@
+import Foundation
+import Observation
+
+/// The whole place catalog: every metro station, every TMB bus stop and every
+/// FGC station, loaded once per launch and persisted with `DiskCache`
+/// (spec S2, S3).
+///
+/// The screens only ever read `places`; loading is explicit so the app decides
+/// when to spend the TMB quota. A failed load falls back to the cached copy, so
+/// a warm launch keeps the search and the nearby list working offline.
+@MainActor
+@Observable
+final class PlaceCatalogStore {
+    static let shared = PlaceCatalogStore()
+
+    /// Versioned cache key. A model change must use a new key.
+    static let cacheKey = "places.v1"
+
+    private(set) var places: [Place] = []
+    private(set) var isLoading = false
+    private(set) var errorMessage: String?
+    /// When the in-memory catalog was last replaced by a successful load.
+    private(set) var loadedAt: Date?
+
+    private let cache: DiskCache
+    /// One load per launch: an empty `places` from the cache still triggers the
+    /// network refresh, but a successful or failed attempt does not repeat.
+    private var hasAttemptedLoad = false
+
+    init(cache: DiskCache = .shared) {
+        self.cache = cache
+    }
+
+    // MARK: - Filters
+
+    var metroPlaces: [Place] { places.filter { $0.kind == .metroStation } }
+    var busPlaces: [Place] { places.filter { $0.kind == .busStop } }
+    var fgcPlaces: [Place] { places.filter { $0.kind == .fgcStation } }
+
+    func place(id: String) -> Place? {
+        places.first { $0.id == id }
+    }
+
+    // MARK: - Loading
+
+    /// Loads the three networks in parallel. A second call returns at once,
+    /// keeping the catalog already on screen.
+    ///
+    /// - Returns: whether the catalog ended up usable (fresh or cached).
+    @discardableResult
+    func load(client: TMBClient, fgcClient: FGCClient = FGCClient()) async -> Bool {
+        guard !hasAttemptedLoad, !isLoading else { return !places.isEmpty }
+        hasAttemptedLoad = true
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            async let metroLines = client.metroPlaceLines()
+            async let busStops = client.busNetworkStops()
+            async let busLines = client.busLines()
+            async let fgcStations = fgcClient.stations()
+            async let fgcRoutes = fgcClient.routes()
+            async let fgcStops = fgcClient.allStops()
+
+            let (loadedMetro, loadedBusStops, loadedBusLines, loadedFGCStations, loadedFGCRoutes, loadedFGCStops) =
+                try await (metroLines, busStops, busLines, fgcStations, fgcRoutes, fgcStops)
+
+            let busLineStops = try await client.busPlaceLines(loadedBusLines)
+            let fgcTopology = FGCNetwork.stations(
+                loadedFGCStations,
+                points: FGCNetwork.stopIndex(loadedFGCStops)
+            )
+
+            let loaded = TMBPlaceParser.metroPlaces(from: loadedMetro)
+                + TMBPlaceParser.busPlaces(stops: loadedBusStops, lines: busLineStops)
+                + TMBPlaceParser.fgcPlaces(stations: fgcTopology, lines: loadedFGCRoutes)
+
+            guard !loaded.isEmpty else { throw PlaceCatalogError.empty }
+            places = loaded.sorted(by: placeOrder)
+            loadedAt = Date()
+            errorMessage = nil
+            cache.save(places, forKey: Self.cacheKey)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return loadFromCache()
+        }
+    }
+
+    /// Clears the launch guard so a retry button can load again.
+    @discardableResult
+    func reload(client: TMBClient, fgcClient: FGCClient = FGCClient()) async -> Bool {
+        hasAttemptedLoad = false
+        return await load(client: client, fgcClient: fgcClient)
+    }
+
+    /// Reads the cached catalog, if any, without touching the network. Also
+    /// used as the fallback of a failed load.
+    @discardableResult
+    func loadFromCache() -> Bool {
+        guard let cached = cache.load([Place].self, forKey: Self.cacheKey), !cached.isEmpty else {
+            return false
+        }
+        places = cached
+        loadedAt = cache.savedAt(forKey: Self.cacheKey)
+        return true
+    }
+
+    // MARK: - Ordering
+
+    /// Alphabetical by folded name, then id. Same rule as the parsers, so the
+    /// persisted and the freshly loaded catalog have the same order.
+    private func placeOrder(_ lhs: Place, _ rhs: Place) -> Bool {
+        let left = PlaceIndex.normalized(lhs.name)
+        let right = PlaceIndex.normalized(rhs.name)
+        if left != right { return left < right }
+        return lhs.id < rhs.id
+    }
+}
+
+/// Why a load produced no place at all.
+enum PlaceCatalogError: LocalizedError {
+    case empty
+
+    var errorDescription: String? {
+        switch self {
+        case .empty:
+            return "El catàleg de llocs ha arribat buit."
+        }
+    }
+}

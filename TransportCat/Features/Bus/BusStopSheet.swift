@@ -3,6 +3,7 @@ import SwiftUI
 /// Sheet of one bus stop (spec S6), opened from a stop dot on the bus map: the
 /// stop's address, its incidents and every bus the iBus feed expects next, of
 /// any line, refreshed while the sheet stays open.
+@MainActor
 struct BusStopSheet: View {
     let stop: BusStop
     /// Line the rider was looking at: it colors the countdowns and owns the
@@ -31,6 +32,11 @@ struct BusStopSheet: View {
         self.line = line
         self.incidents = incidents
         self.delays = delays
+    }
+
+    /// The stop as a favoritable place (spec S12 star).
+    private var favoritePlace: Place {
+        ExplorePlaceBridge.place(for: stop, line: line)
     }
 
     var body: some View {
@@ -80,6 +86,10 @@ struct BusStopSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
+                }
+                // The favorite star of the place detail (spec S12).
+                ToolbarItem(placement: .primaryAction) {
+                    FavoriteStarButton(place: favoritePlace)
                 }
             }
             // The sheet's own task: it is cancelled when the sheet goes away, so

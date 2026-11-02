@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.170000, 41.385000] },
+      "properties": {
+        "CODI_ESTACIO": 128,
+        "ID_ESTACIO": 101,
+        "NOM_ESTACIO": "Catalunya",
+        "ORDRE_ESTACIO": 5,
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.163000, 41.386000] },
+      "properties": {
+        "CODI_ESTACIO": 129,
+        "ID_ESTACIO": 102,
+        "NOM_ESTACIO": "Universitat",
+        "ORDRE_ESTACIO": 6,
+        "NOM_TIPUS_ACCESSIBILITAT": "No accessible"
+      }
+    }
+  ]
+}

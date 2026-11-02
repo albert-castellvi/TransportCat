@@ -1,3 +1,4 @@
+import CoreLocation
 import MapKit
 import SwiftUI
 
@@ -9,6 +10,10 @@ import SwiftUI
 /// same camera bookkeeping — so the mode selector changes the data and never
 /// the layout. The polling task is owned by `RootView` (one `.task(id: mode)`
 /// for both FGC screens), so this view only reads the shared state.
+///
+/// Spec S11 lives here too: the rider's dot when location is authorized, and
+/// the router's line, place and vehicle focuses.
+@MainActor
 struct FGCMapScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The line chips write this key and both FGC screens read it, so the map
@@ -23,6 +28,11 @@ struct FGCMapScreen: View {
     @State private var selectedVehicle: MapVehicle?
     /// Train the camera is following, or nil (spec S8).
     @State private var followingVehicleID: String?
+    /// Router focus intents waiting for their data (spec S11): the station to
+    /// center on once the topology exists, and the train id that is not in the
+    /// glide yet.
+    @State private var pendingPlaceFocus: Place?
+    @State private var pendingVehicleFocusID: String?
     /// Where the camera was commanded to last, so the continuous callback can
     /// tell our own follow animation from a pan by the rider.
     @State private var followAnchor: GeoPoint?
@@ -44,6 +54,17 @@ struct FGCMapScreen: View {
     init() {}
 
     private var state: FGCNetworkState { FGCNetworkState.shared }
+
+    /// App-wide navigation intent (spec S11): FGC focuses are handled here and
+    /// cleared by this screen.
+    private var router: AppRouter { AppRouter.shared }
+    /// Device location for the blue dot (spec S11).
+    private var location: LocationService { LocationService.shared }
+    /// Whether the map may draw the rider's position at all; a denied
+    /// permission simply leaves the dot and the button away (S11).
+    private var isLocationAuthorized: Bool {
+        location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
+    }
 
     /// The line actually on screen: the stored code when it is selectable,
     /// otherwise the first selectable line.
@@ -71,22 +92,38 @@ struct FGCMapScreen: View {
             .onAppear {
                 refreshStations()
                 fitCamera()
+                // A focus may have switched the mode to FGC and created this
+                // screen around it (spec S11).
+                applyFocus(router.pendingFocus)
+                resolvePendingFocuses()
+            }
+            .onChange(of: router.pendingFocus) { _, destination in
+                applyFocus(destination)
             }
             .onChange(of: selectedLineCode) { _, _ in
-                // A new line is a new subject: drop the old train and refit.
-                selectedVehicle = nil
-                followingVehicleID = nil
+                // A new line is a new subject: drop the old train and refit —
+                // unless a focus just moved to this line and is about to open
+                // its sheet (spec S11).
+                if pendingVehicleFocusID == nil {
+                    selectedVehicle = nil
+                    followingVehicleID = nil
+                    fitCamera()
+                }
                 refreshStations()
-                fitCamera()
             }
             .onChange(of: state.lineLayers.count) { _, _ in
                 refreshStations()
-                fitCamera()
+                if pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
+                    fitCamera()
+                }
+                resolvePendingFocuses()
             }
             // The glide updates `vehicles` at 10 Hz: while a train is followed,
-            // the camera re-centers on it, keeping the span (spec S8).
+            // the camera re-centers on it, keeping the span (spec S8). A
+            // vehicle focus waiting for its train is checked on the same tick.
             .onChange(of: state.vehicles) { _, vehicles in
                 followVehicle(in: vehicles)
+                resolvePendingVehicleFocus()
             }
         }
         // The train sheet is presented by the stack itself and declares its
@@ -168,6 +205,11 @@ struct FGCMapScreen: View {
     @ViewBuilder
     private func lineMap(layer: MapLineLayer) -> some View {
         Map(position: $cameraPosition) {
+            if isLocationAuthorized {
+                // The rider's own dot (spec S11). Unauthorized, it is simply
+                // not drawn; a denied permission never blocks the map.
+                UserAnnotation()
+            }
             ForEach(state.lineLayers) { line in
                 // Every line of the network (S11): the selected one at full
                 // color and width 5, the rest dimmed to 25 % and width 3. The
@@ -218,6 +260,11 @@ struct FGCMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        .mapControls {
+            if isLocationAuthorized {
+                MapUserLocationButton()
+            }
+        }
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
@@ -254,6 +301,24 @@ struct FGCMapScreen: View {
                 .background(.thinMaterial, in: Capsule())
                 .padding(12)
                 .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topTrailing) {
+            // S11: before a decision the map offers a button that asks for
+            // when-in-use permission; after one it never appears again.
+            if location.authorization == .notDetermined {
+                Button {
+                    location.requestWhenInUse()
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(10)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Activa la ubicació")
+                .padding(.trailing, 16)
+                .padding(.top, 8)
+            }
         }
         .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.lineLayers.count)
     }
@@ -295,6 +360,76 @@ struct FGCMapScreen: View {
                 span: cameraSpan
             )
         )
+    }
+
+    // MARK: - Focus (spec S11)
+
+    /// Applies a router focus addressed to FGC (spec S11). A focus for
+    /// another operator is left untouched for its own map.
+    private func applyFocus(_ destination: Destination?) {
+        guard let destination, destination.operator == AppModeCode.fgc else { return }
+        switch destination {
+        case .line(_, let code):
+            selectedLineCode = code
+            router.clearFocus()
+        case .place(let place):
+            guard place.kind == .fgcStation else { return }
+            pendingPlaceFocus = place
+            resolvePendingPlaceFocus()
+        case .vehicle(_, let lineCode, let vehicleID):
+            pendingVehicleFocusID = vehicleID
+            let changedLine = selectedLineCode != lineCode
+            selectedLineCode = lineCode
+            // A line change re-triggers through the glide tick; with the same
+            // line on screen nothing else will, so try now (spec S11, S10).
+            if !changedLine {
+                resolvePendingVehicleFocus()
+            }
+            router.clearFocus()
+        }
+    }
+
+    /// Re-runs every pending resolution. Idempotent: with no pending intent
+    /// it does nothing, so every data-arrival trigger may call it.
+    private func resolvePendingFocuses() {
+        resolvePendingPlaceFocus()
+        resolvePendingVehicleFocus()
+    }
+
+    /// Centers a pending station focus once the topology exists (spec S11).
+    private func resolvePendingPlaceFocus() {
+        guard let place = pendingPlaceFocus, shownLayer != nil else { return }
+        pendingPlaceFocus = nil
+        centerCamera(on: place.position)
+        router.clearFocus()
+    }
+
+    /// Opens the train sheet with follow on once the focused vehicle exists
+    /// in the glide (spec S11, S10).
+    private func resolvePendingVehicleFocus() {
+        guard let vehicleID = pendingVehicleFocusID,
+              let vehicle = state.vehicles.first(where: { $0.id == vehicleID }) else { return }
+        pendingVehicleFocusID = nil
+        selectedVehicle = vehicle
+        followingVehicleID = vehicle.id
+        centerCamera(on: vehicle.position)
+    }
+
+    /// Zoom to a station or a train and re-center on it (spec S11).
+    private func centerCamera(on point: GeoPoint) {
+        let span = MKCoordinateSpan(
+            latitudeDelta: Self.focusSpanDegrees,
+            longitudeDelta: Self.focusSpanDegrees
+        )
+        cameraSpan = span
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude),
+                    span: span
+                )
+            )
+        }
     }
 
     /// `BusMarker` draws from a `BusLine`; the FGC map reuses that view with
@@ -350,6 +485,11 @@ struct FGCMapScreen: View {
     /// Below this visible latitude span the destination labels are drawn;
     /// above it they overlap each other, as on the bus and metro maps (S7).
     private static let labelSpanThreshold = 0.05
+
+    /// Span a focus centers with: close enough for the station or the train
+    /// sheet to be about something on screen (spec S11). The same zoom the bus
+    /// map uses for its stop and vehicle focuses.
+    private static let focusSpanDegrees = 0.01
 
     /// Floor of the pan-detection tolerance, in degrees: below it our own
     /// 10 Hz follow commands would read as the rider moving the map.

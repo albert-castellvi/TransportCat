@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.170050, 41.385020] },
+      "properties": {
+        "CODI_ESTACIO": 324,
+        "ID_ESTACIO": 301,
+        "NOM_ESTACIO": "Catalunya",
+        "ORDRE_ESTACIO": 4,
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.155000, 41.380000] },
+      "properties": {
+        "CODI_ESTACIO": 325,
+        "ID_ESTACIO": 302,
+        "NOM_ESTACIO": "Plaça del Centre",
+        "ORDRE_ESTACIO": 5,
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible"
+      }
+    }
+  ]
+}
