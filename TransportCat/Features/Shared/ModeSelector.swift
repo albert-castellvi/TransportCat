@@ -15,6 +15,7 @@ enum AppMode: String {
 /// white-on-black style. The caller's header supplies the horizontal padding.
 struct ModeSelector: View {
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Height of the capsules, shared with the chips row of the header.
     private static let chipHeight: CGFloat = 36
@@ -31,6 +32,9 @@ struct ModeSelector: View {
             chip("Bus", .bus)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // A tap on the other mode is a choice, so it clicks (polish pass).
+        // Fires on the value change, not on first appearance.
+        .sensoryFeedback(.selection, trigger: modeRaw)
     }
 
     /// One capsule. Unselected chips are dimmed by their dark background
@@ -38,7 +42,7 @@ struct ModeSelector: View {
     private func chip(_ title: String, _ selection: AppMode) -> some View {
         let isSelected = mode == selection
         return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(AppMotion.smooth(duration: 0.2, reduceMotion: reduceMotion)) {
                 modeRaw = selection.rawValue
             }
         } label: {

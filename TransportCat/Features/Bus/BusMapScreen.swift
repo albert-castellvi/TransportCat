@@ -14,6 +14,7 @@ import UIKit
 /// the data and never the layout.
 struct BusMapScreen: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Catalog and picker state, shared with the bus Línies screen so both
     /// always show the same line (spec S2). Read as a plain property: the
     /// `@Observable` store registers the view on its own when the body reads
@@ -45,7 +46,12 @@ struct BusMapScreen: View {
             VStack(spacing: 0) {
                 header
                 mapArea
+                    // The placeholder and the map swap with a short fade when
+                    // the line's state first arrives (polish pass).
+                    .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             }
+            // Changing the bus line is a selection, so it clicks (polish pass).
+            .sensoryFeedback(.selection, trigger: store.selectedLine?.code)
             .navigationTitle("Mapa")
             .navigationBarTitleDisplayMode(.inline)
             // Both loader tasks live on the always-visible container: the map
@@ -55,7 +61,10 @@ struct BusMapScreen: View {
                 guard let client = app.client else { return }
                 await store.load(client: client)
             }
-            .task(id: store.selectedLineCode) {
+            // Keyed on the resolved line, not the stored code: `selectedLineCode`
+            // is restored from UserDefaults before the catalog loads, so the task
+            // would exit through the guard and never re-run when the line arrives.
+            .task(id: store.selectedLine?.code) {
                 guard let client = app.client, let line = store.selectedLine else { return }
                 let state = BusLineState(line: line, client: client)
                 self.lineState = state
@@ -131,12 +140,19 @@ struct BusMapScreen: View {
                         lastAttemptFailed: state.lastPollFailed,
                         feedEmpty: state.hasNoBuses
                     )
+                    .transition(AppMotion.chipTransition)
                 }
                 IncidentsChip(busLineCode: String(line.code), lineDisplayName: line.name)
+                    .transition(AppMotion.chipTransition)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.leading, 16)
             .padding(.bottom, 8)
+            // The freshness chip joins the row the moment the line's state
+            // exists: fade and shrink it in instead of a pop (polish pass).
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
+            // Same for the incidents chip when the bus alerts feed first answers.
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.busAlertsUpdatedAt)
         }
     }
 
@@ -148,6 +164,7 @@ struct BusMapScreen: View {
             ConfigurationNotice(message: message)
         } else if let line = store.selectedLine, let state = lineState {
             lineMap(state: state, line: line)
+                .transition(.opacity)
         } else if let message = store.errorMessage {
             // The catalog sheet reached from the line selector offers the
             // retry; here the reason is only stated.
@@ -158,7 +175,8 @@ struct BusMapScreen: View {
                 .padding(24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ProgressView("Carregant…")
+            MapLoadingPlaceholder()
+                .transition(.opacity)
         }
     }
 
@@ -254,6 +272,11 @@ struct BusMapScreen: View {
                 fitCamera(to: state)
             }
         }
+        // A line change swaps both route polylines, the stop dots and the
+        // buses wholesale, and they arrive with the first poll: fade the
+        // overlays in on the change instead of popping them onto an empty
+        // map (polish pass, no Map rebuild).
+        .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.directions.map(\.id))
     }
 
     /// The strip that says where the buses come from (spec S3, S9): the
