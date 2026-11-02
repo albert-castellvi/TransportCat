@@ -33,6 +33,11 @@ struct BusStopSheet: View {
         self.delays = delays
     }
 
+    /// The stop as a favoritable place (spec S12 star).
+    private var favoritePlace: Place {
+        ExplorePlaceBridge.place(for: stop, line: line)
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -80,6 +85,10 @@ struct BusStopSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
+                }
+                // The favorite star of the place detail (spec S12).
+                ToolbarItem(placement: .primaryAction) {
+                    FavoriteStarButton(place: favoritePlace)
                 }
             }
             // The sheet's own task: it is cancelled when the sheet goes away, so

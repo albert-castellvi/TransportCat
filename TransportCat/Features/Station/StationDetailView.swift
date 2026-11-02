@@ -22,6 +22,11 @@ struct StationDetailView: View {
         )[station.code] ?? []
     }
 
+    /// The station as a favoritable place (spec S12 star).
+    private var favoritePlace: Place {
+        ExplorePlaceBridge.place(for: station, line: line)
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -76,6 +81,10 @@ struct StationDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
+                }
+                // The favorite star of the place detail (spec S12).
+                ToolbarItem(placement: .primaryAction) {
+                    FavoriteStarButton(place: favoritePlace)
                 }
             }
             .task {
