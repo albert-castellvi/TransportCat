@@ -106,11 +106,11 @@ Out of scope: a push backend (notifications are local or best-effort background)
 ## Tasks
 | ID | Specs | Phase | Route | Model / effort | Status | Commit |
 |----|-------|-------|-------|----------------|--------|--------|
-| T1 | S1-S7 | A | delegated (opencode TUI) | nan/deepseek-v4-flash, medium | pending | |
-| T2 | S8 (+RootView Explora tab wiring) | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | pending | |
-| T3 | S12 | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | pending | |
-| T4 | S9-S11 metro map | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | pending | |
-| T5 | S10-S11 bus + FGC maps | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | pending | |
+| T1 | S1-S7 | A | delegated (opencode TUI) | nan/deepseek-v4-flash, medium | done (38 Linux XCTest green, parent re-ran) | 52fdd65 |
+| T2 | S8 (+RootView Explora tab wiring) | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (9 Linux tests; swiftc -parse OK; compile in CI) | f57e832 |
+| T3 | S12 | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (14 Linux tests; swiftc -parse OK; compile in CI) | 0c91114 |
+| T4 | S9-S11 metro map | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (18 Linux tests; swiftc -parse OK; compile in CI) | 6476f42 |
+| T5 | S10-S11 bus + FGC maps | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (parse only; swiftc -parse OK; compile in CI) | 9d4dd8d |
 | T6 | S13 UI hooks, S17-S19 | B | delegated, parallel | nan/qwen3.8-flash, medium | pending | |
 | T7 | S13 core, S14, S15 | B | delegated, parallel | nan/deepseek-v4-flash, medium | pending | |
 | T8 | S16 | B | delegated, parallel | nan/qwen3.8-flash, medium | pending | |
@@ -128,3 +128,5 @@ Out of scope: a push backend (notifications are local or best-effort background)
   - no App Groups, because App Store Connect API-only signing cannot create group containers reliably, so the widget and watch fetch on their own;
   - no bus vehicles in global mode, to protect the TMB quota;
   - incident alerts are best-effort background refresh, because there is no backend.
+- L5 (2026-11-02) T1 done (52fdd65). Metro stations are loaded per line, because `transit/estacions` lacks accessibility and the full line list. FGC station routes are derived geometrically (<=200 m). T2-T5 launched in parallel (qwen) with disjoint surfaces.
+- L6 (2026-11-02) Phase A written: T2 f57e832, T3 0c91114, T4 6476f42, T5 9d4dd8d. Each worker stayed inside its surfaces (checked by git status before each commit). Next step: PR CI compile.
