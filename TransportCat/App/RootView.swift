@@ -3,6 +3,8 @@ import SwiftUI
 /// Root tab navigation: live map, line diagram, service alerts and Explora.
 struct RootView: View {
     @StateObject private var app = AppModel.shared
+    /// Network path state driving the offline banner (spec S21).
+    @State private var connectivity = ConnectivityMonitor.shared
     /// Metro, bus, FGC or the global mode (specs S1, S6, S8). The same key the
     /// `ModeSelector` chips write, so picking a mode on one tab switches both
     /// of them.
@@ -38,6 +40,16 @@ struct RootView: View {
             // fade into each other instead (polish pass), nothing when Reduce
             // Motion is on.
             .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
+            // Spec S21: while the device has no network path, a capsule at the
+            // top of the Mapa tab says the lines and trains on screen come
+            // from saved data and the timetable. TabView only draws the
+            // selected tab, so the banner is never on another tab.
+            .overlay(alignment: .top) {
+                if !connectivity.isOnline {
+                    OfflineBanner()
+                }
+            }
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: connectivity.isOnline)
             .tabItem {
                 Label("Mapa", image: "tab-map")
             }
@@ -80,7 +92,10 @@ struct RootView: View {
         .environmentObject(app)
         // Incidents load at launch and refresh every minute, whichever tab is
         // open: the map and Xarxa need them without a visit to Avisos (S1).
+        // The connectivity monitor starts alongside it (S21): it exists to
+        // gate the offline behaviors, nothing more.
         .task {
+            connectivity.start()
             await app.startAlertsPolling()
         }
         // The one FGC poller (spec S6): `run()` loads the topology once and
@@ -93,5 +108,19 @@ struct RootView: View {
             guard mode == .fgc || mode == .global else { return }
             await FGCNetworkState.shared.run()
         }
+    }
+}
+
+/// The capsule the Mapa tab shows while the device is offline (spec S21):
+/// saved topologies and theoretical timetables are what the map is drawing.
+private struct OfflineBanner: View {
+    var body: some View {
+        Label("Sense connexió · dades desades i horaris teòrics", systemImage: "wifi.slash")
+            .font(.footnote.weight(.semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.thinMaterial, in: Capsule())
+            .padding(.top, 8)
+            .transition(AppMotion.chipTransition)
     }
 }

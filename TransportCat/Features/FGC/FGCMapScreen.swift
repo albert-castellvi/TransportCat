@@ -254,8 +254,9 @@ struct FGCMapScreen: View {
                     }
                     .buttonStyle(.plain)
                     // The reused bus marker says "Bus"; a train has to say
-                    // "Tren" to VoiceOver (spec S7).
-                    .accessibilityLabel("Tren \(layer.code) cap a \(vehicle.label)")
+                    // "Tren" to VoiceOver (spec S7), plus the occupancy summary
+                    // when FGC publishes one (spec S18).
+                    .accessibilityLabel(trainAccessibilityLabel(vehicle, layerCode: layer.code))
                 }
             }
         }
@@ -430,6 +431,19 @@ struct FGCMapScreen: View {
                 )
             )
         }
+    }
+
+    /// The VoiceOver text of a train marker: line and destination (spec S7),
+    /// plus the occupancy summary when FGC publishes one (spec S18). The glide
+    /// publishes `MapVehicle`s without cars, so the live train behind the
+    /// vehicle is looked up by its stable id.
+    private func trainAccessibilityLabel(_ vehicle: MapVehicle, layerCode: String) -> String {
+        var label = "Tren \(layerCode) cap a \(vehicle.label)"
+        if let train = state.trains.first(where: { $0.id == vehicle.id }),
+           let occupancy = FGCOccupancy.summary(train) {
+            label += ". \(occupancy)"
+        }
+        return label
     }
 
     /// `BusMarker` draws from a `BusLine`; the FGC map reuses that view with

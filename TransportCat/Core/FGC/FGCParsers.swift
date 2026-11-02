@@ -98,7 +98,8 @@ enum FGCParser {
             return FGCStop(
                 id: id,
                 name: JSONValue.string(from: record["stop_name"]) ?? id,
-                point: point
+                point: point,
+                wheelchairBoarding: JSONValue.int(from: record["wheelchair_boarding"])
             )
         }
     }
@@ -239,16 +240,28 @@ enum FGCNetwork {
 
     // MARK: - Stop-code join (S2)
 
-    /// Exact stop ids to their coordinates. Platform rows (`GR1`...) are
-    /// included; `stationPoint` resolves the prefix fallback.
-    static func stopIndex(_ stops: [FGCStop]) -> [String: GeoPoint] {
-        var result: [String: GeoPoint] = [:]
+    /// The stop catalog read as a join source: coordinates per stop code
+    /// (spec S2) plus the GTFS `wheelchair_boarding` per stop code (spec S17).
+    /// Built once by `stopIndex` and consumed by `stations(_:points:)`.
+    struct FGCStopIndex: Equatable {
+        let points: [String: GeoPoint]
+        let boarding: [String: Int]
+    }
+
+    /// Exact stop ids to their coordinates and boarding state. Platform rows
+    /// (`GR1`...) are included; the station joins fall back to their prefix.
+    static func stopIndex(_ stops: [FGCStop]) -> FGCStopIndex {
+        var points: [String: GeoPoint] = [:]
+        var boarding: [String: Int] = [:]
         for stop in stops {
             if let point = stop.point {
-                result[stop.id] = point
+                points[stop.id] = point
+            }
+            if let state = stop.wheelchairBoarding {
+                boarding[stop.id] = state
             }
         }
-        return result
+        return FGCStopIndex(points: points, boarding: boarding)
     }
 
     /// Coordinates of a station code: the stop whose id equals the code, or
@@ -260,15 +273,26 @@ enum FGCNetwork {
         return stops.first { $0.id.hasPrefix(code) }?.point
     }
 
-    /// Adds the station coordinates joined from the stop catalog (S2).
-    static func stations(_ stations: [FGCStation], points: [String: GeoPoint]) -> [FGCStation] {
+    /// `wheelchair_boarding` of a station code (spec S17): the exact stop row
+    /// wins; otherwise the alphabetically first platform row that starts with
+    /// the code, so platform rows that disagree still join deterministically.
+    static func boarding(for code: String, in index: FGCStopIndex) -> Int? {
+        if let exact = index.boarding[code] { return exact }
+        guard let key = index.boarding.keys.filter({ $0.hasPrefix(code) }).sorted().first else { return nil }
+        return index.boarding[key]
+    }
+
+    /// Adds the station coordinates and boarding state joined from the stop
+    /// catalog (S2, S17).
+    static func stations(_ stations: [FGCStation], points index: FGCStopIndex) -> [FGCStation] {
         stations.map { station in
             FGCStation(
                 code: station.code,
                 name: station.name,
                 networkLine: station.networkLine,
                 order: station.order,
-                point: point(for: station.code, in: points)
+                point: point(for: station.code, in: index.points),
+                wheelchairBoarding: boarding(for: station.code, in: index)
             )
         }
     }

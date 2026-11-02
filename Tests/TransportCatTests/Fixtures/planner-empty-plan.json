@@ -1,0 +1,18 @@
+{
+  "plan": {
+    "date": 1793574000000,
+    "from": {
+      "name": "A",
+      "lat": 41.38,
+      "lon": 2.16,
+      "vertexType": "NORMAL"
+    },
+    "to": {
+      "name": "B",
+      "lat": 41.4,
+      "lon": 2.18,
+      "vertexType": "NORMAL"
+    },
+    "itineraries": []
+  }
+}

@@ -1,0 +1,414 @@
+{
+  "requestParameters": {
+    "mode": "TRANSIT,WALK",
+    "date": "11-02-2026",
+    "time": "8:05am",
+    "arriveBy": "false",
+    "fromPlace": "41.3873,2.1686",
+    "toPlace": "41.4102,2.2045",
+    "showIntermediateStops": "true"
+  },
+  "plan": {
+    "date": 1793574000000,
+    "from": {
+      "name": "Plaça de Catalunya",
+      "lat": 41.3873,
+      "lon": 2.1686,
+      "vertexType": "NORMAL"
+    },
+    "to": {
+      "name": "Rambla Poblenou",
+      "lat": 41.4102,
+      "lon": 2.2045,
+      "vertexType": "NORMAL"
+    },
+    "itineraries": [
+      {
+        "duration": 1450,
+        "startTime": 1793603100000,
+        "endTime": 1793604550000,
+        "walkTime": 270,
+        "transitTime": 1000,
+        "waitingTime": 230,
+        "walkDistance": 310.4,
+        "walkLimitExceeded": false,
+        "elevationLost": 0,
+        "elevationGained": 0,
+        "transfers": 1,
+        "fare": {},
+        "legs": [
+          {
+            "startTime": 1793603100000,
+            "endTime": 1793603220000,
+            "mode": "WALK",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Plaça de Catalunya",
+              "lat": 41.3873,
+              "lon": 2.1686,
+              "vertexType": "NORMAL"
+            },
+            "to": {
+              "name": "Catalunya",
+              "lat": 41.3866,
+              "lon": 2.1641,
+              "vertexType": "TRANSIT"
+            },
+            "route": null,
+            "transitLeg": false,
+            "legGeometry": {
+              "points": "smr{FwpfLz@vGnAjR",
+              "length": 150
+            },
+            "distance": 150.2,
+            "agencyName": "TMB",
+            "agencyId": "3",
+            "steps": [
+              {
+                "distance": 121.4,
+                "relativeDirection": "DEPART",
+                "absoluteDirection": "NORTHWEST",
+                "streetName": "Via Laietana",
+                "bogusName": false,
+                "lon": 2.1686,
+                "lat": 41.3873,
+                "stayOn": false,
+                "area": false
+              },
+              {
+                "distance": 28.8,
+                "relativeDirection": "RIGHT",
+                "absoluteDirection": "WEST",
+                "streetName": "Carrig",
+                "bogusName": false,
+                "lon": 2.1672,
+                "lat": 41.387,
+                "stayOn": false,
+                "area": false
+              }
+            ]
+          },
+          {
+            "startTime": 1793603310000,
+            "endTime": 1793603910000,
+            "mode": "SUBWAY",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Catalunya",
+              "lat": 41.3866,
+              "lon": 2.1641,
+              "vertexType": "TRANSIT",
+              "stopCode": "128"
+            },
+            "to": {
+              "name": "Glòries",
+              "lat": 41.4036,
+              "lon": 2.1844,
+              "vertexType": "TRANSIT",
+              "stopCode": "432"
+            },
+            "route": "L1",
+            "transitLeg": true,
+            "legGeometry": {
+              "points": "gir{FsteLwVce@_S_]sXsX{c@c`@",
+              "length": 150
+            },
+            "distance": 2400.5,
+            "routeColor": "CE1126",
+            "routeTextColor": "FFFFFF",
+            "headsign": "Fondo",
+            "agencyName": "TMB",
+            "agencyId": "3",
+            "intermediateStops": [
+              {
+                "name": "Urquinaona",
+                "lat": 41.3904,
+                "lon": 2.1702,
+                "vertexType": "TRANSIT",
+                "stopCode": "161"
+              },
+              {
+                "name": "Arc de Triomf",
+                "lat": 41.3936,
+                "lon": 2.175,
+                "vertexType": "TRANSIT",
+                "stopCode": "162"
+              },
+              {
+                "name": "Tetuan",
+                "lat": 41.3977,
+                "lon": 2.1791,
+                "vertexType": "TRANSIT",
+                "stopCode": "163"
+              }
+            ]
+          },
+          {
+            "startTime": 1793603910000,
+            "endTime": 1793603970000,
+            "mode": "WALK",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Glòries",
+              "lat": 41.4036,
+              "lon": 2.1844,
+              "vertexType": "TRANSIT"
+            },
+            "to": {
+              "name": "Glòries",
+              "lat": 41.4033,
+              "lon": 2.1858,
+              "vertexType": "TRANSIT"
+            },
+            "route": null,
+            "transitLeg": false,
+            "legGeometry": {
+              "points": "osu{FosiLz@wG",
+              "length": 150
+            },
+            "distance": 60.0,
+            "agencyName": "TMB",
+            "agencyId": "3"
+          },
+          {
+            "startTime": 1793604060000,
+            "endTime": 1793604460000,
+            "mode": "SUBWAY",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Glòries",
+              "lat": 41.4033,
+              "lon": 2.1858,
+              "vertexType": "TRANSIT",
+              "stopCode": "372"
+            },
+            "to": {
+              "name": "Poblenou",
+              "lat": 41.4122,
+              "lon": 2.2003,
+              "vertexType": "TRANSIT",
+              "stopCode": "374"
+            },
+            "route": "L2",
+            "transitLeg": true,
+            "legGeometry": {
+              "points": "squ{Fg|iLsSgYsS_b@kMk\\",
+              "length": 150
+            },
+            "distance": 1710.9,
+            "routeColor": "93248F",
+            "routeTextColor": "FFFFFF",
+            "headsign": "Badalona",
+            "agencyName": "TMB",
+            "agencyId": "3",
+            "intermediateStops": [
+              {
+                "name": "Bac de Roda",
+                "lat": 41.4066,
+                "lon": 2.19,
+                "vertexType": "TRANSIT",
+                "stopCode": "373"
+              },
+              {
+                "name": "Sant Martí",
+                "lat": 41.4099,
+                "lon": 2.1956,
+                "vertexType": "TRANSIT",
+                "stopCode": "375"
+              }
+            ]
+          },
+          {
+            "startTime": 1793604460000,
+            "endTime": 1793604550000,
+            "mode": "WALK",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Poblenou",
+              "lat": 41.4122,
+              "lon": 2.2003,
+              "vertexType": "TRANSIT"
+            },
+            "to": {
+              "name": "Rambla Poblenou",
+              "lat": 41.4102,
+              "lon": 2.2045,
+              "vertexType": "NORMAL"
+            },
+            "route": null,
+            "transitLeg": false,
+            "legGeometry": {
+              "points": "giw{F{vlLfE_NfEgJ",
+              "length": 150
+            },
+            "distance": 100.2,
+            "agencyName": "TMB",
+            "agencyId": "3"
+          }
+        ]
+      },
+      {
+        "duration": 1020,
+        "startTime": 1793603100000,
+        "endTime": 1793604120000,
+        "walkTime": 240,
+        "transitTime": 700,
+        "waitingTime": 80,
+        "walkDistance": 270.9,
+        "walkLimitExceeded": false,
+        "elevationLost": 0,
+        "elevationGained": 0,
+        "transfers": 0,
+        "fare": {},
+        "legs": [
+          {
+            "startTime": 1793603100000,
+            "endTime": 1793603280000,
+            "mode": "WALK",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Plaça de Catalunya",
+              "lat": 41.3902,
+              "lon": 2.163,
+              "vertexType": "NORMAL"
+            },
+            "to": {
+              "name": "Pl. Catalunya - Av. Portal de l'Àngel",
+              "lat": 41.3898,
+              "lon": 2.1682,
+              "vertexType": "TRANSIT",
+              "stopCode": "1178"
+            },
+            "route": null,
+            "transitLeg": false,
+            "legGeometry": {
+              "points": "w_s{FwmeLf@wQf@wL",
+              "length": 150
+            },
+            "distance": 180.9,
+            "agencyName": "TMB",
+            "agencyId": "3"
+          },
+          {
+            "startTime": 1793603360000,
+            "endTime": 1793604060000,
+            "mode": "BUS",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Pl. Catalunya - Av. Portal de l'Àngel",
+              "lat": 41.3898,
+              "lon": 2.1682,
+              "vertexType": "TRANSIT",
+              "stopCode": "1178"
+            },
+            "to": {
+              "name": "Glòries",
+              "lat": 41.4036,
+              "lon": 2.1844,
+              "vertexType": "TRANSIT",
+              "stopCode": "3051"
+            },
+            "route": "7",
+            "transitLeg": true,
+            "legGeometry": {
+              "points": "g}r{FgnfLwLwo@{Twj@c[sg@oUz^",
+              "length": 150
+            },
+            "distance": 2210.7,
+            "routeLongName": "Viatge Express",
+            "routeColor": "F0ED1E",
+            "routeTextColor": "000000",
+            "headsign": "Glòries",
+            "agencyName": "TMB",
+            "agencyId": "3",
+            "intermediateStops": [
+              {
+                "name": "Vivanda Rambla Catalunya",
+                "lat": 41.392,
+                "lon": 2.176,
+                "vertexType": "TRANSIT",
+                "stopCode": "3001"
+              },
+              {
+                "name": "Balmak Rambla Catalunya",
+                "lat": 41.3955,
+                "lon": 2.183,
+                "vertexType": "TRANSIT",
+                "stopCode": "3002"
+              },
+              {
+                "name": "P. De Gracia - Diagonal",
+                "lat": 41.4,
+                "lon": 2.1895,
+                "vertexType": "TRANSIT",
+                "stopCode": "3003"
+              }
+            ]
+          },
+          {
+            "startTime": 1793604060000,
+            "endTime": 1793604120000,
+            "mode": "WALK",
+            "realTime": false,
+            "departureDelay": 0,
+            "arrivalDelay": 0,
+            "agencyTimeZoneOffset": 3600000,
+            "from": {
+              "name": "Glòries",
+              "lat": 41.4036,
+              "lon": 2.1844,
+              "vertexType": "TRANSIT"
+            },
+            "to": {
+              "name": "La Fira",
+              "lat": 41.4041,
+              "lon": 2.1851,
+              "vertexType": "NORMAL"
+            },
+            "route": null,
+            "transitLeg": false,
+            "legGeometry": {
+              "points": "osu{FosiLcBkC",
+              "length": 150
+            },
+            "distance": 90.0,
+            "agencyName": "TMB",
+            "agencyId": "3"
+          }
+        ]
+      }
+    ]
+  },
+  "debugOutput": {
+    "precalculationTime": 26,
+    "pathCalculationTime": 243,
+    "pathTimes": [
+      1450,
+      1020
+    ],
+    "renderingTime": 0,
+    "totalTime": 269,
+    "timedOut": false
+  }
+}

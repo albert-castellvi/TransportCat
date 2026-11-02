@@ -45,8 +45,10 @@ final class BusCatalogStore {
     }
 
     /// Loads the catalog once per launch: a second call returns immediately and
-    /// keeps the lines already on screen (spec S2). A failed load leaves the
-    /// lines empty, so the "Reintenta" button of the picker can call this again.
+    /// keeps the lines already on screen (spec S2). A failed load falls back to
+    /// the offline catalog (spec S21), and only a load that finds no cached
+    /// copy leaves the lines empty, so the "Reintenta" button of the picker can
+    /// call this again.
     func load(client: TMBClient) async {
         guard lines.isEmpty, !isLoading else { return }
         isLoading = true
@@ -55,9 +57,21 @@ final class BusCatalogStore {
             let loaded = try await client.busLines()
             lines = loaded
             errorMessage = nil
+            // Spec S21: the catalog is small, static enough and needed by the
+            // picker offline, so every successful load persists it.
+            OfflineCache.saveBusCatalog(loaded)
             applyDefaultSelectionIfNeeded()
         } catch {
-            errorMessage = error.localizedDescription
+            // Spec S21: with the network down the cached catalog keeps the
+            // picker and the bus map working; only a cache miss leaves the
+            // error state the retry button acts on.
+            if let cached = OfflineCache.loadBusCatalog() {
+                lines = cached
+                errorMessage = nil
+                applyDefaultSelectionIfNeeded()
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

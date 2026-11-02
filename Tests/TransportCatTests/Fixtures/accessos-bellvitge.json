@@ -1,0 +1,71 @@
+{
+  "type": "FeatureCollection",
+  "name": "accessos",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "CODI_ACCES": 11101,
+        "CODI_GRUP_ESTACIO": 6660111,
+        "ID_ACCES": 18,
+        "ID_ESTACIO": 81,
+        "NOM_ACCES": "Rambla de Bellvitge",
+        "NOM_ESTACIO": "Hospital de Bellvitge",
+        "ID_TIPUS_ACCESSIBILITAT": 1,
+        "NOM_TIPUS_ACCESSIBILITAT": "Accessible",
+        "NUM_ASCENSORS": 1,
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA_INAUGURACIO": "1989-10-17Z",
+        "DATA": "2026-10-28Z"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.10724192, 41.34467731] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CODI_ACCES": 11102,
+        "CODI_GRUP_ESTACIO": 6660111,
+        "ID_ACCES": 19,
+        "ID_ESTACIO": 81,
+        "NOM_ACCES": "Gran Via Nord",
+        "NOM_ESTACIO": "Hospital de Bellvitge",
+        "ID_TIPUS_ACCESSIBILITAT": 2,
+        "NOM_TIPUS_ACCESSIBILITAT": "No accessible",
+        "NUM_ASCENSORS": 0,
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA": "2026-10-28Z"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.10809, 41.34522] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CODI_ACCES": 11103,
+        "CODI_GRUP_ESTACIO": 6660111,
+        "ID_ACCES": 20,
+        "ID_ESTACIO": 81,
+        "NOM_ACCES": "Canal",
+        "NOM_ESTACIO": "Hospital de Bellvitge",
+        "ID_TIPUS_ACCESSIBILITAT": 3,
+        "NOM_TIPUS_ACCESSIBILITAT": "Parcialment accessible",
+        "NUM_ASCENSORS": 1,
+        "ID_TIPUS_ESTAT": 1,
+        "NOM_TIPUS_ESTAT": "Operatiu",
+        "DATA": "2026-10-28Z"
+      },
+      "geometry": { "type": "Point", "coordinates": [2.10781, 41.34411] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "CODI_ACCES": 11104,
+        "CODI_GRUP_ESTACIO": 6660111,
+        "DATA": "2026-10-28Z"
+      },
+      "geometry": null
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "id": 500,
+    "msg": "OTP encountered an unexpected error.",
+    "message": "SYSTEM_ERROR"
+  }
+}

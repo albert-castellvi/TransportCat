@@ -144,26 +144,47 @@ final class FGCNetworkState {
             let points = FGCNetwork.stopIndex(loadedStops)
             let joinedStations = FGCNetwork.stations(loadedStations, points: points)
 
-            lines = loadedLines
-            stations = joinedStations
-            stationNamesByCode = FGCNetwork.stationNames(from: joinedStations)
-            geometryByLine = Dictionary(
-                uniqueKeysWithValues: loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) }
-            )
-            lineLayers = loadedLines.map { line in
-                MapLineLayer(
-                    id: line.code,
-                    operator: "FGC",
-                    code: line.code,
-                    colorHex: line.colorHex,
-                    textColorHex: line.textColorHex,
-                    polylines: line.polylines
-                )
-            }
-            errorMessage = nil
+            publishTopology(loadedLines, loadedStations: joinedStations, persist: true)
         } catch {
-            errorMessage = error.localizedDescription
+            // Spec S21: a failed topology load falls back to the cached copy,
+            // so the lines, stations and live trains still render offline.
+            if let cached = OfflineCache.loadFGCTopology() {
+                publishTopology(cached.lines, loadedStations: cached.stations, persist: false)
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    /// Publishes the loaded lines and stations and rebuilds everything derived
+    /// from them (station names, geometry tables, drawable layers). `persist`
+    /// is the network-success path recording the offline copy (spec S21); the
+    /// cache fallback must not re-save what it just read.
+    private func publishTopology(
+        _ loadedLines: [FGCLine],
+        loadedStations: [FGCStation],
+        persist: Bool
+    ) {
+        if persist {
+            OfflineCache.saveFGCTopology(lines: loadedLines, stations: loadedStations)
+        }
+        lines = loadedLines
+        stations = loadedStations
+        stationNamesByCode = FGCNetwork.stationNames(from: loadedStations)
+        geometryByLine = Dictionary(
+            uniqueKeysWithValues: loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) }
+        )
+        lineLayers = loadedLines.map { line in
+            MapLineLayer(
+                id: line.code,
+                operator: "FGC",
+                code: line.code,
+                colorHex: line.colorHex,
+                textColorHex: line.textColorHex,
+                polylines: line.polylines
+            )
+        }
+        errorMessage = nil
     }
 
     /// Polls the live trains and re-anchors the glide (specs S3, S5). A failed

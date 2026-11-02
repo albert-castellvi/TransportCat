@@ -277,7 +277,7 @@ struct GlobalMapScreen: View {
             .buttonStyle(.plain)
             // The reused pictogram markers say "Bus"; a train has to say
             // "Tren" to VoiceOver, as on the FGC map (spec S8).
-            .accessibilityLabel(vehicleAccessibilityLabel(vehicle))
+            .accessibilityLabel(vehicleAccessibilityLabel(vehicle, mode: mode))
         }
     }
 
@@ -309,11 +309,20 @@ struct GlobalMapScreen: View {
         }
     }
 
-    private func vehicleAccessibilityLabel(_ vehicle: MapVehicle) -> String {
+    /// Marker VoiceOver text: "Tren" plus line and destination, and — for FGC
+    /// trains whose live feed reports cars (spec S18) — the occupancy summary.
+    /// Metro vehicles have no occupancy feed, so their label stays as before.
+    private func vehicleAccessibilityLabel(_ vehicle: MapVehicle, mode: String) -> String {
         if let line = MetroLine.line(forCode: vehicle.lineCode) {
             return "Tren \(line.displayName) cap a \(vehicle.label)"
         }
-        return "Tren \(vehicle.lineCode) cap a \(vehicle.label)"
+        var label = "Tren \(vehicle.lineCode) cap a \(vehicle.label)"
+        if mode == AppModeCode.fgc,
+           let train = fgc.trains.first(where: { $0.id == vehicle.id }),
+           let occupancy = FGCOccupancy.summary(train) {
+            label += ". \(occupancy)"
+        }
+        return label
     }
 
     // MARK: - Visibility filters
