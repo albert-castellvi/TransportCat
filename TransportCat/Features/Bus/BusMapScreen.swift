@@ -1,3 +1,4 @@
+import CoreLocation
 import MapKit
 import SwiftUI
 import UIKit
@@ -5,6 +6,11 @@ import UIKit
 /// Live map of one bus line (spec S3): the route of both directions in the
 /// line color, the stops of the direction on screen as dots, and the buses
 /// placed from the arrivals the poll collected (spec S4).
+///
+/// Stops with an incident active right now carry a red warning marker that
+/// opens `IncidentSheet` (spec S9), tapping a bus opens `BusVehicleSheet` with
+/// the follow mechanics of the FGC map (spec S10), and the rider's own dot
+/// plus the router's focus intents belong to spec S11.
 ///
 /// The buses are the `bus-<colorHex>` pictograms of the asset catalog, rotated
 /// to their heading, with the line name in an upright chip (spec S2).
@@ -27,6 +33,25 @@ struct BusMapScreen: View {
     @State private var showLinePicker = false
     /// Stop whose sheet is open (spec S6).
     @State private var selectedStop: BusStop?
+    /// Stop whose incident sheet is open (spec S9).
+    @State private var incidentStop: BusStop?
+    /// Bus whose sheet is open (spec S10). A snapshot copy: the sheet reads
+    /// the live position from the line's state by id.
+    @State private var selectedBus: BusPosition?
+    /// Bus the camera is following, or nil (spec S10).
+    @State private var followingVehicleID: String?
+    /// Where the camera was commanded to last, so the continuous callback can
+    /// tell our own follow animation from a pan by the rider — the FGC map's
+    /// pattern (spec S10).
+    @State private var followAnchor: GeoPoint?
+    /// Span the camera follows with: kept current by every camera change so
+    /// re-centering never zooms (spec S10).
+    @State private var cameraSpan = MapScreen.barcelonaRegion.span
+    /// Router focus intents waiting for their data (spec S11): the place whose
+    /// sheet cannot open before its line's topology has loaded, and the
+    /// vehicle id that is not in the feed yet.
+    @State private var pendingPlaceFocus: Place?
+    @State private var pendingVehicleFocusID: String?
     /// Camera bearing in degrees clockwise from north: the bus markers rotate
     /// against it so they keep facing along the route whatever the user does
     /// with the map, exactly like the metro train markers.
@@ -40,6 +65,17 @@ struct BusMapScreen: View {
     @State private var cameraPosition: MapCameraPosition = .region(BusMapScreen.initialRegion)
 
     init() {}
+
+    /// App-wide navigation intent (spec S11): bus focuses are handled here and
+    /// cleared by this screen.
+    private var router: AppRouter { AppRouter.shared }
+    /// Device location for the blue dot (spec S11).
+    private var location: LocationService { LocationService.shared }
+    /// Whether the map may draw the rider's position at all. A denied or
+    /// restricted permission simply leaves the dot and the button away (S11).
+    private var isLocationAuthorized: Bool {
+        location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
+    }
 
     var body: some View {
         NavigationStack {
@@ -70,6 +106,33 @@ struct BusMapScreen: View {
                 self.lineState = state
                 await state.run()
             }
+            // Focus intents from the router (spec S11): applied when they
+            // arrive and on appear, when the screen may have been created by
+            // the mode switch itself.
+            .onAppear {
+                applyFocus(router.pendingFocus)
+                resolvePendingFocuses()
+            }
+            .onChange(of: router.pendingFocus) { _, destination in
+                applyFocus(destination)
+            }
+            // Catalog arrival: a pending place focus that could not name a
+            // line yet can pick one of the stop's lines now.
+            .onChange(of: store.lines.count) { _, _ in
+                resolvePendingFocuses()
+            }
+            .onChange(of: store.selectedLine?.code) { _, _ in
+                // A new line is a new subject: drop the old bus and its
+                // follow, exactly as the FGC map does for its train.
+                selectedBus = nil
+                followingVehicleID = nil
+                resolvePendingFocuses()
+            }
+            .onChange(of: lineState?.directions.map(\.id)) { _, _ in
+                // Topology of the (new) line arrived: place focuses waiting
+                // for it can open their sheet now (spec S11).
+                resolvePendingFocuses()
+            }
             .sheet(isPresented: $showLinePicker) {
                 BusLinePickerSheet(store: store) { line in
                     store.selectedLineCode = line.code
@@ -89,6 +152,30 @@ struct BusMapScreen: View {
                 )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+        }
+        // The bus sheet of spec S10. Closing it releases the camera, like the
+        // FGC train sheet does.
+        .sheet(item: $selectedBus, onDismiss: { followingVehicleID = nil }) { bus in
+            if let state = lineState {
+                BusVehicleSheet(
+                    state: state,
+                    positionID: bus.id,
+                    allowFollow: true,
+                    followingVehicleID: $followingVehicleID
+                )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        // The alerts behind one stop's warning marker (spec S9).
+        // `IncidentSheet` declares its own detents.
+        .sheet(item: $incidentStop) { stop in
+            if let line = store.selectedLine {
+                IncidentSheet(
+                    alerts: incidentAlerts(for: stop, line: line),
+                    title: "\(line.name) · \(stop.name)"
+                )
             }
         }
     }
@@ -183,6 +270,11 @@ struct BusMapScreen: View {
     @ViewBuilder
     private func lineMap(state: BusLineState, line: BusLine) -> some View {
         Map(position: $cameraPosition) {
+            if isLocationAuthorized {
+                // The rider's own dot (spec S11). Unauthorized, it is simply
+                // not drawn; a denied permission never blocks the map.
+                UserAnnotation()
+            }
             ForEach(state.directions) { direction in
                 // One polyline per direction: the selected one at full color,
                 // the other at 40 % (spec S3). The opacity goes into the stroke
@@ -209,23 +301,73 @@ struct BusMapScreen: View {
                     }
                 }
             }
+            ForEach(incidentStops(in: state, line: line)) { stop in
+                // Red warning marker on every stop with an incident right now
+                // (spec S9). Not zoom-gated: an incident is worth seeing from
+                // the whole-line view down.
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude)) {
+                    Button {
+                        incidentStop = stop
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Incidència a la parada \(stop.name)")
+                }
+            }
             ForEach(state.positions) { position in
                 // Empty title: the destination is already on the marker.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.train.position.latitude, longitude: position.train.position.longitude)) {
-                    BusMarker(
-                        line: line,
-                        destination: position.train.destination,
-                        rotation: position.train.heading - 90 - cameraHeading,
-                        showLabel: latitudeSpan < Self.labelSpanThreshold,
-                        opacity: position.directionID == selectedDirectionID ? 1 : 0.55
-                    )
+                    // Tapping a bus opens its sheet with the follow button
+                    // (spec S10), like the FGC map does for its trains.
+                    Button {
+                        selectedBus = position
+                    } label: {
+                        BusMarker(
+                            line: line,
+                            destination: position.train.destination,
+                            rotation: position.train.heading - 90 - cameraHeading,
+                            showLabel: latitudeSpan < Self.labelSpanThreshold,
+                            opacity: position.directionID == selectedDirectionID ? 1 : 0.55
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        .mapControls {
+            if isLocationAuthorized {
+                MapUserLocationButton()
+            }
+        }
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
+            cameraSpan = context.region.span
+        }
+        // Pan detection for the follow (spec S10), the FGC map's rule: a
+        // change whose center is not near the point we last commanded is the
+        // rider moving the map, so the camera releases the bus. Zoom keeps it.
+        .onMapCameraChange(frequency: .continuous) { context in
+            latitudeSpan = context.region.span.latitudeDelta
+            cameraSpan = context.region.span
+            guard followingVehicleID != nil, let anchor = followAnchor else { return }
+            let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
+            let center = context.region.center
+            if abs(center.latitude - anchor.latitude) > tolerance
+                || abs(center.longitude - anchor.longitude) > tolerance {
+                followingVehicleID = nil
+            }
+        }
+        // The 10 Hz ticker updates `positions`: while a bus is followed, the
+        // camera re-centers on it, keeping the span (spec S10). A vehicle
+        // focus waiting for its bus to appear in the feed is checked here too.
+        .onChange(of: state.positions.map(\.train)) { _, _ in
+            followBus(in: state)
+            resolvePendingVehicleFocus()
         }
         .overlay {
             if state.isLoading {
@@ -262,14 +404,33 @@ struct BusMapScreen: View {
                 selectedDirectionID = ids.first ?? 1
             }
             // Fitted whenever the directions first become non-empty, which
-            // covers both the first load and a change of line.
-            if !state.directions.isEmpty {
+            // covers both the first load and a change of line — but never
+            // over a focus intent, whose centering would be erased (S11).
+            if !state.directions.isEmpty, pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                 fitCamera(to: state)
             }
         }
         .onAppear {
-            if !state.directions.isEmpty {
+            if !state.directions.isEmpty, pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                 fitCamera(to: state)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            // S11: before a decision the map offers a button that asks for
+            // when-in-use permission; after one it never appears again.
+            if location.authorization == .notDetermined {
+                Button {
+                    location.requestWhenInUse()
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(10)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Activa la ubicació")
+                .padding(.trailing, 16)
+                .padding(.top, 8)
             }
         }
         // A line change swaps both route polylines, the stop dots and the
@@ -319,6 +480,44 @@ struct BusMapScreen: View {
         )[stop.code] ?? []
     }
 
+    /// Stops of the line with an incident active right now (spec S9), from an
+    /// `IncidentIndex` pass over the same `AppModel.busAlerts` source
+    /// `BusStopSheet` reads. One marker per physical stop code: the same stop
+    /// of both directions shares it, preferring the direction on screen.
+    private func incidentStops(in state: BusLineState, line: BusLine) -> [BusStop] {
+        let code = String(line.code)
+        let alerts = app.activeBusAlerts(affecting: code)
+        guard !alerts.isEmpty else { return [] }
+        let allStops = state.directions.flatMap(\.stops)
+        guard !allStops.isEmpty else { return [] }
+        let incidents = IncidentIndex.incidents(
+            for: alerts,
+            stations: allStops.map { $0.asStation(lineCode: code) },
+            lineCode: code
+        )
+        guard !incidents.isEmpty else { return [] }
+        let shown = shownDirection(in: state)
+        let ordered = (shown.map { [$0] } ?? []) + state.directions.filter { $0.id != shown?.id }
+        var seen: Set<Int> = []
+        var result: [BusStop] = []
+        for stop in ordered.flatMap(\.stops) where incidents[stop.code] != nil && !seen.contains(stop.code) {
+            seen.insert(stop.code)
+            result.append(stop)
+        }
+        return result
+    }
+
+    /// The feed alerts behind one stop's warning marker: the ids `IncidentIndex`
+    /// matched for the stop (spec S9), resolved back into the `ServiceAlert`
+    /// values `IncidentSheet` lists.
+    private func incidentAlerts(for stop: BusStop, line: BusLine) -> [ServiceAlert] {
+        guard let state = lineState else { return [] }
+        let ids = Set(incidents(for: stop, in: state, line: line).map(\.alertID))
+        return app.busAlerts
+            .filter { ids.contains($0.id) }
+            .sorted { $0.id < $1.id }
+    }
+
     /// The delay of each bus the sheet lists, estimated against the timetable
     /// (spec S7). The ids are the ones this stop's arrivals already name, so
     /// nothing is polled for the sheet: `delay(forBus:)` answers from the last
@@ -338,6 +537,161 @@ struct BusMapScreen: View {
         guard let region = Self.region(fitting: state.directions.flatMap { $0.route.points }) else { return }
         withAnimation(.easeInOut(duration: 0.35)) {
             cameraPosition = .region(region)
+        }
+    }
+
+    // MARK: - Focus and follow (specs S10, S11)
+
+    /// Applies a router focus addressed to the bus operator (spec S11).
+    /// A focus for another operator is left untouched for its own map.
+    private func applyFocus(_ destination: Destination?) {
+        guard let destination, destination.operator == AppModeCode.bus else { return }
+        switch destination {
+        case .line(_, let code):
+            _ = selectBusLine(byCode: code)
+            router.clearFocus()
+        case .place(let place):
+            guard place.kind == .busStop else { return }
+            pendingPlaceFocus = place
+            resolvePendingPlaceFocus()
+        case .vehicle(_, let lineCode, let vehicleID):
+            pendingVehicleFocusID = vehicleID
+            let changedLine = selectBusLine(byCode: lineCode)
+            // With the same line on screen nothing will re-trigger the
+            // resolution, so try now; a line change clears the old sheet
+            // first, and the next data tick opens the new one.
+            if !changedLine {
+                resolvePendingVehicleFocus()
+            }
+            router.clearFocus()
+        }
+    }
+
+    /// Points the catalog selection at the line a focus names: the numeric
+    /// code, or a commercial name resolved through the loaded catalog
+    /// (spec S11, and the selection API of `BusCatalogStore`).
+    /// - Returns: whether the selection actually moved.
+    @discardableResult
+    private func selectBusLine(byCode code: String) -> Bool {
+        let target: Int?
+        if let numeric = Int(code) {
+            target = numeric
+        } else {
+            target = store.lines.first { $0.name.caseInsensitiveCompare(code) == .orderedSame }?.code
+        }
+        guard let target, store.selectedLineCode != target else { return false }
+        store.selectedLineCode = target
+        return true
+    }
+
+    /// Re-runs every pending resolution. Idempotent: with no pending intent
+    /// it does nothing, so every data-arrival trigger may call it.
+    private func resolvePendingFocuses() {
+        resolvePendingPlaceFocus()
+        resolvePendingVehicleFocus()
+    }
+
+    /// Opens the sheet of a pending bus-stop focus once its line and its
+    /// topology are on screen (spec S11).
+    private func resolvePendingPlaceFocus() {
+        guard let place = pendingPlaceFocus, place.kind == .busStop else { return }
+        guard let stopCode = Int(place.code) else {
+            finishPlaceFocus(centering: place)
+            return
+        }
+        if store.selectedLine == nil {
+            // Nothing on screen yet: take a line of the stop through the
+            // catalog and wait for its state.
+            _ = selectLineServing(place)
+            return
+        }
+        guard let state = lineState, !state.directions.isEmpty else { return }
+        if let stop = preferredStop(code: stopCode, in: state) {
+            pendingPlaceFocus = nil
+            selectedStop = stop
+            centerCamera(on: GeoPoint(latitude: stop.latitude, longitude: stop.longitude))
+            router.clearFocus()
+            return
+        }
+        // The loaded line does not serve this stop: try one of the stop's
+        // other lines once; with none left, centering is all there can be.
+        if selectLineServing(place) { return }
+        finishPlaceFocus(centering: place)
+    }
+
+    private func finishPlaceFocus(centering place: Place) {
+        pendingPlaceFocus = nil
+        centerCamera(on: place.position)
+        router.clearFocus()
+    }
+
+    /// Selects a line of the stop that is not the one already on screen
+    /// (spec S11). False when the catalog knows none.
+    private func selectLineServing(_ place: Place) -> Bool {
+        for name in place.lineCodes {
+            guard let line = store.lines.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }),
+                  line.code != store.selectedLineCode else { continue }
+            store.selectedLineCode = line.code
+            return true
+        }
+        return false
+    }
+
+    /// The stop entry to open for a stop code: the direction on screen first,
+    /// so the sheet's line context matches what the rider is looking at.
+    private func preferredStop(code: Int, in state: BusLineState) -> BusStop? {
+        let matches = state.directions.flatMap(\.stops).filter { $0.code == code }
+        if let shown = shownDirection(in: state),
+           let stop = matches.first(where: { $0.directionID == shown.id }) {
+            return stop
+        }
+        return matches.first
+    }
+
+    /// Opens the bus sheet with follow on once the focused vehicle exists in
+    /// the feed (spec S11, S10).
+    private func resolvePendingVehicleFocus() {
+        guard let vehicleID = pendingVehicleFocusID, let state = lineState else { return }
+        guard let position = state.positions.first(where: { $0.id == vehicleID || $0.train.id == vehicleID }) else {
+            return
+        }
+        pendingVehicleFocusID = nil
+        selectedBus = position
+        followingVehicleID = position.id
+        centerCamera(on: position.train.position)
+    }
+
+    /// Re-center on the followed bus if it is still in the feed (spec S10).
+    /// The span is kept as it is so following never zooms — the FGC mechanic.
+    private func followBus(in state: BusLineState) {
+        guard let id = followingVehicleID,
+              let position = state.positions.first(where: { $0.id == id }) else { return }
+        followAnchor = position.train.position
+        cameraPosition = .region(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(
+                    latitude: position.train.position.latitude,
+                    longitude: position.train.position.longitude
+                ),
+                span: cameraSpan
+            )
+        )
+    }
+
+    /// Zoom to a stop or a vehicle and re-center on it (spec S11).
+    private func centerCamera(on point: GeoPoint) {
+        let span = MKCoordinateSpan(
+            latitudeDelta: Self.focusSpanDegrees,
+            longitudeDelta: Self.focusSpanDegrees
+        )
+        cameraSpan = span
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude),
+                    span: span
+                )
+            )
         }
     }
 
@@ -382,6 +736,17 @@ struct BusMapScreen: View {
     /// Below this visible latitude span the destination labels are drawn; above
     /// it they overlap each other, as on the metro map (spec S3).
     private static let labelSpanThreshold = 0.05
+
+    /// Span a focus centers with: close enough for the stop sheet or the bus
+    /// sheet to be about something on screen, under the stop-dot threshold so
+    /// the neighborhood stays drawn (spec S11).
+    private static let focusSpanDegrees = 0.01
+
+    /// Floor of the pan-detection tolerance, in degrees: below it our own
+    /// 10 Hz follow commands would read as the rider moving the map. The FGC
+    /// map's constant, copied because both maps release the follow the same
+    /// way (spec S10).
+    private static let followPanToleranceDegrees = 0.002
 }
 
 /// Stop dot on the bus map: a small line-colored circle with a white stroke.
