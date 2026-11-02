@@ -21,8 +21,8 @@ Out of scope: global mode, Rodalies, notifications, FGC incidents, refactoring m
 ## Tasks
 | ID | Specs | Route | Model / effort | Status | Commit |
 |----|-------|-------|----------------|--------|--------|
-| T1 | S1-S5, S11 | delegated (opencode nan/deepseek-v4-flash) | low-medium | pending | |
-| T2 | S6-S10, S12 | delegated (opencode nan/qwen3.8-flash), after T1 | medium | pending | |
+| T1 | S1-S5, S11 | delegated (opencode nan/deepseek-v4-flash) | low-medium | done (25 XCTest green on Linux harness; parent fixed reversed-heading) | eaf0f48 |
+| T2 | S6-S10, S12 | delegated (opencode nan/qwen3.8-flash), after T1 | medium | done (swiftc -parse 8/8; compile in CI) | see L6 |
 | T3 | verify S1-S12 | parent: CI + review; independent verifier only if a Risk item fires | — | pending | |
 
 ## Log
@@ -30,3 +30,5 @@ Out of scope: global mode, Rodalies, notifications, FGC incidents, refactoring m
 - L2 (2026-11-02) Probe report (rail-x, deepseek): FGC and Renfe Rodalies both open; recommendation FGC first. Evidence in engram "FGC and Renfe Rodalies live data probe (2026-11-02)".
 - L3 (2026-11-02) User: "si y estaria muy guai tener un modo global donde se vea TODO todas las lineas todos los trenes (cuanto mas lejos el mapa envidentemente que se vea menos) que las incidencias esten marcadas en el mapa (por ejemplo la L2 de X para a Y parada esta cortada, si pulso ahi que que me diga el motivo en un modal, poder seguir los trenes, activar notificaciones de los llegadas,... nose hay muchas cosas a pensar i añadir haz un listado de todo lo que creas que aporta al usuario"
 - L4 (2026-11-02) Decision: FGC as third mode (user "si"). Global mode, map incidents and notifications go to a separate roadmap; S11 prepares the global mode; S8 "Seguir" covers "poder seguir los trenes" for FGC. Spec awaiting user approval before implementation (user rule: spec approved before implementing).
+- L5 (2026-11-02) User approved the spec: "dale, opencode i NaN tu orquestra, el anterior funciona perfectamente". T1 done by fgc-core; parent review found trains running against the polyline's drawn order faced backwards, fixed with `FGCNetwork.travelHeading` (RED then GREEN, 25/25). T2 launched (fgc-ui, qwen3.8-flash).
+- L6 (2026-11-02) T2 done by fgc-ui. Deviation accepted: `codigo-estaciones` only has a network number, not a route, so a line's stations are derived geometrically (station within 180 m of the line shape; live check: served stations <=150 m, others >400 m). User: "cuando acabe fgc-ui, PR y testflight".

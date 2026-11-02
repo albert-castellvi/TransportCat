@@ -3,8 +3,8 @@ import SwiftUI
 /// Root tab navigation: live map, line diagram and service alerts.
 struct RootView: View {
     @StateObject private var app = AppModel.shared
-    /// Metro or bus (spec S1). The same key the `ModeSelector` chips write, so
-    /// picking a mode on one tab switches both of them.
+    /// Metro, bus or FGC (specs S1, S6). The same key the `ModeSelector` chips
+    /// write, so picking a mode on one tab switches both of them.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -15,16 +15,21 @@ struct RootView: View {
     var body: some View {
         TabView {
             Group {
-                if mode == .bus {
+                switch mode {
+                case .metro:
+                    MapScreen()
+                        .transition(.opacity)
+                case .bus:
                     BusMapScreen()
                         .transition(.opacity)
-                } else {
-                    MapScreen()
+                case .fgc:
+                    FGCMapScreen()
                         .transition(.opacity)
                 }
             }
-            // Metro <-> bus is a cut today: fade the two screens into each
-            // other instead (polish pass), nothing when Reduce Motion is on.
+            // Cutting between the three modes would be harsh, so the screens
+            // fade into each other instead (polish pass), nothing when Reduce
+            // Motion is on.
             .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             .tabItem {
                 Label("Mapa", image: "tab-map")
@@ -32,11 +37,15 @@ struct RootView: View {
             // Renamed from "Xarxa" when the bus mode arrived: the tab now
             // shows the lines of whichever mode is on (spec S1).
             Group {
-                if mode == .bus {
+                switch mode {
+                case .metro:
+                    DiagramScreen()
+                        .transition(.opacity)
+                case .bus:
                     BusDiagramScreen()
                         .transition(.opacity)
-                } else {
-                    DiagramScreen()
+                case .fgc:
+                    FGCLinesScreen()
                         .transition(.opacity)
                 }
             }
@@ -54,6 +63,15 @@ struct RootView: View {
         // open: the map and Xarxa need them without a visit to Avisos (S1).
         .task {
             await app.startAlertsPolling()
+        }
+        // The one FGC poller (spec S6): `run()` loads the topology once and
+        // then polls the trains every 30 s for both FGC screens. Keying the
+        // task on the mode cancels it the moment the rider leaves FGC, so
+        // there is never a second loop, and re-entering the mode resumes on
+        // the state that is already loaded.
+        .task(id: mode) {
+            guard mode == .fgc else { return }
+            await FGCNetworkState.shared.run()
         }
     }
 }
