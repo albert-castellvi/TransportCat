@@ -1,0 +1,23 @@
+{
+  "error": {
+    "id": 404,
+    "msg": "The trip planner could not find a path.",
+    "message": "PATH_NOT_FOUND"
+  },
+  "plan": {
+    "date": 1793574000000,
+    "from": {
+      "name": "Plaça de Catalunya",
+      "lat": 41.3873,
+      "lon": 2.1686,
+      "vertexType": "NORMAL"
+    },
+    "to": {
+      "name": "Montserrat",
+      "lat": 41.5913,
+      "lon": 1.0392,
+      "vertexType": "NORMAL"
+    },
+    "itineraries": []
+  }
+}

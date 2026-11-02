@@ -39,6 +39,17 @@ struct ExploreScreen: View {
     var body: some View {
         NavigationStack {
             List {
+                // Planner entry (spec S16): the only row Explora adds for it.
+                Section {
+                    NavigationLink {
+                        PlannerScreen()
+                    } label: {
+                        Label(
+                            "Planifica un viatge",
+                            systemImage: "point.topleft.down.to.point.bottomright.curvepath"
+                        )
+                    }
+                }
                 if hasQuery {
                     searchResultsSections
                 }
