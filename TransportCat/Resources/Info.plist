@@ -42,5 +42,15 @@
 	<!-- Spec S6: when-in-use location for nearby stations and stops. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>TransportCat fa servir la teva ubicació per mostrar-te les estacions i parades properes.</string>
+	<!-- Spec S14: best-effort background refresh of incident alerts; iOS
+	     decides when the fetch task actually runs. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>cat.transport.app.alerts-refresh</string>
+	</array>
 </dict>
 </plist>
