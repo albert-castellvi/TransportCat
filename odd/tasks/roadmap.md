@@ -107,17 +107,17 @@ Out of scope: a push backend (notifications are local or best-effort background)
 | ID | Specs | Phase | Route | Model / effort | Status | Commit |
 |----|-------|-------|-------|----------------|--------|--------|
 | T1 | S1-S7 | A | delegated (opencode TUI) | nan/deepseek-v4-flash, medium | done (38 Linux XCTest green, parent re-ran) | 52fdd65 |
-| T2 | S8 (+RootView Explora tab wiring) | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (9 Linux tests; swiftc -parse OK; compile in CI) | f57e832 |
-| T3 | S12 | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (14 Linux tests; swiftc -parse OK; compile in CI) | 0c91114 |
-| T4 | S9-S11 metro map | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (18 Linux tests; swiftc -parse OK; compile in CI) | 6476f42 |
-| T5 | S10-S11 bus + FGC maps | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (parse only; swiftc -parse OK; compile in CI) | 9d4dd8d |
-| T6 | S13 UI hooks, S17-S19 | B | delegated, parallel | nan/qwen3.8-flash, medium | pending | |
-| T7 | S13 core, S14, S15 | B | delegated, parallel | nan/deepseek-v4-flash, medium | pending | |
-| T8 | S16 | B | delegated, parallel | nan/qwen3.8-flash, medium | pending | |
-| T9 | S21 | B | delegated, parallel | nan/deepseek-v4-flash, medium | pending | |
-| T10 | S20 | C | delegated | nan/qwen3.8-flash, medium | pending | |
-| T11 | S22 | C | delegated, after T10 (shares project.yml) | nan/qwen3.8-flash, medium | pending | |
-| T12 | S23 | C | delegated, parallel with T10 | nan/deepseek-v4-flash, high (Risk item 5) | pending | |
+| T2 | S8 (+RootView Explora tab wiring) | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (CI simulator green) | f57e832 |
+| T3 | S12 | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (CI simulator green) | 0c91114 |
+| T4 | S9-S11 metro map | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (CI simulator green) | 6476f42 |
+| T5 | S10-S11 bus + FGC maps | A | delegated, parallel after T1 | nan/qwen3.8-flash, medium | done (CI simulator green) | 9d4dd8d |
+| T6 | S13 UI hooks, S17-S19 | B | delegated, parallel | nan/qwen3.8-flash, medium | done (CI simulator green) | e674f1d (squashed in #16 20c5408) |
+| T7 | S13 core, S14, S15 | B | delegated, parallel | nan/deepseek-v4-flash, medium | done (CI simulator green) | c98beb3 (#16) |
+| T8 | S16 | B | delegated, parallel | nan/qwen3.8-flash, medium | done (CI simulator green) | ea434b9 (#16) |
+| T9 | S21 | B | delegated, parallel | nan/deepseek-v4-flash, medium | done (CI simulator green) | 7bda70a (#16) |
+| T10 | S20 | C | delegated | nan/qwen3.8-flash, medium | done (CI simulator green) | d9e7dc2 |
+| T11 | S22 | C | delegated, after T10 (shares project.yml) | nan/qwen3.8-flash, medium | done (CI simulator green) | bfe3e92 |
+| T12 | S23 | C | delegated, parallel with T10 | nan/deepseek-v4-flash, high (Risk item 5) | done (CI simulator green) | 31576e3 (independent verifier PASS) |
 | CI-fix | compile fixes from CI logs per phase | A-C | delegated | nan/deepseek-v4-flash, low | as needed | |
 
 ## Log
@@ -130,3 +130,5 @@ Out of scope: a push backend (notifications are local or best-effort background)
   - incident alerts are best-effort background refresh, because there is no backend.
 - L5 (2026-11-02) T1 done (52fdd65). Metro stations are loaded per line, because `transit/estacions` lacks accessibility and the full line list. FGC station routes are derived geometrically (<=200 m). T2-T5 launched in parallel (qwen) with disjoint surfaces.
 - L6 (2026-11-02) Phase A written: T2 f57e832, T3 0c91114, T4 6476f42, T5 9d4dd8d. Each worker stayed inside its surfaces (checked by git status before each commit). Next step: PR CI compile.
+- L7 (2026-11-02) Phase A CI: first run had main-actor isolation errors (Explora views), fixed with `@MainActor` on 16 views plus `MapRegionTests`. The third run was cancelled with no error and passed on rerun (288 tests). PR #15 squash-merged as e4b640c, so TestFlight upload is pending. Phase B (T6 e674f1d, T7 c98beb3, T8 ea434b9, T9 7bda70a) is rebased on main in feat/roadmap-c, with one trivial StationDetailView doc/`@MainActor` conflict resolved by the parent. T12 6727939 got an independent verifier: PASS on all 6 items, no blockers. S15 ships dialog only (no snippet view), per the T7 contract.
+- L8 (2026-11-02) Phase B PR #16: one CI compile fix (IntentDialog), then green; squash-merged as 20c5408. Phase C (T10 widgets/Live Activity, T11 watch, T12 signing) rebased on main. PR #17's simulator CI passed 394 tests with the widget extension and the watch app compiling. Pending: the signed three-bundle archive and TestFlight upload on main after #17 merges.

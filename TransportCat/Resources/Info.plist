@@ -52,5 +52,8 @@
 	<array>
 		<string>cat.transport.app.alerts-refresh</string>
 	</array>
+	<!-- Spec S20: the app starts the "Segueix en directe" Live Activity. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

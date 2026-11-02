@@ -177,6 +177,16 @@ struct BusStopSheet: View {
                     .foregroundStyle(lineColor(for: arrival))
                     .accessibilityLabel("Avís programat")
             }
+            // Spec S20: start the lock-screen / Dynamic Island countdown.
+            Button {
+                startLiveActivity(arrival)
+            } label: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.subheadline)
+                    .foregroundStyle(lineColor(for: arrival))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Segueix en directe")
             Menu("Avisa'm") {
                 ForEach(Self.reminderMinutesBefore, id: \.self) { minutes in
                     Button("\(minutes) min abans") {
@@ -284,6 +294,43 @@ struct BusStopSheet: View {
         scheduledReminderIDs = ids
     }
 
+    // MARK: - Live Activity (S20)
+
+    /// Starts tracking one bus on the lock screen.
+    private func startLiveActivity(_ arrival: BusArrival) {
+        let arrivalDate = Date().addingTimeInterval(TimeInterval(arrival.seconds))
+        let destination = arrival.destination.isEmpty ? arrival.lineName : arrival.destination
+        let colorHex = catalogLine(for: arrival)?.colorHex ?? line.colorHex
+        Task {
+            await ArrivalActivityController.shared.start(
+                placeID: favoritePlace.id,
+                placeName: stop.name,
+                lineCode: String(arrival.lineCode),
+                lineName: arrival.lineName,
+                lineColorHex: colorHex,
+                destination: destination,
+                arrivalDate: arrivalDate,
+                minutes: max(0, Int(ceil(TimeInterval(arrival.seconds) / 60)))
+            )
+        }
+    }
+
+    /// Moves the running activity to the refreshed arrival of the same line
+    /// and destination, so the lock-screen countdown follows the iBus feed.
+    private func refreshLiveActivity() {
+        guard let running = ArrivalActivityController.shared.runningActivity(forPlace: favoritePlace.id) else {
+            return
+        }
+        let matching = arrivals.first {
+            String($0.lineCode) == running.lineCode && $0.destination == running.destination
+        } ?? arrivals.first { String($0.lineCode) == running.lineCode }
+        guard let arrival = matching else { return }
+        ArrivalActivityController.shared.update(
+            id: running.id,
+            arrivalDate: Date().addingTimeInterval(TimeInterval(arrival.seconds))
+        )
+    }
+
     // MARK: - Timetable (S19)
 
     /// First and last departure per direction of this line at this stop, plus
@@ -343,6 +390,7 @@ struct BusStopSheet: View {
             errorMessage = nil
             hasLoaded = true
             syncScheduledReminders()
+            refreshLiveActivity()
         } catch {
             errorMessage = error.localizedDescription
         }

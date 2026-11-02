@@ -136,6 +136,16 @@ struct StationDetailView: View {
                     .foregroundStyle(Color(hex: line.colorHex))
                     .accessibilityLabel("Avís programat")
             }
+            // Spec S20: start the lock-screen / Dynamic Island countdown.
+            Button {
+                startLiveActivity(arrival)
+            } label: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(hex: line.colorHex))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Segueix en directe")
             Menu("Avisa'm") {
                 ForEach(Self.reminderMinutesBefore, id: \.self) { minutes in
                     Button("\(minutes) min abans") {
@@ -193,6 +203,43 @@ struct StationDetailView: View {
             }
         }
         scheduledReminderIDs = ids
+    }
+
+    // MARK: - Live Activity (S20)
+
+    /// Starts tracking one arrival on the lock screen.
+    private func startLiveActivity(_ arrival: Arrival) {
+        guard let seconds = arrival.seconds else { return }
+        let arrivalDate = Date().addingTimeInterval(TimeInterval(seconds))
+        let destination = arrival.destination.isEmpty ? line.displayName : arrival.destination
+        Task {
+            await ArrivalActivityController.shared.start(
+                placeID: favoritePlace.id,
+                placeName: station.name,
+                lineCode: line.code,
+                lineName: line.displayName,
+                lineColorHex: line.colorHex,
+                destination: destination,
+                arrivalDate: arrivalDate,
+                minutes: max(0, Int(ceil(TimeInterval(seconds) / 60)))
+            )
+        }
+    }
+
+    /// Moves the running activity to the refreshed arrival of the same
+    /// destination, so the lock-screen countdown follows the live feed. A
+    /// sheet for another line at the same station leaves it alone.
+    private func refreshLiveActivity() {
+        guard let running = ArrivalActivityController.shared.runningActivity(forPlace: favoritePlace.id),
+              running.lineCode == line.code else {
+            return
+        }
+        let matching = arrivals.first { $0.destination == running.destination } ?? arrivals.first
+        guard let arrival = matching, let seconds = arrival.seconds else { return }
+        ArrivalActivityController.shared.update(
+            id: running.id,
+            arrivalDate: Date().addingTimeInterval(TimeInterval(seconds))
+        )
     }
 
     // MARK: - Accessibility and accesses (S17)
@@ -369,6 +416,7 @@ struct StationDetailView: View {
             errorMessage = nil
             hasLoaded = true
             syncScheduledReminders()
+            refreshLiveActivity()
         } catch {
             errorMessage = error.localizedDescription
         }
