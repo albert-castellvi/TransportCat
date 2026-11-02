@@ -24,6 +24,9 @@ struct FGCStop: Equatable, Identifiable {
     let name: String
     /// `stop_coordinates`; nil when the row carries no usable coordinates.
     let point: GeoPoint?
+    /// GTFS `wheelchair_boarding` (spec S17): 0 no information, 1 accessible,
+    /// 2 not accessible; nil when the row does not carry the field.
+    var wheelchairBoarding: Int? = nil
 }
 
 /// One row of `codigo-estaciones`: a station of one FGC network (spec S2).
@@ -39,6 +42,10 @@ struct FGCStation: Equatable, Identifiable {
     let order: Int
     /// Coordinates joined from the stop catalog, nil when no stop matches.
     let point: GeoPoint?
+    /// GTFS `wheelchair_boarding` joined from the stop catalog (spec S17):
+    /// 0 no information, 1 accessible, 2 not accessible; nil when no stop row
+    /// carries it.
+    var wheelchairBoarding: Int? = nil
 
     var id: String { code }
 }

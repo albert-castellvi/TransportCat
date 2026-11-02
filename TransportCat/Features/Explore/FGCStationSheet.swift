@@ -19,9 +19,26 @@ struct FGCStationSheet: View {
         }
     }
 
+    /// The GTFS `wheelchair_boarding` state joined into the station catalog
+    /// (spec S17). 0 and "no row at all" stay hidden: GTFS calls 0 "no
+    /// information", and inventing a wheelchair verdict from silence is worse
+    /// than saying nothing.
+    @ViewBuilder
+    private var accessibilitySection: some View {
+        let boarding = state.stations.first(where: { $0.code == place.code })?.wheelchairBoarding
+        if boarding == 1 || boarding == 2 {
+            Section("Accessibilitat") {
+                Label(boarding == 1 ? "Accessible" : "No accessible", systemImage: "figure.roll")
+                    .foregroundStyle(boarding == 1 ? Color.green : Color(hex: "F59E0B"))
+                    .accessibilityLabel(boarding == 1 ? "Estació accessible" : "Estació no accessible")
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                accessibilitySection
                 Section {
                     if trainsHere.isEmpty {
                         Text(emptyText)

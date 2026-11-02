@@ -187,11 +187,14 @@ fileprivate struct FGCDisplayedTrain: Identifiable {
     /// Badge text: "→ <destí>" approaching, "<destí>" stopped.
     var label: String { stopped ? destination : "→ \(destination)" }
 
-    /// Catalan VoiceOver wording of the badge.
+    /// Catalan VoiceOver wording of the badge: the run state, the destination
+    /// and the occupancy summary when FGC publishes one (spec S18).
     var accessibilityLabel: String {
-        stopped
+        let base = stopped
             ? "Tren \(train.lineCode) aturat, cap a \(destination)"
             : "Tren \(train.lineCode) en marxa, cap a \(destination)"
+        guard let occupancy = FGCOccupancy.summary(train) else { return base }
+        return "\(base). \(occupancy)"
     }
 }
 

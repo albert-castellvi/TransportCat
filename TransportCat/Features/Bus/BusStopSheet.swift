@@ -21,7 +21,19 @@ struct BusStopSheet: View {
     @State private var hasLoaded = false
     /// Time of the last successful arrival load, for the footer.
     @State private var updatedAt: Date?
+    /// Reminder ids of spec S13 scheduled for the arrivals on screen; re-synced
+    /// from `ArrivalReminder` after every load so the bell survives a relaunch.
+    @State private var scheduledReminderIDs: Set<String> = []
+    @State private var reminderPermissionMissing = false
+    /// Timetable of the line on screen at this stop (spec S19); empty until it
+    /// loads, and the section stays hidden while it is.
+    @State private var timetableDirections: [TimetableDirection] = []
+    @State private var timetableDepartures: [TimetableDeparture] = []
+    @State private var timetableTimeZone = TimeZone.autoupdatingCurrent
     @Environment(\.dismiss) private var dismiss
+
+    /// Minutes before the arrival the rider may be warned by (spec S13).
+    private static let reminderMinutesBefore = [1, 3, 5]
 
     /// Refresh period while the sheet is open, in nanoseconds (spec S6). Shorter
     /// than the map poll: a rider waiting at a stop wants the countdown to move.
@@ -61,6 +73,11 @@ struct BusStopSheet: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
+                    if reminderPermissionMissing {
+                        Text("Activa les notificacions per rebre avisos d'arribada.")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                     ForEach(sortedArrivals) { arrival in
                         arrivalRow(arrival)
                     }
@@ -80,6 +97,7 @@ struct BusStopSheet: View {
                 } footer: {
                     footerText
                 }
+                timetableSection
             }
             .navigationTitle(stop.name)
             .navigationBarTitleDisplayMode(.inline)
@@ -95,6 +113,7 @@ struct BusStopSheet: View {
             // The sheet's own task: it is cancelled when the sheet goes away, so
             // the refresh loop never outlives the stop on screen (spec S6).
             .task {
+                await loadTimetable()
                 while !Task.isCancelled {
                     await refresh()
                     do {
@@ -152,6 +171,22 @@ struct BusStopSheet: View {
             Text(Arrival.countdownText(seconds: arrival.seconds))
                 .font(.title3.bold().monospacedDigit())
                 .foregroundStyle(lineColor(for: arrival))
+            if hasReminder(arrival) {
+                Image(systemName: "bell.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(lineColor(for: arrival))
+                    .accessibilityLabel("Avís programat")
+            }
+            Menu("Avisa'm") {
+                ForEach(Self.reminderMinutesBefore, id: \.self) { minutes in
+                    Button("\(minutes) min abans") {
+                        scheduleReminder(arrival, minutesBefore: minutes)
+                    }
+                    // An option whose time has already passed is disabled
+                    // (spec S13).
+                    .disabled(reminderDate(arrival, minutesBefore: minutes) == nil)
+                }
+            }
         }
         .padding(.vertical, 2)
     }
@@ -200,6 +235,105 @@ struct BusStopSheet: View {
         BusCatalogStore.shared.lines.first { $0.code == arrival.lineCode }
     }
 
+    // MARK: - Arrival reminders (S13)
+
+    /// `"<placeId>|<línia>|<destí>|<n>"` — one reminder id per arrival and
+    /// lead time (spec S13). The line is the arriving bus's own commercial
+    /// name, which may differ from the line the map is showing.
+    private func reminderID(_ arrival: BusArrival, minutesBefore: Int) -> String {
+        "\(favoritePlace.id)|\(arrival.lineName)|\(arrival.destination)|\(minutesBefore)"
+    }
+
+    /// When the rider wants to be warned, or nil when that moment already
+    /// passed; the countdown is the only clock the arrival carries.
+    private func reminderDate(_ arrival: BusArrival, minutesBefore: Int) -> Date? {
+        guard arrival.seconds > minutesBefore * 60 else { return nil }
+        return Date().addingTimeInterval(TimeInterval(arrival.seconds - minutesBefore * 60))
+    }
+
+    private func hasReminder(_ arrival: BusArrival) -> Bool {
+        Self.reminderMinutesBefore.contains { scheduledReminderIDs.contains(reminderID(arrival, minutesBefore: $0)) }
+    }
+
+    /// Asks `ArrivalReminder` (shared with the station sheet, spec S13) and
+    /// shows the bell when the schedule succeeded.
+    private func scheduleReminder(_ arrival: BusArrival, minutesBefore: Int) {
+        guard let at = reminderDate(arrival, minutesBefore: minutesBefore) else { return }
+        let id = reminderID(arrival, minutesBefore: minutesBefore)
+        let title = "Arribada a \(stop.name)"
+        let body = "El \(arrival.lineName) cap a \(arrival.destination) arriba a \(stop.name) en \(minutesBefore) min"
+        Task {
+            if await ArrivalReminder.shared.schedule(id: id, title: title, body: body, at: at) {
+                scheduledReminderIDs.insert(id)
+            } else {
+                reminderPermissionMissing = true
+            }
+        }
+    }
+
+    /// Reads back which of the visible arrivals already have a reminder, so
+    /// the bell also reflects reminders set before a relaunch (S13).
+    private func syncScheduledReminders() {
+        var ids: Set<String> = []
+        for arrival in arrivals {
+            for minutes in Self.reminderMinutesBefore
+            where ArrivalReminder.shared.isScheduled(id: reminderID(arrival, minutesBefore: minutes)) {
+                ids.insert(reminderID(arrival, minutesBefore: minutes))
+            }
+        }
+        scheduledReminderIDs = ids
+    }
+
+    // MARK: - Timetable (S19)
+
+    /// First and last departure per direction of this line at this stop, plus
+    /// the remaining departures of the day under "Horari". Hidden until the
+    /// schedule pack answers.
+    @ViewBuilder
+    private var timetableSection: some View {
+        if !timetableDirections.isEmpty {
+            Section {
+                ForEach(timetableDirections) { service in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(service.headsign)
+                            .font(.subheadline.weight(.medium))
+                        Text(ScheduleTimetable.firstLastText(service, timeZone: timetableTimeZone))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if !timetableDepartures.isEmpty {
+                    DisclosureGroup("Horari") {
+                        ForEach(timetableDepartures) { departure in
+                            HStack {
+                                Text(ScheduleTimetable.clockText(departure.time, timeZone: timetableTimeZone))
+                                    .font(.body.monospacedDigit())
+                                Spacer()
+                                Text(departure.headsign)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                }
+            } header: {
+                Text("Primer i últim")
+            }
+        }
+    }
+
+    /// Loads the day's timetable once per presentation. A pack that is
+    /// unavailable simply leaves the section hidden (spec S19).
+    private func loadTimetable() async {
+        guard let schedule = await ScheduleStore.shared.line(mode: .bus, code: line.code) else { return }
+        timetableTimeZone = schedule.timeZone
+        let now = Date()
+        timetableDirections = ScheduleTimetable.firstLast(line: schedule, stopCode: stop.code, date: now)
+        timetableDepartures = ScheduleTimetable.departures(line: schedule, stopCode: stop.code, from: now)
+    }
+
     private func refresh() async {
         guard let client = app.client else { return }
         do {
@@ -208,6 +342,7 @@ struct BusStopSheet: View {
             updatedAt = Date()
             errorMessage = nil
             hasLoaded = true
+            syncScheduledReminders()
         } catch {
             errorMessage = error.localizedDescription
         }
