@@ -21,7 +21,9 @@ extension IncidentKind {
 /// arrivals per station as pills.
 struct DiagramScreen: View {
     @EnvironmentObject private var app: AppModel
-    @State private var selectedLineCode = MetroLine.allLines[0].code
+    /// The same persisted selection as the metro map, so the map and the
+    /// diagram always show the same line (spec S11).
+    @AppStorage("metroSelectedLine") private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
 

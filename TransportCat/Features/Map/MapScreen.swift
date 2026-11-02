@@ -6,9 +6,29 @@ import SwiftUI
 struct MapScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var selectedLineCode = MetroLine.allLines[0].code
+    /// The selection is persisted under the key `AppRouter` writes for a
+    /// `.line` or `.vehicle` focus, so a router destination selects the line
+    /// by changing the same stored value the picker chips write (specs S10, S11).
+    @AppStorage("metroSelectedLine") private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
+    /// Train whose sheet is open (spec S10). A snapshot copy: the sheet reads
+    /// the live position from the line state by id, like the FGC map.
+    @State private var selectedTrain: TrainPosition?
+    /// Station whose `IncidentSheet` is open (spec S9).
+    @State private var incidentStation: Station?
+    /// Train the camera is following, or nil (spec S10).
+    @State private var followingTrainID: String?
+    /// Where the camera was commanded to last, so the continuous callback can
+    /// tell our own follow animation from a pan by the rider (spec S10).
+    @State private var followAnchor: GeoPoint?
+    /// Span the camera follows with: kept current by every camera change so
+    /// re-centering never zooms (spec S10).
+    @State private var cameraSpan = MapScreen.barcelonaRegion.span
+    /// Place focus whose station centering waits for the line's stations.
+    @State private var pendingPlace: Place?
+    /// Vehicle focus waiting for its train to appear in the feed (spec S11).
+    @State private var pendingVehicleID: String?
     /// Camera bearing of the visible map region, in degrees clockwise from
     /// north. The train pictograms are rotated against it so they keep facing
     /// along the track whatever the user does with the map (S2).
@@ -23,6 +43,20 @@ struct MapScreen: View {
 
     private var selectedLine: MetroLine {
         MetroLine.line(forCode: selectedLineCode) ?? MetroLine.allLines[0]
+    }
+
+    /// Navigation intent source: `.line`, `.place` and `.vehicle` focuses
+    /// addressed to metro are handled here (spec S11).
+    private var router: AppRouter { AppRouter.shared }
+    /// Device location behind the user dot (spec S11).
+    private var location: LocationService { LocationService.shared }
+
+    private var isLocationAuthorized: Bool {
+        location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
+    }
+
+    private var isLocationNotDetermined: Bool {
+        location.authorization == .notDetermined
     }
 
     var body: some View {
@@ -51,6 +85,21 @@ struct MapScreen: View {
                 self.lineState = state
                 await state.run()
             }
+            // A focus set while the map is already open arrives through the
+            // change; one set from another tab is picked up on appear (S11).
+            .onAppear {
+                handlePendingFocus()
+            }
+            .onChange(of: router.pendingFocus) { _, _ in
+                handlePendingFocus()
+            }
+            .onChange(of: selectedLineCode) { _, _ in
+                // A new line is a new subject: drop the old train, its follow
+                // and any incident sheet, as the FGC map does (S10).
+                selectedTrain = nil
+                followingTrainID = nil
+                incidentStation = nil
+            }
         }
         // The station sheet is presented by the stack itself and declares its
         // detents here instead of inside the presented view: presenting it from
@@ -60,6 +109,21 @@ struct MapScreen: View {
             StationDetailView(station: station, line: selectedLine)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $incidentStation) { station in
+            IncidentSheet(
+                alerts: incidentAlerts(for: station),
+                title: "\(selectedLine.displayName) · \(station.name)"
+            )
+        }
+        // The train sheet (spec S10): the stack declares the detents, and
+        // closing it stops the follow, exactly like the FGC map.
+        .sheet(item: $selectedTrain, onDismiss: { followingTrainID = nil }) { train in
+            if let state = lineState {
+                MetroTrainSheet(trainID: train.id, state: state, followingTrainID: $followingTrainID)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
 
@@ -102,6 +166,15 @@ struct MapScreen: View {
     @ViewBuilder
     private func lineMap(state: LineState, client: TMBClient) -> some View {
         let terminalCodes = Self.terminalStationCodes(in: state.stations)
+        // Active incidents grouped into runs (spec S9). Recomputed per render
+        // the same way the diagram recomputes them per poll; the grouping
+        // itself is pure and tested (`IncidentSegments`).
+        let incidents = IncidentIndex.incidents(
+            for: app.alerts,
+            stations: state.stations,
+            lineCode: selectedLine.code
+        )
+        let runs = IncidentSegments.runs(stations: state.stations, incidents: incidents)
         Map(position: $cameraPosition) {
             if let geometry = state.geometry {
                 MapPolyline(coordinates: geometry.points.map { point in
@@ -118,23 +191,82 @@ struct MapScreen: View {
                     }
                 }
             }
+            // Each run of consecutive affected stations overlays the track
+            // with a red dashed line (spec S9).
+            ForEach(runs) { run in
+                if let coordinates = Self.runOverlayPoints(for: run, state: state) {
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(
+                            Self.incidentRed,
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [7, 5])
+                        )
+                }
+            }
+            // A red warning triangle per affected station, drawn after the
+            // station dots so it sits on top (spec S9).
+            ForEach(runs.flatMap(\.stations)) { station in
+                Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
+                    Button {
+                        incidentStation = station
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(Self.incidentRed)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Incidència a \(station.name)")
+                }
+            }
             ForEach(state.positions) { position in
                 // Empty title: the destination is already on the marker.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.position.latitude, longitude: position.position.longitude)) {
-                    TrainMarker(
-                        imageName: "train-\(trainLine(for: position).assetKey)",
-                        destination: position.destination,
-                        rotation: position.heading - 90 - cameraHeading,
-                        showLabel: latitudeSpan < Self.labelSpanThreshold,
-                        theoretical: position.isTheoretical
-                    )
+                    // Tapping the train opens its sheet with the follow
+                    // button (spec S10).
+                    Button {
+                        selectedTrain = position
+                    } label: {
+                        TrainMarker(
+                            imageName: "train-\(trainLine(for: position).assetKey)",
+                            destination: position.destination,
+                            rotation: position.heading - 90 - cameraHeading,
+                            showLabel: latitudeSpan < Self.labelSpanThreshold,
+                            theoretical: position.isTheoretical
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Tren \(trainLine(for: position).displayName) cap a \(position.destination)")
                 }
+            }
+            // The rider's own dot once permission was granted (spec S11).
+            if isLocationAuthorized {
+                UserAnnotation()
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        .mapControls {
+            // The system locate button only where it can do something (S11).
+            if isLocationAuthorized {
+                MapUserLocationButton()
+            }
+        }
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
+            cameraSpan = context.region.span
+        }
+        // Pan detection for the follow (spec S10): a change whose center is
+        // not near the point we last commanded is the rider moving the map,
+        // so the camera releases the train. Zoom keeps the follow.
+        .onMapCameraChange(frequency: .continuous) { context in
+            latitudeSpan = context.region.span.latitudeDelta
+            cameraSpan = context.region.span
+            guard followingTrainID != nil, let anchor = followAnchor else { return }
+            let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
+            let center = context.region.center
+            if abs(center.latitude - anchor.latitude) > tolerance
+                || abs(center.longitude - anchor.longitude) > tolerance {
+                followingTrainID = nil
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             if state.isPolling {
@@ -142,6 +274,25 @@ struct MapScreen: View {
                     .padding(12)
                     .background(.thinMaterial, in: Circle())
                     .padding(16)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            // No decision taken yet: one tap asks for permission. A denied
+            // permission shows nothing here and never blocks the map (S11).
+            // Sits above the polling spinner so the two never overlap.
+            if isLocationNotDetermined {
+                Button {
+                    location.requestWhenInUse()
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .frame(width: 40, height: 40)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Activa la ubicació")
+                .padding(.trailing, 16)
+                .padding(.bottom, 72)
             }
         }
         .overlay {
@@ -169,6 +320,13 @@ struct MapScreen: View {
         .onChange(of: state.stations.map(\.code)) { _, _ in
             fitCamera(to: state.stations)
         }
+        // The glide updates `positions` at 10 Hz: re-center the followed
+        // train, and open the sheet of a `.vehicle` focus as soon as its
+        // train exists (specs S10, S11).
+        .onChange(of: state.positions) { _, positions in
+            followTrain(in: positions)
+            resolvePendingVehicleIfNeeded(in: positions)
+        }
         // A line change swaps the polyline, the stations and the trains
         // wholesale, and they arrive with the first poll: fade the overlays
         // in on the change instead of popping them onto an empty map
@@ -180,10 +338,189 @@ struct MapScreen: View {
     /// line such as L5 is not cut off by the fixed Barcelona region (S5).
     /// An empty station list leaves the camera where it is.
     private func fitCamera(to stations: [Station]) {
+        // A `.place` focus owns the camera until its station is on screen:
+        // the fit of the new line's topology is what resolves it (S11).
+        if pendingPlace != nil {
+            resolvePendingPlace(in: stations)
+            return
+        }
         guard let region = Self.region(fitting: stations) else { return }
         withAnimation(.easeInOut(duration: 0.35)) {
             cameraPosition = .region(region)
         }
+    }
+
+    // MARK: - Incidents on the map (S9)
+
+    /// The red of a service incident, the same `IncidentSheet` gives its
+    /// severity icon.
+    private static let incidentRed = Color(hex: "D92D20")
+
+    /// Coordinates of the red dashed overlay of one run: the line's geometry
+    /// between the run's end stations, falling back to straight station-to-
+    /// station segments when the geometry cannot carry the run (spec S9).
+    private static func runOverlayPoints(for run: IncidentRun, state: LineState) -> [CLLocationCoordinate2D]? {
+        let points: [GeoPoint]?
+        if let geometry = state.geometry, let onTrack = IncidentSegments.trackPolyline(for: run, geometry: geometry) {
+            points = onTrack
+        } else {
+            points = IncidentSegments.stationPolyline(for: run)
+        }
+        guard let points, points.count >= 2 else { return nil }
+        return points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+    }
+
+    /// The active alerts behind one station's warning marker (spec S9), taken
+    /// from the same `IncidentIndex` the markers come from so the sheet and
+    /// the map can never disagree.
+    private func incidentAlerts(for station: Station) -> [ServiceAlert] {
+        let incidents = IncidentIndex.incidents(
+            for: app.alerts,
+            stations: [station],
+            lineCode: selectedLine.code
+        )
+        let ids = Set((incidents[station.code] ?? []).map(\.alertID))
+        return app.alerts.filter { ids.contains($0.id) }
+    }
+
+    // MARK: - Follow (S10)
+
+    /// Re-center on the followed train if it is still on the line (spec S10).
+    /// The span is kept as it is so following never zooms.
+    private func followTrain(in positions: [TrainPosition]) {
+        guard let id = followingTrainID,
+              let train = positions.first(where: { $0.id == id }) else { return }
+        followAnchor = train.position
+        cameraPosition = .region(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(
+                    latitude: train.position.latitude,
+                    longitude: train.position.longitude
+                ),
+                span: cameraSpan
+            )
+        )
+    }
+
+    /// Floor of the pan-detection tolerance, in degrees: below it our own
+    /// 10 Hz follow commands would read as the rider moving the map (S10).
+    private static let followPanToleranceDegrees = 0.002
+
+    // MARK: - Router focus (S11)
+
+    /// Act on a metro `.place`, `.line` or `.vehicle` focus (spec S11). The
+    /// router already wrote `metroSelectedLine` for `.line` and `.vehicle`,
+    /// and `@AppStorage` carries that into `selectedLineCode`; a `.place`
+    /// picks one of the station's own lines.
+    private func handlePendingFocus() {
+        guard let focus = router.pendingFocus, focus.operator == AppModeCode.metro else { return }
+        switch focus {
+        case .line(_, let code):
+            if let line = Self.metroLine(matching: code) {
+                selectedLineCode = line.code
+            }
+            router.clearFocus()
+        case .place(let place):
+            guard place.kind == .metroStation else {
+                router.clearFocus()
+                return
+            }
+            // Close anything the previous subject left open, then follow the
+            // station: the line change reloads the state, and the station
+            // centering resolves with its topology (fitCamera path).
+            incidentStation = nil
+            if let line = place.lineCodes.first.flatMap(Self.metroLine(matching:)), line.code != selectedLineCode {
+                pendingPlace = place
+                selectedLineCode = line.code
+                router.clearFocus()
+            } else {
+                pendingPlace = place
+                router.clearFocus()
+                resolvePendingPlace(in: lineState?.stations ?? [])
+            }
+        case .vehicle(_, let lineCode, let vehicleID):
+            pendingVehicleID = vehicleID
+            router.clearFocus()
+            if let line = Self.metroLine(matching: lineCode), line.code != selectedLineCode {
+                selectedLineCode = line.code
+            } else {
+                resolvePendingVehicleIfNeeded(in: lineState?.positions ?? [])
+            }
+        }
+    }
+
+    /// Metro line for a map code ("1") or a display name ("L1"): the two
+    /// spellings `AppRouter` accepts (T1 convention).
+    private static func metroLine(matching code: String) -> MetroLine? {
+        MetroLine.allLines.first {
+            $0.code == code || $0.displayName.caseInsensitiveCompare(code) == .orderedSame
+        }
+    }
+
+    /// Resolve a `.place` focus once its station is on the map: center on it
+    /// and open the existing station sheet (spec S11). A place that never
+    /// shows up on the line it names is dropped so the camera goes back to
+    /// fitting the line.
+    private func resolvePendingPlace(in stations: [Station]) {
+        guard let place = pendingPlace else { return }
+        guard let station = Self.matchStation(for: place, in: stations) else {
+            if !stations.isEmpty {
+                pendingPlace = nil
+                fitCamera(to: stations)
+            }
+            return
+        }
+        pendingPlace = nil
+        selectedStation = station
+        centerOn(station: station)
+    }
+
+    /// Station a metro `Place` refers to: the feed's `CODI_ESTACIO` or the
+    /// catalog's `ID_ESTACIO`, then the folded name as the last resort.
+    private static func matchStation(for place: Place, in stations: [Station]) -> Station? {
+        if let code = Int(place.code) {
+            if let byID = stations.first(where: { $0.id == code }) { return byID }
+            if let byCode = stations.first(where: { $0.code == code }) { return byCode }
+        }
+        return stations.first { normalizedName($0.name) == normalizedName(place.name) }
+    }
+
+    private static func normalizedName(_ name: String) -> String {
+        name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "ca_ES"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Center on one station at street scale without touching the rest of the
+    /// camera state (spec S11).
+    private func centerOn(station: Station) {
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude),
+            span: MKCoordinateSpan(
+                latitudeDelta: Self.placeFocusSpanDegrees,
+                longitudeDelta: Self.placeFocusSpanDegrees
+            )
+        )
+        cameraSpan = region.span
+        withAnimation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion)) {
+            cameraPosition = .region(region)
+        }
+    }
+
+    /// Visible latitude span a focused station is shown at (S11).
+    private static let placeFocusSpanDegrees = 0.02
+
+    /// Resolve a `.vehicle` focus once its train is in the feed: open its
+    /// sheet and turn the follow on (spec S11). A loaded line that does not
+    /// carry the train means it left the network, so the focus is dropped.
+    private func resolvePendingVehicleIfNeeded(in positions: [TrainPosition]) {
+        guard let id = pendingVehicleID else { return }
+        guard let train = positions.first(where: { $0.id == id }) else {
+            if !positions.isEmpty { pendingVehicleID = nil }
+            return
+        }
+        pendingVehicleID = nil
+        followingTrainID = id
+        selectedTrain = train
     }
 
     /// Smallest span kept per axis, so a single station (or a handful sitting
