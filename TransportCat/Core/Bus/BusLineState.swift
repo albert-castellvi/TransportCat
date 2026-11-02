@@ -149,20 +149,37 @@ final class BusLineState {
         do {
             let loadedStops = try await client.busStops(lineCode: line.code)
             let loadedRoutes = try await client.busRoutes(lineCode: line.code)
-            directions = BusFleet.directions(
-                stops: loadedStops,
-                routes: loadedRoutes,
-                lineCode: String(line.code),
-                maxRequests: Self.maxRequestsPerPoll
-            )
-            errorMessage = directions.isEmpty
-                ? "No s'ha pogut projectar la línia sobre la seva geometria."
-                : nil
+            // Spec S21: a successful load refreshes this line's offline copy;
+            // directions are rebuilt from stops and routes, never cached.
+            OfflineCache.saveBusTopology(stops: loadedStops, routes: loadedRoutes, lineCode: line.code)
+            publishDirections(stops: loadedStops, routes: loadedRoutes)
             Self.log.info("Bus line \(self.line.name, privacy: .public): \(loadedStops.count) stops, \(self.directions.count) directions, \(self.polledStopCount) polled")
         } catch {
             Self.report(error, "stops", line: line.name)
-            errorMessage = error.localizedDescription
+            // Spec S21: a failed load falls back to the cached stops and
+            // routes, so an offline launch still draws the line.
+            if let cached = OfflineCache.loadBusTopology(lineCode: line.code) {
+                publishDirections(stops: cached.stops, routes: cached.routes)
+                Self.log.info("Bus line \(self.line.name, privacy: .public): \(cached.stops.count) stops (offline cache)")
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    /// Builds and publishes the directions from stops and routes, with the
+    /// same projection error when they cannot be matched — the network path
+    /// and the offline cache fallback share it (spec S21).
+    private func publishDirections(stops: [BusStop], routes: [BusRoute]) {
+        directions = BusFleet.directions(
+            stops: stops,
+            routes: routes,
+            lineCode: String(line.code),
+            maxRequests: Self.maxRequestsPerPoll
+        )
+        errorMessage = directions.isEmpty
+            ? "No s'ha pogut projectar la línia sobre la seva geometria."
+            : nil
     }
 
     private static let log = Logger(subsystem: "cat.transport.app", category: "BusLineState")

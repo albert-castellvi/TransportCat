@@ -278,10 +278,38 @@ final class LineState {
             errorMessage = engine == nil && loadedStations.count >= 2
                 ? "No s'ha pogut projectar la línia sobre la seva geometria."
                 : nil
+            // Spec S21: a successful load is the moment to refresh this
+            // line's offline copy.
+            OfflineCache.saveMetroTopology(
+                stations: loadedStations, geometry: loadedGeometry, lineCode: line.code
+            )
         } catch {
             Self.report(error, "stations", line: line.code)
-            errorMessage = error.localizedDescription
+            // Spec S21: a failed load falls back to the cached topology, so
+            // an offline launch still draws the line and its theoretical
+            // trains instead of an error.
+            if !applyCachedTopology() {
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    /// Publishes the line's cached topology exactly as a successful load
+    /// does, without re-saving it. Returns whether the cache had a copy
+    /// (spec S21).
+    @discardableResult
+    private func applyCachedTopology() -> Bool {
+        guard let cached = OfflineCache.loadMetroTopology(lineCode: line.code) else { return false }
+        stations = cached.stations
+        geometry = cached.geometry
+        engine = cached.geometry.flatMap {
+            TrainPositionEngine.make(stations: cached.stations, geometry: $0)
+        }
+        errorMessage = engine == nil && cached.stations.count >= 2
+            ? "No s'ha pogut projectar la línia sobre la seva geometria."
+            : nil
+        Self.log.info("Line \(self.line.code, privacy: .public): \(cached.stations.count) stations (offline cache)")
+        return true
     }
 
     private static let log = Logger(subsystem: "cat.transport.app", category: "LineState")
@@ -341,8 +369,9 @@ final class LineState {
     /// positions. The response covers every station of the line, so a station
     /// missing from it has no trains: keeping its older arrivals would leave a
     /// ghost that wins the one-marker-per-train collapse with a stale
-    /// countdown. A failed poll changes nothing: the markers keep moving on
-    /// the last known data instead of being re-anchored to it.
+    /// countdown. Online, a failed poll changes nothing: the markers keep
+    /// moving on the last known data instead of being re-anchored to it.
+    /// Offline, the timetable takes the markers over (spec S21).
     func pollArrivals() async {
         guard !stations.isEmpty else { return }
         isPolling = true
@@ -363,6 +392,18 @@ final class LineState {
                 "arrivals": 0,
                 "trains": 0,
             ])
+            // Spec S21: with no path to the feed, the markers move to the
+            // timetable instead of coasting on the last live snapshot. Online,
+            // a failed poll changes nothing, as before.
+            if FleetSourceRule.useTheoreticalFleet(
+                isFeedEmpty: isFeedEmpty,
+                isOffline: !ConnectivityMonitor.shared.isOnline,
+                hasSchedule: scheduleLine != nil,
+                hasEngine: engine != nil
+            ) {
+                isTheoretical = true
+                positions = theoreticalPositions(now: Date())
+            }
             return
         }
 
@@ -373,8 +414,15 @@ final class LineState {
         let all = fetched.values.flatMap { $0 }
         isFeedEmpty = all.isEmpty
         // A line whose feed is always empty but whose timetable is available is
-        // drawn from it instead of staying blank (schedule S6).
-        isTheoretical = isFeedEmpty && scheduleLine != nil && engine != nil
+        // drawn from it instead of staying blank (schedule S6); offline the
+        // timetable takes over even from a feed that had trains (spec S21).
+        // Online with trains the condition is exactly the one from S6.
+        isTheoretical = FleetSourceRule.useTheoreticalFleet(
+            isFeedEmpty: isFeedEmpty,
+            isOffline: !ConnectivityMonitor.shared.isOnline,
+            hasSchedule: scheduleLine != nil,
+            hasEngine: engine != nil
+        )
         var trainCount = 0
         if isTheoretical {
             let scheduled = theoreticalPositions(now: Date())
