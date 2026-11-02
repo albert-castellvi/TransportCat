@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.173403, 41.385064] },
+      "properties": {
+        "CODI_PARADA": 1775,
+        "NOM_PARADA": "Av Tibidabo - Ronda de Dalt",
+        "ADRECA": "Av. Tibidabo, 38-40",
+        "DESC_PARADA": "Av. Tibidabo/Isaac Newton",
+        "NOM_POBLACIO": "Barcelona",
+        "TIPIFICACIO_PARADA": "N"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.170123, 41.387654] },
+      "properties": {
+        "CODI_PARADA": 3312,
+        "NOM_PARADA": "Sant Antoni Maria Claret - Felip II",
+        "ADRECA": "C. Sant Antoni Maria Claret, 210",
+        "DESC_PARADA": "Sant Antoni Maria Claret/Felip II",
+        "NOM_POBLACIO": "Barcelona",
+        "TIPIFICACIO_PARADA": "N"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [2.180001, 41.390002] },
+      "properties": {
+        "CODI_PARADA": 384,
+        "NOM_PARADA": "Sant Antoni Maria Claret - Espronceda",
+        "ADRECA": "C. Sant Antoni Maria Claret, 300",
+        "DESC_PARADA": "Sant Antoni Maria Claret/Espronceda",
+        "NOM_POBLACIO": "Barcelona",
+        "TIPIFICACIO_PARADA": "N"
+      }
+    }
+  ]
+}

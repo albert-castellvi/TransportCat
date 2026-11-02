@@ -39,5 +39,8 @@
 	<!-- Sentry DSN, injected at build time. Empty = crash reporting off. -->
 	<key>SentryDSN</key>
 	<string>$(SENTRY_DSN)</string>
+	<!-- Spec S6: when-in-use location for nearby stations and stops. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>TransportCat fa servir la teva ubicació per mostrar-te les estacions i parades properes.</string>
 </dict>
 </plist>
