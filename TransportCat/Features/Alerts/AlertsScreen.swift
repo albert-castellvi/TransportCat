@@ -83,7 +83,8 @@ private struct AlertRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if let text = alert.text, !text.isEmpty {
+            // Cleaned copy: the feeds ship HTML in the alert text (S15).
+            if let text = AlertText.cleaned(alert.text) {
                 Text(text)
                     .font(.footnote)
             }
