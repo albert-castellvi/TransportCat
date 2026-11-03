@@ -344,6 +344,7 @@ struct GlobalMapScreen: View {
                 destination: vehicle.label,
                 rotation: rotation,
                 showLabel: true,
+                showName: true,
                 opacity: 1
             )
         } else {
