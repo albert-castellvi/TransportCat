@@ -17,6 +17,12 @@ import SwiftUI
 /// opens the shared `IncidentSheet` (S7).
 @MainActor
 struct GlobalMapScreen: View {
+    /// Whether the global mode is the one on screen (spec S13). `RootView` keeps
+    /// all four map screens mounted (spec S12), so this flag — and not the
+    /// view's lifecycle — is what says whether the screen may poll: the global
+    /// poller only runs while Tot is visible, and coming back resumes on
+    /// `GlobalNetworkState`, which keeps the line states it already built.
+    let isActive: Bool
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Operator filter chips, persisted as a comma-joined token list (S8).
@@ -40,8 +46,6 @@ struct GlobalMapScreen: View {
     // Named type instead of `Self` on purpose: a stored-property initializer
     // has no instance context.
     @State private var cameraPosition: MapCameraPosition = .region(GlobalMapScreen.initialRegion)
-
-    init() {}
 
     /// Region the map opens with (spec S9): the metro map's Barcelona frame,
     /// pulled back past the `GlobalZoom` station threshold so the launch zoom
@@ -77,10 +81,13 @@ struct GlobalMapScreen: View {
             .sensoryFeedback(.selection, trigger: operatorsRaw)
             .navigationTitle("Mapa")
             .navigationBarTitleDisplayMode(.inline)
-            // The one global poller, alive only while this screen is visible
-            // (spec S8): the task cancels on disappear, and re-entering the
-            // mode resumes on the state that is already loaded.
-            .task {
+            // The one global poller, alive only while this mode is the one on
+            // screen (specs S8, S13): the task is keyed on `isActive`, so
+            // leaving Tot cancels the poll and its 10 Hz ticker, and coming
+            // back resumes on `GlobalNetworkState`, whose line states are
+            // already loaded — no topology is fetched twice.
+            .task(id: isActive) {
+                guard isActive else { return }
                 await state.run()
             }
             .onAppear {

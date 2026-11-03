@@ -5,6 +5,12 @@ import SwiftUI
 /// computed train positions as annotations.
 @MainActor
 struct MapScreen: View {
+    /// Whether metro is the mode on screen (spec S13). `RootView` keeps all
+    /// four map screens mounted (spec S12), so this flag — and not the view's
+    /// lifecycle — is what says whether the screen may load and poll: an
+    /// off-screen mode does neither, and coming back resumes on the retained
+    /// `LineState` without refetching its topology.
+    let isActive: Bool
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The selection is persisted under the key `AppRouter` writes for a
@@ -91,7 +97,12 @@ struct MapScreen: View {
             // The loader task must live on the always-visible container: the
             // map itself only renders once LineState exists, so a task attached
             // there would never start (infinite "Carregant…").
-            .task(id: selectedLineCode) {
+            //
+            // Spec S13: the task is keyed on the mode as well as on the line,
+            // so leaving metro cancels the poll and returning restarts it with
+            // the state it kept — no topology is fetched twice.
+            .task(id: MetroLoadKey(isActive: isActive, lineCode: selectedLineCode)) {
+                guard isActive else { return }
                 guard let client = app.client else { return }
                 // Spec S4: a line loaded on this screen is reused, so a line
                 // switch or a return to the tab repaints from memory and only
@@ -669,6 +680,15 @@ struct MapScreen: View {
               let last = stations.max(by: { $0.orderInLine < $1.orderInLine }) else { return [] }
         return [first.code, last.code]
     }
+}
+
+/// Inputs of the metro screen's load/poll task (spec S13): the line on screen
+/// and whether metro is the visible mode. Changing either restarts the task, so
+/// a mode switch cancels the poll of the screen being left and starts the one
+/// of the screen entering.
+private struct MetroLoadKey: Equatable {
+    let isActive: Bool
+    let lineCode: String
 }
 
 /// What the metro map draws that only depends on the line's topology and the

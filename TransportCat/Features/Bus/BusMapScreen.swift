@@ -20,6 +20,12 @@ import UIKit
 /// the data and never the layout.
 @MainActor
 struct BusMapScreen: View {
+    /// Whether bus is the mode on screen (spec S13). `RootView` keeps all four
+    /// map screens mounted (spec S12), so this flag — and not the view's
+    /// lifecycle — is what says whether the screen may load and poll: an
+    /// off-screen mode does neither, and coming back resumes on the retained
+    /// `BusLineState` without fetching its topology again.
+    let isActive: Bool
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Catalog and picker state, shared with the bus Línies screen so both
@@ -70,8 +76,6 @@ struct BusMapScreen: View {
     // guaranteed to compile.
     @State private var cameraPosition: MapCameraPosition = .region(BusMapScreen.initialRegion)
 
-    init() {}
-
     /// App-wide navigation intent (spec S11): bus focuses are handled here and
     /// cleared by this screen.
     private var router: AppRouter { AppRouter.shared }
@@ -99,15 +103,28 @@ struct BusMapScreen: View {
             // Both loader tasks live on the always-visible container: the map
             // only renders once a line is selected and its state exists, so a
             // task attached there would never start.
-            .task {
+            //
+            // Spec S13: neither runs while the bus mode is off screen. The
+            // catalog load the screen left behind is a no-op on resume (it
+            // guards on an already loaded catalog), so only the poll restarts.
+            .task(id: isActive) {
+                guard isActive else { return }
                 guard let client = app.client else { return }
                 await store.load(client: client)
             }
             // Keyed on the resolved line, not the stored code: `selectedLineCode`
             // is restored from UserDefaults before the catalog loads, so the task
             // would exit through the guard and never re-run when the line arrives.
-            .task(id: store.selectedLine?.code) {
+            .task(id: BusLoadKey(isActive: isActive, lineCode: store.selectedLine?.code)) {
+                guard isActive else { return }
                 guard let client = app.client, let line = store.selectedLine else { return }
+                // Spec S13: the state survives the mode switch, so returning to
+                // the bus mode resumes its poll instead of loading the line
+                // again. A different line is a different state, as before.
+                if let retained = lineState, retained.line.code == line.code {
+                    await retained.run()
+                    return
+                }
                 let state = BusLineState(line: line, client: client)
                 self.lineState = state
                 // A new line is a new overlay: clearing it here also keeps one
@@ -816,6 +833,15 @@ struct BusMapScreen: View {
     /// map's constant, copied because both maps release the follow the same
     /// way (spec S10).
     private static let followPanToleranceDegrees = 0.002
+}
+
+/// Inputs of the bus screen's load/poll task (spec S13): the selected line and
+/// whether bus is the visible mode. Changing either restarts the task, so a
+/// mode switch cancels the poll of the screen being left and starts the one of
+/// the screen entering.
+private struct BusLoadKey: Equatable {
+    let isActive: Bool
+    let lineCode: Int?
 }
 
 /// What the bus map draws that only depends on the line's topology, the
