@@ -67,9 +67,10 @@ final class ScheduleStore: Sendable {
         var pack = cachedPack()
         if pack == nil {
             // First launch: nothing is cached yet, and the refresh fired at
-            // start-up may not have finished. One index request is cheap.
-            await refreshIndex()
-            pack = cachedPack()
+            // start-up may not have finished. One index request is cheap, and
+            // the index is the refresh's answer instead of a second read of a
+            // file whose write runs in the background (spec S5).
+            pack = await refreshIndex() ?? cachedPack()
         }
         guard let pack,
               let file = pack.fileName(mode: mode, code: code),
@@ -91,14 +92,20 @@ final class ScheduleStore: Sendable {
     /// unreliable. When the feed identity did not change nothing is rewritten;
     /// when it did, every line file of the old feed is stale and gets replaced
     /// the next time it is requested (see `cachedLine`).
-    func refreshIndex() async {
-        guard let data = await fetch(Self.indexFile), let incoming = decodeIndex(data) else { return }
+    ///
+    /// - Returns: the index that is in force now, so a caller that needs it in
+    ///   this same launch does not have to wait for the background write of the
+    ///   file (spec S5).
+    @discardableResult
+    func refreshIndex() async -> SchedulePack? {
+        guard let data = await fetch(Self.indexFile), let incoming = decodeIndex(data) else { return nil }
         if let current = cachedPack(),
            current.feedVersion == incoming.feedVersion,
            current.generatedAt == incoming.generatedAt {
-            return
+            return incoming
         }
-        write(data, to: url(Self.indexFile))
+        writeInBackground(data, to: url(Self.indexFile))
+        return incoming
     }
 
     // MARK: - Cache
@@ -141,14 +148,33 @@ final class ScheduleStore: Sendable {
         guard Self.isPackFileName(file) else { return }
         // The line file goes first: if the app dies in between, the version
         // marker still names the older feed and the file is downloaded again.
-        write(data, to: url(file))
-        write(Data((version ?? "").utf8), to: url(file + Self.versionSuffix))
+        // Both writes share one task, so that order holds off the caller's
+        // actor (spec S5).
+        let fileURL = url(file)
+        let versionURL = url(file + Self.versionSuffix)
+        let versionData = Data((version ?? "").utf8)
+        Task.detached(priority: .utility) {
+            Self.writeData(data, to: fileURL)
+            Self.writeData(versionData, to: versionURL)
+        }
     }
 
-    private func write(_ data: Data, to url: URL) {
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        // `.atomic` writes a temporary file next to the target and renames it,
-        // so a reader never sees a partial file.
+    /// Writes one file of the pack on a detached utility task (spec S5): the
+    /// caller already decoded what it needs, so it never waits for the bytes to
+    /// reach the disk.
+    private func writeInBackground(_ data: Data, to url: URL) {
+        Task.detached(priority: .utility) {
+            Self.writeData(data, to: url)
+        }
+    }
+
+    /// Atomic write: the temporary file lives next to the target and is renamed
+    /// into place, so a reader never sees a partial file. Static so a detached
+    /// task never captures the store.
+    private static func writeData(_ data: Data, to url: URL) {
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
         try? data.write(to: url, options: .atomic)
     }
 

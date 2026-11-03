@@ -110,13 +110,16 @@ final class OfflineCacheTests: XCTestCase {
 
     // MARK: - Metro topology round-trip
 
-    func testMetroTopologyRoundTrip() {
+    func testMetroTopologyRoundTrip() async throws {
         let stations = metroStations()
         let geometry = metroGeometry()
 
-        XCTAssertTrue(OfflineCache.saveMetroTopology(
+        // Spec S5: the save hands back the write it spawned, so the round-trip
+        // waits for the file instead of reading before it lands.
+        let save = try XCTUnwrap(OfflineCache.saveMetroTopology(
             stations: stations, geometry: geometry, lineCode: "1", cache: cache
         ))
+        await save.value
         XCTAssertTrue(cache.hasValue(forKey: "metro-topology-1"))
 
         let loaded = OfflineCache.loadMetroTopology(lineCode: "1", cache: cache)
@@ -124,21 +127,23 @@ final class OfflineCacheTests: XCTestCase {
         XCTAssertEqual(loaded?.geometry, geometry)
     }
 
-    func testMetroTopologyRoundTripWithoutGeometry() {
+    func testMetroTopologyRoundTripWithoutGeometry() async throws {
         let stations = metroStations()
-        XCTAssertTrue(OfflineCache.saveMetroTopology(
+        let save = try XCTUnwrap(OfflineCache.saveMetroTopology(
             stations: stations, geometry: nil, lineCode: "94", cache: cache
         ))
+        await save.value
 
         let loaded = OfflineCache.loadMetroTopology(lineCode: "94", cache: cache)
         XCTAssertEqual(loaded?.stations, stations)
         XCTAssertNil(loaded?.geometry)
     }
 
-    func testMetroTopologyLinesAreIndependent() {
-        OfflineCache.saveMetroTopology(
+    func testMetroTopologyLinesAreIndependent() async throws {
+        let save = try XCTUnwrap(OfflineCache.saveMetroTopology(
             stations: metroStations(), geometry: nil, lineCode: "1", cache: cache
-        )
+        ))
+        await save.value
         XCTAssertNil(OfflineCache.loadMetroTopology(lineCode: "5", cache: cache))
     }
 
@@ -158,13 +163,14 @@ final class OfflineCacheTests: XCTestCase {
 
     // MARK: - Bus topology round-trip
 
-    func testBusTopologyRoundTrip() {
+    func testBusTopologyRoundTrip() async throws {
         let stops = busStops()
         let routes = busRoutes()
 
-        XCTAssertTrue(OfflineCache.saveBusTopology(
+        let save = try XCTUnwrap(OfflineCache.saveBusTopology(
             stops: stops, routes: routes, lineCode: 212, cache: cache
         ))
+        await save.value
         XCTAssertTrue(cache.hasValue(forKey: "bus-topology-212"))
 
         let loaded = OfflineCache.loadBusTopology(lineCode: 212, cache: cache)
@@ -174,16 +180,37 @@ final class OfflineCacheTests: XCTestCase {
 
     // MARK: - FGC topology round-trip
 
-    func testFGCTopologyRoundTrip() {
+    func testFGCTopologyRoundTrip() async throws {
         let lines = fgcLines()
         let stations = fgcStations()
 
-        XCTAssertTrue(OfflineCache.saveFGCTopology(lines: lines, stations: stations, cache: cache))
+        let save = try XCTUnwrap(OfflineCache.saveFGCTopology(lines: lines, stations: stations, cache: cache))
+        await save.value
         XCTAssertTrue(cache.hasValue(forKey: "fgc-topology"))
 
         let loaded = OfflineCache.loadFGCTopology(cache: cache)
         XCTAssertEqual(loaded?.lines, lines)
         XCTAssertEqual(loaded?.stations, stations)
+    }
+
+    // MARK: - Background saves (spec S5)
+
+    /// Spec S5: the topology saves of the three maps hand back the write they
+    /// run off the caller's actor. Waiting on it lands the file, and a key that
+    /// cannot address a file spawns nothing (the same silent refusal the
+    /// synchronous save had).
+    func testBackgroundSavesWaitableAndKeyValidated() async throws {
+        let save = try XCTUnwrap(OfflineCache.saveMetroTopology(
+            stations: metroStations(), geometry: metroGeometry(), lineCode: "2", cache: cache
+        ))
+        await save.value
+        XCTAssertTrue(cache.hasValue(forKey: "metro-topology-2"))
+
+        XCTAssertNil(OfflineCache.saveMetroTopology(
+            stations: metroStations(), geometry: nil, lineCode: "../escape", cache: cache
+        ))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        XCTAssertFalse(names.contains { $0.contains("escape") })
     }
 
     // MARK: - Missing and corrupt values

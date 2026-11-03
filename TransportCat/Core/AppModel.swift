@@ -252,22 +252,33 @@ final class LineState {
     /// (best effort). A failing geometry falls back to a straight polyline
     /// through the stations so the map, the diagram and the trains still
     /// render, and is not reported as an error.
+    ///
+    /// Spec S1: a cached copy is published before the first request, so a warm
+    /// launch paints the line instead of an empty map while the network
+    /// answers. The refresh below still replaces it and a failed refresh still
+    /// falls back to it (S21). Spec S3: the timetable does not gate the
+    /// topology and stations and geometry are requested together.
     func loadTopology() async {
         isLoadingTopology = true
         defer { isLoadingTopology = false }
-        // The timetable does not depend on the topology request, and it is what
-        // makes a line without a live feed drawable: ask for it first (S6).
-        await loadScheduleLine()
+        // Spec S1: disk first. `applyCachedTopology` publishes exactly what a
+        // successful load publishes and never re-saves what it just read.
+        applyCachedTopology()
+        // Spec S3: the timetable does not depend on either request, and it only
+        // decides whether a line without a live feed can be drawn, so it gets
+        // its own task instead of holding the paint.
+        Task { [weak self] in
+            await self?.loadScheduleLine()
+        }
         do {
-            let loadedStations = try await client.stations(lineCode: line.code)
+            async let stationsRequest = client.stations(lineCode: line.code)
+            async let geometryRequest = Self.fetchGeometry(client: client, lineCode: line.code)
+            let loadedStations = try await stationsRequest
+            // Spec S2: publishing the stations is what leaves the loader, so
+            // the geometry is awaited after them rather than holding both.
             stations = loadedStations
             Self.log.info("Line \(self.line.code, privacy: .public): \(loadedStations.count) stations")
-            var loadedGeometry: LineGeometry?
-            do {
-                loadedGeometry = try await client.lineGeometry(lineCode: line.code)
-            } catch {
-                Self.report(error, "geometry", line: line.code)
-            }
+            var loadedGeometry = await geometryRequest
             if loadedGeometry?.points.isEmpty ?? true {
                 loadedGeometry = Self.stationsPolyline(from: loadedStations)
             }
@@ -279,7 +290,8 @@ final class LineState {
                 ? "No s'ha pogut projectar la línia sobre la seva geometria."
                 : nil
             // Spec S21: a successful load is the moment to refresh this
-            // line's offline copy.
+            // line's offline copy. S5: the encode and the write happen off the
+            // main actor, so the fresh map does not wait for the disk.
             OfflineCache.saveMetroTopology(
                 stations: loadedStations, geometry: loadedGeometry, lineCode: line.code
             )
@@ -287,16 +299,30 @@ final class LineState {
             Self.report(error, "stations", line: line.code)
             // Spec S21: a failed load falls back to the cached topology, so
             // an offline launch still draws the line and its theoretical
-            // trains instead of an error.
+            // trains instead of an error. The copy applied above is that
+            // fallback; only a cold start without one reports the error.
             if !applyCachedTopology() {
                 errorMessage = error.localizedDescription
             }
         }
     }
 
+    /// The line's polyline, best effort (spec S3): it is requested next to the
+    /// stations and a failure is logged and reported, then answered with nil so
+    /// the caller keeps the straight-line fallback.
+    private static func fetchGeometry(client: TMBClient, lineCode: String) async -> LineGeometry? {
+        do {
+            return try await client.lineGeometry(lineCode: lineCode)
+        } catch {
+            report(error, "geometry", line: lineCode)
+            return nil
+        }
+    }
+
     /// Publishes the line's cached topology exactly as a successful load
     /// does, without re-saving it. Returns whether the cache had a copy
-    /// (spec S21).
+    /// (specs S1, S21): `loadTopology` calls it first for the warm-launch paint
+    /// and again when the network fails.
     @discardableResult
     private func applyCachedTopology() -> Bool {
         guard let cached = OfflineCache.loadMetroTopology(lineCode: line.code) else { return false }

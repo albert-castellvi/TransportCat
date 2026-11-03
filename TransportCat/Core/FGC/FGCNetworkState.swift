@@ -158,8 +158,9 @@ final class FGCNetworkState {
 
     /// Publishes the loaded lines and stations and rebuilds everything derived
     /// from them (station names, geometry tables, drawable layers). `persist`
-    /// is the network-success path recording the offline copy (spec S21); the
-    /// cache fallback must not re-save what it just read.
+    /// is the network-success path recording the offline copy (spec S21), which
+    /// is encoded and written off the main actor (spec S5); the cache fallback
+    /// must not re-save what it just read.
     private func publishTopology(
         _ loadedLines: [FGCLine],
         loadedStations: [FGCStation],

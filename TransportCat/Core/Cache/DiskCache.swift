@@ -34,11 +34,38 @@ final class DiskCache {
     @discardableResult
     func save<T: Encodable>(_ value: T, forKey key: String) -> Bool {
         guard let url = fileURL(forKey: key) else { return false }
+        return Self.write(value, to: url)
+    }
+
+    /// Encodes `value` and writes it on a detached utility task, so a caller
+    /// that just published the values it is saving never waits for the JSON
+    /// encode and the disk write (spec S5).
+    ///
+    /// The write is atomic and just as silent as `save(_:forKey:)`; nil means
+    /// the key cannot address a file. The returned task is for tests, which
+    /// have to wait for it before reading the file back.
+    @discardableResult
+    func saveInBackground<T: Encodable & Sendable>(
+        _ value: T,
+        forKey key: String
+    ) -> Task<Void, Never>? {
+        guard let url = fileURL(forKey: key) else { return nil }
+        return Task.detached(priority: .utility) {
+            Self.write(value, to: url)
+        }
+    }
+
+    /// Encodes one value and writes it atomically, creating its folder. Static
+    /// so a detached save never captures the (non-`Sendable`) cache object.
+    @discardableResult
+    private static func write<T: Encodable>(_ value: T, to url: URL) -> Bool {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(value) else { return false }
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
             try data.write(to: url, options: [.atomic])
             return true
         } catch {

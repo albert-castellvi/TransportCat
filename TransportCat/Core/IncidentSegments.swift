@@ -15,6 +15,22 @@ struct IncidentRun: Equatable, Identifiable {
     var lastStation: Station? { stations.last }
 }
 
+/// One run of affected stations together with the polyline the map draws over
+/// it (spec S8). The grouping of the run and the slicing of the track are pure
+/// work that only changes with the stations, the alerts or the geometry, so the
+/// map derives this once and never on a position tick.
+struct IncidentRunOverlay: Equatable, Identifiable {
+    let run: IncidentRun
+    /// Points of the red dashed overlay: the track between the run's end
+    /// stations, or the straight station-to-station fallback when the geometry
+    /// cannot carry the run. Empty when there is nothing to draw — a single
+    /// station without usable track — which is the case the map skips.
+    let points: [GeoPoint]
+
+    /// Identity of the run it draws, so the overlay survives a re-derivation.
+    var id: Int { run.id }
+}
+
 /// Groups the affected stations of a line — as `IncidentIndex` reports them —
 /// into the runs the metro map overlays (spec S9). Foundation-only and pure
 /// so the Linux harness can test it.
@@ -46,6 +62,36 @@ enum IncidentSegments {
         return result
     }
 
+    /// The overlays the map of one line draws, in line order (spec S8): one
+    /// entry per `runs` result, carrying the polyline of its dashed segment.
+    ///
+    /// This is the whole per-render pipeline of the map — group the affected
+    /// stations, then project the run's ends onto the track — turned into one
+    /// value that is derived when the inputs change. The drawing rule stays
+    /// the same: `trackPolyline` when the geometry can carry the run,
+    /// `stationPolyline` otherwise, and no polyline at all when neither has
+    /// one.
+    ///
+    /// - Parameters:
+    ///   - stations: the stations of the line.
+    ///   - incidents: an `IncidentIndex.incidents` output for the same line.
+    ///   - geometry: the line's polyline, or nil when it has not loaded.
+    static func overlays(
+        stations: [Station],
+        incidents: [Int: [StationIncident]],
+        geometry: LineGeometry?
+    ) -> [IncidentRunOverlay] {
+        runs(stations: stations, incidents: incidents).map { run in
+            let points: [GeoPoint]
+            if let geometry, let onTrack = trackPolyline(for: run, geometry: geometry) {
+                points = onTrack
+            } else {
+                points = stationPolyline(for: run) ?? []
+            }
+            return IncidentRunOverlay(run: run, points: points)
+        }
+    }
+
     /// The geometry points of the line's polyline between the run's first and
     /// last station: both ends are projected onto the track, so the red dashed
     /// overlay follows it instead of cutting across blocks (spec S9).
@@ -58,7 +104,10 @@ enum IncidentSegments {
         guard let first = run.firstStation, let last = run.lastStation,
               run.stations.count >= 2, geometry.points.count >= 2 else { return nil }
         let points = geometry.points
-        let cumulative = GeoMath.cumulativeDistances(of: points)
+        // Already computed when the geometry was decoded (spec S8): the table
+        // and the two projection scans used to be rebuilt here, per run and per
+        // render.
+        let cumulative = geometry.cumulativeDistances
         guard let start = GeoMath.nearestProjection(
             of: GeoPoint(latitude: first.latitude, longitude: first.longitude),
             in: points, cumulative: cumulative
