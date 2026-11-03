@@ -375,7 +375,14 @@ struct BusMapScreen: View {
                             line: line,
                             destination: position.train.destination,
                             rotation: position.train.heading - 90 - cameraHeading,
-                            showLabel: latitudeSpan < Self.labelSpanThreshold,
+                            // Only the direction on screen carries the
+                            // destination label: the dimmed bus of the other
+                            // direction keeps its pictogram (0.55) and loses
+                            // the chip, so it no longer reads as a ghost copy
+                            // of a selected one (map-perf S14c).
+                            showLabel: latitudeSpan < Self.labelSpanThreshold
+                                && position.directionID == selectedDirectionID,
+                            showName: position.directionID == selectedDirectionID,
                             opacity: position.directionID == selectedDirectionID ? 1 : 0.55
                         )
                     }
@@ -482,11 +489,10 @@ struct BusMapScreen: View {
                 .padding(.top, 8)
             }
         }
-        // A line change swaps both route polylines, the stop dots and the
-        // buses wholesale, and they arrive with the first poll: fade the
-        // overlays in on the change instead of popping them onto an empty
-        // map (polish pass, no Map rebuild).
-        .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.directions.map(\.id))
+        // No content-keyed `.animation` on the direction set: it animated the
+        // whole annotation set on a line switch, which read as a doubled
+        // annotation layer (map-perf S14b). Annotations pop in like the FGC
+        // map already does; the placeholder fade (`lineState != nil`) stays.
     }
 
     /// The strip that says where the buses come from (spec S3, S9): the
@@ -880,7 +886,13 @@ struct BusMarker: View {
     /// Rotation of the pictogram: `heading - 90 - cameraHeading`, the same rule
     /// the east-facing metro pictograms use, so 0 degrees means heading east.
     let rotation: Double
+    /// The destination label below the pictogram: zoomed in, and only for the
+    /// direction on screen (map-perf S14c).
     let showLabel: Bool
+    /// Whether the line-name chip draws at all: only for the direction on
+    /// screen, so a dimmed bus of the other direction is a bare pictogram
+    /// instead of reading as a ghost copy of a selected one (map-perf S14c).
+    let showName: Bool
     /// 1 for the direction on screen, 0.55 for the other one (spec S3).
     let opacity: Double
 
@@ -909,14 +921,17 @@ struct BusMarker: View {
             .overlay(alignment: .top) {
                 // The line name has to stay readable while the bus turns, so
                 // it is a chip of its own outside the rotated image (spec S2).
-                Text(line.name)
-                    .font(.caption2.bold())
-                    .foregroundStyle(Color(hex: line.textColorHex))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(hex: line.colorHex)))
-                    .fixedSize()
-                    .offset(y: -20)
+                // Only the direction on screen carries it (map-perf S14c).
+                if showName {
+                    Text(line.name)
+                        .font(.caption2.bold())
+                        .foregroundStyle(Color(hex: line.textColorHex))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color(hex: line.colorHex)))
+                        .fixedSize()
+                        .offset(y: -20)
+                }
             }
             .opacity(opacity)
             .overlay(alignment: .bottom) {

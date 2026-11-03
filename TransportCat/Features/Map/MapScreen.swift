@@ -273,9 +273,12 @@ struct MapScreen: View {
                 }
             }
             // A red warning triangle per affected station, drawn after the
-            // station dots so it sits on top (spec S9).
+            // station dots so it sits on top (spec S9). Empty title: the
+            // station dot underneath already carries the name, so a titled
+            // warning annotation drew the label twice on an incident station
+            // (map-perf S14a). The name stays in the accessibility label.
             ForEach(mapOverlay.incidentRuns.flatMap(\.run.stations)) { station in
-                Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         incidentStation = station
                     } label: {
@@ -397,11 +400,10 @@ struct MapScreen: View {
             followTrain(in: positions)
             resolvePendingVehicleIfNeeded(in: positions)
         }
-        // A line change swaps the polyline, the stations and the trains
-        // wholesale, and they arrive with the first poll: fade the overlays
-        // in on the change instead of popping them onto an empty map
-        // (polish pass, no Map rebuild).
-        .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.stations.map(\.code))
+        // No content-keyed `.animation` on the station set: animating it made
+        // every annotation of a line switch fly in, which read as a doubled
+        // annotation layer (map-perf S14b). Annotations pop in like the FGC
+        // map already does; the placeholder fade (`mapAreaPhase`) stays.
     }
 
     /// Refit the camera on the stations of the line currently shown, so a long
