@@ -150,7 +150,9 @@ final class BusLineState {
             let loadedStops = try await client.busStops(lineCode: line.code)
             let loadedRoutes = try await client.busRoutes(lineCode: line.code)
             // Spec S21: a successful load refreshes this line's offline copy;
-            // directions are rebuilt from stops and routes, never cached.
+            // directions are rebuilt from stops and routes, never cached. S5:
+            // the copy is written off the main actor, so the fresh map does not
+            // wait for the encode and the disk.
             OfflineCache.saveBusTopology(stops: loadedStops, routes: loadedRoutes, lineCode: line.code)
             publishDirections(stops: loadedStops, routes: loadedRoutes)
             Self.log.info("Bus line \(self.line.name, privacy: .public): \(loadedStops.count) stops, \(self.directions.count) directions, \(self.polledStopCount) polled")

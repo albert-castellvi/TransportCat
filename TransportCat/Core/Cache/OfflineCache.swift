@@ -30,16 +30,19 @@ enum OfflineCache {
 
     // MARK: - Metro
 
-    /// Persists one line's stations and route polyline.
+    /// Persists one line's stations and route polyline (spec S21). The encode
+    /// and the write happen on a detached utility task, so the caller publishes
+    /// the fresh topology without waiting for the disk (spec S5); nil means the
+    /// key cannot address a file.
     @discardableResult
     static func saveMetroTopology(
         stations: [Station],
         geometry: LineGeometry?,
         lineCode: String,
         cache: DiskCache = .shared
-    ) -> Bool {
-        cache.save(MetroTopologySnapshot(stations: stations, geometry: geometry),
-                  forKey: metroTopologyKey(lineCode: lineCode))
+    ) -> Task<Void, Never>? {
+        cache.saveInBackground(MetroTopologySnapshot(stations: stations, geometry: geometry),
+                               forKey: metroTopologyKey(lineCode: lineCode))
     }
 
     /// The line's last persisted topology, or nil when there is none or it
@@ -72,16 +75,18 @@ enum OfflineCache {
 
     // MARK: - Bus topology
 
-    /// Persists one line's stops (both directions) and route geometries.
+    /// Persists one line's stops (both directions) and route geometries. Written
+    /// off the caller's actor, like the metro copy (spec S5); nil when the key
+    /// cannot address a file.
     @discardableResult
     static func saveBusTopology(
         stops: [BusStop],
         routes: [BusRoute],
         lineCode: Int,
         cache: DiskCache = .shared
-    ) -> Bool {
-        cache.save(BusTopologySnapshot(stops: stops, routes: routes),
-                  forKey: busTopologyKey(lineCode: lineCode))
+    ) -> Task<Void, Never>? {
+        cache.saveInBackground(BusTopologySnapshot(stops: stops, routes: routes),
+                               forKey: busTopologyKey(lineCode: lineCode))
     }
 
     /// The line's last persisted stops and routes, or nil when absent.
@@ -96,14 +101,16 @@ enum OfflineCache {
 
     // MARK: - FGC topology
 
-    /// Persists the merged FGC network.
+    /// Persists the merged FGC network, off the caller's actor like the other
+    /// topology saves (spec S5).
     @discardableResult
     static func saveFGCTopology(
         lines: [FGCLine],
         stations: [FGCStation],
         cache: DiskCache = .shared
-    ) -> Bool {
-        cache.save(FGCTopologySnapshot(lines: lines, stations: stations), forKey: fgcTopologyKey)
+    ) -> Task<Void, Never>? {
+        cache.saveInBackground(FGCTopologySnapshot(lines: lines, stations: stations),
+                               forKey: fgcTopologyKey)
     }
 
     /// The last persisted FGC network, or nil when absent.

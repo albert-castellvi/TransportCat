@@ -12,6 +12,10 @@ struct MapScreen: View {
     /// by changing the same stored value the picker chips write (specs S10, S11).
     @AppStorage("metroSelectedLine") private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
+    /// Every line state this screen has built, keyed by line code (spec S4):
+    /// switching L1→L2→L1 or coming back to the tab repaints the line from
+    /// memory instead of refetching its stations and geometry.
+    @State private var lineStates: [String: LineState] = [:]
     @State private var selectedStation: Station?
     /// Train whose sheet is open (spec S10). A snapshot copy: the sheet reads
     /// the live position from the line state by id, like the FGC map.
@@ -70,8 +74,10 @@ struct MapScreen: View {
                 chipsRow
                 mapArea
                     // The placeholder and the map swap with a short fade when
-                    // the line's state first arrives (polish pass).
-                    .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
+                    // the line's state first arrives (polish pass) and when its
+                    // stations do: until then the placeholder stays up instead
+                    // of an empty map (spec S2).
+                    .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: mapAreaPhase)
             }
             // Changing the line is a selection, so it clicks (polish pass).
             .sensoryFeedback(.selection, trigger: selectedLineCode)
@@ -82,7 +88,10 @@ struct MapScreen: View {
             // there would never start (infinite "Carregant…").
             .task(id: selectedLineCode) {
                 guard let client = app.client else { return }
-                let state = LineState(line: selectedLine, client: client)
+                // Spec S4: a line loaded on this screen is reused, so a line
+                // switch or a return to the tab repaints from memory and only
+                // resumes polling. `run()` loads the topology the first time.
+                let state = cachedLineState(for: selectedLine, client: client)
                 self.lineState = state
                 await state.run()
             }
@@ -151,11 +160,43 @@ struct MapScreen: View {
         .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.alertsUpdatedAt)
     }
 
+    /// The state of one line, built on first use and kept afterwards (spec S4).
+    /// The map is the only screen with this cache: bus and FGC keep their own
+    /// lifecycle.
+    private func cachedLineState(for line: MetroLine, client: TMBClient) -> LineState {
+        if let existing = lineStates[line.code] { return existing }
+        let created = LineState(line: line, client: client)
+        lineStates[line.code] = created
+        return created
+    }
+
+    /// What `mapArea` draws right now: the loader or the map. One value instead
+    /// of the separate checks the view makes, so the fade between the two keeps
+    /// the single curve it had when it was keyed on "the state exists"
+    /// (spec S2).
+    private enum MapAreaPhase: Equatable {
+        case loading
+        case map
+    }
+
+    private var mapAreaPhase: MapAreaPhase {
+        guard app.missingCredentialsMessage == nil, let state = lineState else { return .loading }
+        return Self.showsMap(for: state) ? .map : .loading
+    }
+
+    /// Whether the map is drawn instead of the loader (spec S2): as soon as the
+    /// line has stations, or when it has an error to show — the failure notice
+    /// has always been an overlay of the map itself, so the loader must not
+    /// swallow it.
+    private static func showsMap(for state: LineState) -> Bool {
+        !state.stations.isEmpty || state.errorMessage != nil
+    }
+
     @ViewBuilder
     private var mapArea: some View {
         if let message = app.missingCredentialsMessage {
             ConfigurationNotice(message: message)
-        } else if let client = app.client, let state = lineState {
+        } else if let client = app.client, let state = lineState, Self.showsMap(for: state) {
             lineMap(state: state, client: client)
                 .transition(.opacity)
         } else {
