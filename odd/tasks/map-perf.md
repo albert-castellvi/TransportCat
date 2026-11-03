@@ -1,0 +1,32 @@
+# Map performance optimization (metro, bus, FGC and Tot)
+Objective: the map paints immediately from cache, the first topology load stops serializing three requests, the 10 Hz tick stops recomputing incidents/coordinates in `body`, and the Tot view stops staggering trains ~30 s and drawing station dots at launch zoom.
+Branch: feat/map-perf (from main) · Delivery: ask-on-risk · Test runner: XCTest on macOS CI; local check is `swiftc -typecheck` over Foundation-only subsets (no Xcode on this Linux box).
+Status: approved by user 2026-11-05 ("Plan completo (F1-F4)").
+
+## Specs
+- S1 Cache-first paint (F1). When `OfflineCache.loadMetroTopology(lineCode:)` has a copy for the selected line, `LineState.loadTopology()` applies it immediately (same publication as a successful load, without re-saving) and then continues the network refresh. The map therefore paints from disk on a warm launch instead of waiting for the network; the offline copy is still refreshed from the network afterwards, and a network failure still falls back to the cache as today (existing S21 behavior preserved).
+- S2 Loader while empty (F1). While the selected line has no stations yet, the map area shows the existing `MapLoadingPlaceholder` (or a spinner) instead of an empty Barcelona map; the swap to the real map keeps the current fade. `MapScreen` must not swap the placeholder for an empty `Map` before the first stations arrive.
+- S3 Parallel load chain (F2). `LineState.loadTopology()` no longer awaits the timetable before stations: the schedule load is spawned as an independent child task, and stations + geometry are fetched concurrently (`async let`), with the existing fallback (straight polyline when geometry fails or is empty) unchanged.
+- S4 In-memory topology reuse (F2). Switching lines (L1→L2→L1) and returning to the Map tab reuses an already-loaded `LineState` for that line instead of always building a fresh one and refetching stations+geometry; the reused state keeps polling as today. Scope: metro `MapScreen` (a per-mode cache keyed by line code); bus/FGC screens keep their current lifecycle.
+- S5 Disk saves off the main actor (F2). `OfflineCache.saveMetroTopology`, the schedule-store saves and the whole-network saves (`FGCNetworkState`, `BusLineState`) write to disk in a detached utility task; publication of `stations`/`geometry`/`lines` no longer waits for a synchronous JSON encode + write.
+- S6 Tot first pass without stagger (F2). The global (Tot) vehicles poll loop does not sleep `lineStaggerNanoseconds` between lines on the first pass, so every line's trains appear within the first poll cycle instead of trickling in over ~30 s; later passes keep the stagger.
+- S7 Tot layer rebuild once (F2). `GlobalNetworkState.ensureLineStates()` rebuilds `rebuildMetroLayersAndDots()` once after the task group completes instead of once per completed line (11 map invalidations today); lines still publish individually only if that does not force the full rebuild per line.
+- S8 Tick work out of `body` (F3). In `MapScreen`, `BusMapScreen` and `FGCMapScreen` the work recomputed on every poll tick moves out of `body`: incident grouping (`IncidentIndex.incidents` + `IncidentSegments.runs`), terminal codes, run overlay points, and the `GeoPoint`→`CLLocationCoordinate2D` mapping of every polyline (line geometry, incident runs, bus directions, every FGC line, every metro layer in Tot). Coordinate arrays are stored alongside the `GeoPoint` geometry at load time or memoized per geometry; incident grouping is derived on stations/alerts change, not per render. Visible behavior and labels stay identical (S10).
+- S9 Tot zoom band (F4). The global map's initial camera span starts at a zoom whose `GlobalZoom` band does not draw the station dots (`.lines`), so the first paint is lines + incidents only; zooming in still brings the dots back exactly as today.
+- S10 No regression. Existing behavior, text, accessibility labels and specs not named above stay; existing tests keep passing.
+- S11 Local verification. This Linux machine has no Xcode: Foundation-only subsets typecheck with `swiftc -typecheck` (multiple files at once, `import FoundationNetworking` guarded by `canImport`), and the full XCTest suite runs on macOS CI; workers report which checks ran.
+
+Out of scope: lowering the 10 Hz position rate, replacing MapKit, backend changes, bus/FGC lifecycle redesign beyond S5.
+
+## Tasks
+| ID | Specs | Route | Model / effort | Status | Commit |
+|----|-------|-------|----------------|--------|--------|
+| T1 | S1 S2 S3 S4 S5 | delegated, surfaces: Core/AppModel.swift (LineState + loadTopology + loadScheduleLine), Core/Schedule/ScheduleStore.swift (save call sites only), Core/Cache/OfflineCache.swift, Core/Cache/DiskCache.swift, Features/Map/MapScreen.swift (state task + mapArea gating only), Core/Bus/BusLineState.swift (save call site only), Core/FGC/FGCNetworkState.swift (save call site only) | nan/deepseek-v4-flash, medium | pending | - |
+| T2 | S6 S7 | delegated, surfaces: Core/Global/GlobalNetworkState.swift | nan/deepseek-v4-flash, low | pending | - |
+| T3 | S9 | delegated, surfaces: Features/Global/GlobalMapScreen.swift, Core/Global/GlobalZoom.swift (if a constant needs moving) | nan/deepseek-v4-flash, low | pending | - |
+| T4 | S8 S10 | delegated, surfaces: Features/Map/MapScreen.swift, Features/Bus/BusMapScreen.swift, Features/FGC/FGCMapScreen.swift, Core/IncidentSegments.swift, Core/Models/LineGeometry (or wherever LineGeometry lives), Features/Global/GlobalMapScreen.swift (coordinate pre-mapping only) | nan/deepseek-v4-flash, medium | pending, after T1 lands (shares MapScreen) | - |
+
+## Log
+- L1 (2026-11-05, user): "vamos a opimizar la app, en algunos casos va lenta la carga del mapa y estoy seguro que se puede mejorar, te paso algunas ccapturas de pantalla de los puntos a revisar" (screenshots IMG_6575/6576: metro line maps L1/L2; IMG_6577: Tot view with the whole network).
+- L2 (2026-11-05, orchestrator): perf audit by gentle-ai-explore (task mw0gy607-1-zf4b) with file:line evidence; key findings: serial timetable→stations→geometry chain (AppModel.swift:260-267), failure-only disk cache (AppModel.swift:255-300), no in-memory LineState reuse (MapScreen.swift:83-88), synchronous disk saves on the main actor, ~2.7 s per-line stagger in the Tot poll loop (GlobalNetworkState.swift:110-118), per-render incident grouping + coordinate re-mapping at 10 Hz, Tot drawing station dots at launch zoom.
+- L3 (2026-11-05, user): approved scope "Plan completo (F1-F4)" via choice prompt.
