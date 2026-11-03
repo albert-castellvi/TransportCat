@@ -33,6 +33,12 @@ enum GlobalZoom {
     /// (spec S8). The band in between shows the station dots.
     static let vehiclesBelowDegrees: Double = 0.08
 
+    /// Visible latitude span the global map opens with (spec S9). Above
+    /// `linesOnlyAboveDegrees` on purpose, so the first paint is the
+    /// lines-only band — no station dots until the rider zooms in, which then
+    /// walks the ladder exactly as before (S8 bands unchanged).
+    static let initialLatitudeSpan: Double = 0.30
+
     /// The detail level for a camera latitude span. The two edges (exactly
     /// 0.25 and exactly 0.08) belong to the station band: "wider than" and
     /// "below" are strict comparisons.

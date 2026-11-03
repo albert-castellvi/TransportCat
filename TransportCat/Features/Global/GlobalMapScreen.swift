@@ -28,13 +28,27 @@ struct GlobalMapScreen: View {
     /// Camera bearing, so the train pictograms keep facing along the track
     /// whatever the rider does with the map (as on every other map here).
     @State private var cameraHeading: Double = 0
-    /// Visible latitude span — the input of the zoom ladder (S8).
-    @State private var latitudeSpan: Double = MapScreen.barcelonaRegion.span.latitudeDelta
+    /// Visible latitude span — the input of the zoom ladder (S8). It starts at
+    /// the opening span below (spec S9), so the first paint is already on the
+    /// band it opens with, before MapKit reports the first camera change.
+    @State private var latitudeSpan: Double = GlobalMapScreen.initialRegion.span.latitudeDelta
     // Named type instead of `Self` on purpose: a stored-property initializer
     // has no instance context.
-    @State private var cameraPosition: MapCameraPosition = .region(MapScreen.barcelonaRegion)
+    @State private var cameraPosition: MapCameraPosition = .region(GlobalMapScreen.initialRegion)
 
     init() {}
+
+    /// Region the map opens with (spec S9): the metro map's Barcelona frame,
+    /// pulled back past the `GlobalZoom` station threshold so the launch zoom
+    /// is the lines-only band and the station dots stay off the first paint.
+    /// The `0.14/0.16` aspect of `barcelonaRegion` is kept for the longitude.
+    private static let initialRegion = MKCoordinateRegion(
+        center: MapScreen.barcelonaRegion.center,
+        span: MKCoordinateSpan(
+            latitudeDelta: GlobalZoom.initialLatitudeSpan,
+            longitudeDelta: 0.26
+        )
+    )
 
     private var state: GlobalNetworkState { GlobalNetworkState.shared }
     private var fgc: FGCNetworkState { FGCNetworkState.shared }
@@ -177,7 +191,8 @@ struct GlobalMapScreen: View {
                 polyline(layer: layer, lineWidth: 3)
             }
 
-            // Stations and incidents join from 0.25° down (spec S8).
+            // Stations join from 0.25° down (spec S8 and S9: the launch span
+            // is above that threshold, so no dots on the first paint).
             if level.includesStations {
                 ForEach(shownStationDots) { dot in
                     Annotation("", coordinate: CLLocationCoordinate2D(latitude: dot.position.latitude, longitude: dot.position.longitude)) {
@@ -193,17 +208,22 @@ struct GlobalMapScreen: View {
                         }
                     }
                 }
-                if selectedOperators.contains(.metro) {
-                    ForEach(state.incidentStations) { incident in
-                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: incident.position.latitude, longitude: incident.position.longitude)) {
-                            Button {
-                                selectedIncident = incident
-                            } label: {
-                                IncidentMarker()
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Incidència a \(incident.name)")
+            }
+
+            // Incidents are not tied to the station band (spec S9): they are the
+            // one thing the overview zoom must show, so the lines-only first
+            // paint already carries them — and they stay on every closer band
+            // exactly as before.
+            if selectedOperators.contains(.metro) {
+                ForEach(state.incidentStations) { incident in
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: incident.position.latitude, longitude: incident.position.longitude)) {
+                        Button {
+                            selectedIncident = incident
+                        } label: {
+                            IncidentMarker()
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Incidència a \(incident.name)")
                     }
                 }
             }
