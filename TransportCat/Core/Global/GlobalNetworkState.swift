@@ -106,6 +106,10 @@ final class GlobalNetworkState {
         }
         defer { ticker.cancel() }
 
+        // Spec S6: the very first pass polls every line back to back, so all
+        // trains are on the map after one cycle instead of trickling in over
+        // ~30 s. Later passes keep the stagger below.
+        var isFirstPass = true
         while !Task.isCancelled {
             for line in MetroLine.allLines {
                 guard let state = lineStates[line.code] else { continue }
@@ -113,9 +117,12 @@ final class GlobalNetworkState {
                 republishVehicles()
                 // Stagger: wait out the rest of this line's slice of the
                 // 30 s pass before polling the next one.
-                try? await Task.sleep(nanoseconds: Self.lineStaggerNanoseconds)
+                if !isFirstPass {
+                    try? await Task.sleep(nanoseconds: Self.lineStaggerNanoseconds)
+                }
                 if Task.isCancelled { return }
             }
+            isFirstPass = false
             aggregateFreshness()
             refreshIncidents()
             await refreshBusFavoritesIfNeeded()
@@ -158,8 +165,11 @@ final class GlobalNetworkState {
     // MARK: - Metro driving
 
     /// Builds the eleven `LineState`s once and loads their topology
-    /// concurrently, publishing each line's layer and dots as it arrives so
-    /// the map fills in instead of waiting for the slowest line.
+    /// concurrently, then publishes the layers and dots in a single rebuild
+    /// (spec S7). Per-line publication would mean one full
+    /// `rebuildMetroLayersAndDots()` per completed line — eleven map
+    /// invalidations — so the global map fills in once, after the slowest
+    /// line, instead.
     private func ensureLineStates() async {
         guard lineStates.isEmpty, let client = AppModel.shared.client else { return }
         var built: [String: LineState] = [:]
@@ -168,18 +178,16 @@ final class GlobalNetworkState {
         }
         lineStates = built
 
-        await withTaskGroup(of: String.self) { group in
+        await withTaskGroup(of: Void.self) { group in
             for line in MetroLine.allLines {
                 guard let state = built[line.code] else { continue }
                 group.addTask {
                     await state.loadTopology()
-                    return line.code
                 }
             }
-            while await group.next() != nil {
-                rebuildMetroLayersAndDots()
-            }
+            await group.waitForAll()
         }
+        rebuildMetroLayersAndDots()
         refreshIncidents()
     }
 
