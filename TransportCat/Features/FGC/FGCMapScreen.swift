@@ -23,6 +23,10 @@ struct FGCMapScreen: View {
     /// topology, never while the body renders (the join is geometric, so a
     /// 10 Hz re-render must not re-project a hundred stations).
     @State private var shownStations: [FGCStation] = []
+    /// Map coordinates of every layer's polylines, converted once per topology
+    /// instead of on every 10 Hz redraw (spec S8). Keyed by layer code, which
+    /// is unique inside the FGC network.
+    @State private var lineCoordinates: [String: [[CLLocationCoordinate2D]]] = [:]
     /// The train whose sheet is open (spec S8). A snapshot copy: the sheet
     /// reads the live train from the shared state by id.
     @State private var selectedVehicle: MapVehicle?
@@ -90,7 +94,7 @@ struct FGCMapScreen: View {
             .navigationTitle("Mapa")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                refreshStations()
+                refreshMapContent()
                 fitCamera()
                 // A focus may have switched the mode to FGC and created this
                 // screen around it (spec S11).
@@ -109,10 +113,13 @@ struct FGCMapScreen: View {
                     followingVehicleID = nil
                     fitCamera()
                 }
-                refreshStations()
+                refreshMapContent()
             }
-            .onChange(of: state.lineLayers.count) { _, _ in
-                refreshStations()
+            // The layers themselves, not their count: a reload that returns the
+            // same number of lines must refresh the dots and the coordinates
+            // too (spec S8).
+            .onChange(of: state.lineLayers) { _, _ in
+                refreshMapContent()
                 if pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                     fitCamera()
                 }
@@ -216,17 +223,20 @@ struct FGCMapScreen: View {
                 // opacity goes into the stroke color because a map overlay has
                 // no view opacity to set, exactly as on the bus map (spec S7).
                 ForEach(line.polylines.indices, id: \.self) { index in
-                    MapPolyline(coordinates: line.polylines[index].map { point in
-                        CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
-                    })
-                    .stroke(
-                        Color(hex: line.colorHex).opacity(line.code == layer.code ? 1 : 0.25),
-                        style: StrokeStyle(
-                            lineWidth: line.code == layer.code ? 5 : 3,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
+                    // Coordinates converted once per topology (spec S8): the
+                    // 10 Hz tick must not map every line of the network again.
+                    let coordinates = polylineCoordinates(of: line, at: index)
+                    if coordinates.count >= 2 {
+                        MapPolyline(coordinates: coordinates)
+                            .stroke(
+                                Color(hex: line.colorHex).opacity(line.code == layer.code ? 1 : 0.25),
+                                style: StrokeStyle(
+                                    lineWidth: line.code == layer.code ? 5 : 3,
+                                    lineCap: .round,
+                                    lineJoin: .round
+                                )
+                            )
+                    }
                 }
             }
             ForEach(shownStations) { station in
@@ -326,11 +336,34 @@ struct FGCMapScreen: View {
 
     // MARK: - Camera and station bookkeeping
 
-    /// Re-derives the station dots of the line on screen from the shared
-    /// topology (spec S7). Called on appear and on every change of line or
-    /// topology, never from the 10 Hz render path.
-    private func refreshStations() {
+    /// Re-derives everything the map draws from the shared topology: the
+    /// station dots of the line on screen and the coordinates of every line's
+    /// polylines (specs S7, S8). Called on appear and on every change of line
+    /// or topology, never from the 10 Hz render path.
+    private func refreshMapContent() {
         shownStations = FGCLineStations.stations(for: shownLayer, in: state.stations)
+        var coordinates: [String: [[CLLocationCoordinate2D]]] = [:]
+        for layer in state.lineLayers {
+            coordinates[layer.code] = layer.polylines.map { Self.mapCoordinates(of: $0) }
+        }
+        lineCoordinates = coordinates
+    }
+
+    /// Coordinates of one polyline of a layer, already converted when the
+    /// topology arrived (spec S8). Empty while the derivation has not run,
+    /// which only happens before the first `onAppear` of the screen.
+    private func polylineCoordinates(of line: MapLineLayer, at index: Int) -> [CLLocationCoordinate2D] {
+        guard let polylines = lineCoordinates[line.code], polylines.indices.contains(index) else { return [] }
+        return polylines[index]
+    }
+
+    /// Map coordinates of a polyline (spec S8): the one place the `GeoPoint` →
+    /// `CLLocationCoordinate2D` conversion happens, so it runs when the
+    /// topology changes and never on a 10 Hz redraw.
+    private static func mapCoordinates(of points: [GeoPoint]) -> [CLLocationCoordinate2D] {
+        points.map { point in
+            CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+        }
     }
 
     /// Fit the camera to the whole selected line, on first load and on every

@@ -24,6 +24,11 @@ struct GlobalMapScreen: View {
     /// FGC stations placed on screen, refreshed off the render path exactly
     /// like the FGC map's dots (spec S7).
     @State private var fgcStations: [FGCStation] = []
+    /// Map coordinates of every layer's polylines, converted once per layer
+    /// change instead of on every 10 Hz redraw (spec S8). Keyed by
+    /// `MapLineLayer.id`, which is unique across operators ("metro:1",
+    /// "bus:212", "S1").
+    @State private var lineCoordinates: [String: [[CLLocationCoordinate2D]]] = [:]
     @State private var selectedIncident: GlobalIncidentStation?
     /// Camera bearing, so the train pictograms keep facing along the track
     /// whatever the rider does with the map (as on every other map here).
@@ -78,8 +83,17 @@ struct GlobalMapScreen: View {
             .task {
                 await state.run()
             }
-            .onAppear { refreshFGCStations() }
+            .onAppear {
+                refreshFGCStations()
+                refreshLineCoordinates()
+            }
             .onChange(of: fgc.stations.count) { _, _ in refreshFGCStations() }
+            // The layers themselves, not their count: the coordinates of every
+            // polyline are derived on the change and then read by the render
+            // path (spec S8).
+            .onChange(of: state.metroLineLayers) { _, _ in refreshLineCoordinates() }
+            .onChange(of: state.busLineLayers) { _, _ in refreshLineCoordinates() }
+            .onChange(of: fgc.lineLayers) { _, _ in refreshLineCoordinates() }
             // The alerts poll runs app-wide; every new feed refreshes the
             // station incidents without waiting for the next metro pass.
             .onChange(of: app.alertsUpdatedAt) { _, _ in state.refreshIncidents() }
@@ -269,15 +283,19 @@ struct GlobalMapScreen: View {
     }
 
     /// One line's polylines, stroked in the line color.
+    @MapContentBuilder
     private func polyline(layer: MapLineLayer, lineWidth: CGFloat) -> some MapContent {
         ForEach(layer.polylines.indices, id: \.self) { index in
-            MapPolyline(coordinates: layer.polylines[index].map { point in
-                CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
-            })
-            .stroke(
-                Color(hex: layer.colorHex),
-                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
-            )
+            // Coordinates converted once per layer change (spec S8): the 10 Hz
+            // tick must not map every line of the network again.
+            let coordinates = polylineCoordinates(of: layer, at: index)
+            if coordinates.count >= 2 {
+                MapPolyline(coordinates: coordinates)
+                    .stroke(
+                        Color(hex: layer.colorHex),
+                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
+                    )
+            }
         }
     }
 
@@ -389,6 +407,40 @@ struct GlobalMapScreen: View {
         var seen: Set<String> = []
         fgcStations = fgc.stations.filter { station in
             station.point != nil && seen.insert(station.code).inserted
+        }
+    }
+
+    /// Converts the polylines of the three layer sources to map coordinates,
+    /// once per layer change (spec S8). Called on appear and whenever a layer
+    /// set is republished, never from the 10 Hz render path.
+    private func refreshLineCoordinates() {
+        var coordinates: [String: [[CLLocationCoordinate2D]]] = [:]
+        for layer in state.metroLineLayers {
+            coordinates[layer.id] = layer.polylines.map { Self.mapCoordinates(of: $0) }
+        }
+        for layer in state.busLineLayers {
+            coordinates[layer.id] = layer.polylines.map { Self.mapCoordinates(of: $0) }
+        }
+        for layer in fgc.lineLayers {
+            coordinates[layer.id] = layer.polylines.map { Self.mapCoordinates(of: $0) }
+        }
+        lineCoordinates = coordinates
+    }
+
+    /// Coordinates of one polyline of a layer, already converted when the layer
+    /// was published (spec S8). Empty while the derivation has not run, which
+    /// only happens before the layer arrives.
+    private func polylineCoordinates(of layer: MapLineLayer, at index: Int) -> [CLLocationCoordinate2D] {
+        guard let polylines = lineCoordinates[layer.id], polylines.indices.contains(index) else { return [] }
+        return polylines[index]
+    }
+
+    /// Map coordinates of a polyline (spec S8): the one place the `GeoPoint` →
+    /// `CLLocationCoordinate2D` conversion happens, so it runs when a layer
+    /// changes and never on a 10 Hz redraw.
+    private static func mapCoordinates(of points: [GeoPoint]) -> [CLLocationCoordinate2D] {
+        points.map { point in
+            CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
         }
     }
 

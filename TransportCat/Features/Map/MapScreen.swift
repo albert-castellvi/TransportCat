@@ -16,6 +16,11 @@ struct MapScreen: View {
     /// switching L1→L2→L1 or coming back to the tab repaints the line from
     /// memory instead of refetching its stations and geometry.
     @State private var lineStates: [String: LineState] = [:]
+    /// What the map draws that does not depend on the 10 Hz position tick: the
+    /// line polyline, the terminal markers and the incident runs with their
+    /// overlay coordinates (spec S8). Re-derived from the topology and the
+    /// alerts feed, never while `body` runs.
+    @State private var mapOverlay = MetroMapOverlay()
     @State private var selectedStation: Station?
     /// Train whose sheet is open (spec S10). A snapshot copy: the sheet reads
     /// the live position from the line state by id, like the FGC map.
@@ -93,7 +98,27 @@ struct MapScreen: View {
                 // resumes polling. `run()` loads the topology the first time.
                 let state = cachedLineState(for: selectedLine, client: client)
                 self.lineState = state
+                // Spec S8: a reused line already has its stations, so its
+                // overlay is derived before the map draws instead of one
+                // change later.
+                refreshMapOverlay(for: state)
                 await state.run()
+            }
+            // The map's incident overlays and coordinates come from exactly
+            // three inputs: the line's stations, its geometry and the alerts
+            // feed. Deriving them on the always-visible container — and not
+            // from `lineMap` — also covers the stations that arrive while the
+            // loader is still up (spec S8).
+            .onChange(of: lineState?.stations) { _, _ in
+                refreshMapOverlayIfPossible()
+            }
+            .onChange(of: lineState?.geometry) { _, _ in
+                refreshMapOverlayIfPossible()
+            }
+            // `alertsUpdatedAt` moves on every successful alerts poll, which is
+            // also when an alert that ran out stops being drawn.
+            .onChange(of: app.alertsUpdatedAt) { _, _ in
+                refreshMapOverlayIfPossible()
             }
             // A focus set while the map is already open arrives through the
             // change; one set from another tab is picked up on appear (S11).
@@ -207,37 +232,29 @@ struct MapScreen: View {
 
     @ViewBuilder
     private func lineMap(state: LineState, client: TMBClient) -> some View {
-        let terminalCodes = Self.terminalStationCodes(in: state.stations)
-        // Active incidents grouped into runs (spec S9). Recomputed per render
-        // the same way the diagram recomputes them per poll; the grouping
-        // itself is pure and tested (`IncidentSegments`).
-        let incidents = IncidentIndex.incidents(
-            for: app.alerts,
-            stations: state.stations,
-            lineCode: selectedLine.code
-        )
-        let runs = IncidentSegments.runs(stations: state.stations, incidents: incidents)
+        // Everything drawn outside the position markers comes from
+        // `mapOverlay`, derived when the topology or the alerts changed
+        // (spec S8): the grouping of the incidents, the terminal stations and
+        // the map coordinates of every polyline are never recomputed here.
         Map(position: $cameraPosition) {
-            if let geometry = state.geometry {
-                MapPolyline(coordinates: geometry.points.map { point in
-                    CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
-                })
-                .stroke(Color(hex: selectedLine.colorHex), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            if mapOverlay.line.count >= 2 {
+                MapPolyline(coordinates: mapOverlay.line)
+                    .stroke(Color(hex: selectedLine.colorHex), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
             ForEach(state.stations) { station in
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         selectedStation = station
                     } label: {
-                        StationMarker(line: selectedLine, terminal: terminalCodes.contains(station.code))
+                        StationMarker(line: selectedLine, terminal: mapOverlay.terminalCodes.contains(station.code))
                     }
                 }
             }
             // Each run of consecutive affected stations overlays the track
             // with a red dashed line (spec S9).
-            ForEach(runs) { run in
-                if let coordinates = Self.runOverlayPoints(for: run, state: state) {
-                    MapPolyline(coordinates: coordinates)
+            ForEach(mapOverlay.incidentRuns) { incidentRun in
+                if incidentRun.coordinates.count >= 2 {
+                    MapPolyline(coordinates: incidentRun.coordinates)
                         .stroke(
                             Self.incidentRed,
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [7, 5])
@@ -246,7 +263,7 @@ struct MapScreen: View {
             }
             // A red warning triangle per affected station, drawn after the
             // station dots so it sits on top (spec S9).
-            ForEach(runs.flatMap(\.stations)) { station in
+            ForEach(mapOverlay.incidentRuns.flatMap(\.run.stations)) { station in
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         incidentStation = station
@@ -398,18 +415,53 @@ struct MapScreen: View {
     /// severity icon.
     private static let incidentRed = Color(hex: "D92D20")
 
-    /// Coordinates of the red dashed overlay of one run: the line's geometry
-    /// between the run's end stations, falling back to straight station-to-
-    /// station segments when the geometry cannot carry the run (spec S9).
-    private static func runOverlayPoints(for run: IncidentRun, state: LineState) -> [CLLocationCoordinate2D]? {
-        let points: [GeoPoint]?
-        if let geometry = state.geometry, let onTrack = IncidentSegments.trackPolyline(for: run, geometry: geometry) {
-            points = onTrack
-        } else {
-            points = IncidentSegments.stationPolyline(for: run)
+    /// Everything the map draws besides the position markers, derived from the
+    /// line's topology and the alerts feed (spec S8). Called when either
+    /// changes, never from the 10 Hz render path: the incident grouping, the
+    /// track slicing of every run and the `GeoPoint` → `CLLocationCoordinate2D`
+    /// mapping of every polyline happen once per change instead of ten times a
+    /// second.
+    ///
+    /// `IncidentIndex` reads the clock, so an alert that runs out stops being
+    /// drawn at the next alerts poll (once a minute, the granularity
+    /// `GlobalNetworkState.refreshIncidents` already has) rather than on the
+    /// next frame.
+    private func refreshMapOverlay(for state: LineState) {
+        let geometry = state.geometry
+        let incidents = IncidentIndex.incidents(
+            for: app.alerts,
+            stations: state.stations,
+            lineCode: state.line.code
+        )
+        mapOverlay = MetroMapOverlay(
+            line: geometry.map { Self.mapCoordinates(of: $0.points) } ?? [],
+            terminalCodes: Self.terminalStationCodes(in: state.stations),
+            incidentRuns: IncidentSegments
+                .overlays(stations: state.stations, incidents: incidents, geometry: geometry)
+                .map { overlay in
+                    IncidentRunLayer(run: overlay.run, coordinates: Self.mapCoordinates(of: overlay.points))
+                }
+        )
+    }
+
+    /// Re-derives the overlay of the line on screen, or clears it while no line
+    /// state exists: the change triggers live on the always-visible container,
+    /// where the state may still be nil (spec S8).
+    private func refreshMapOverlayIfPossible() {
+        guard let state = lineState else {
+            mapOverlay = MetroMapOverlay()
+            return
         }
-        guard let points, points.count >= 2 else { return nil }
-        return points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        refreshMapOverlay(for: state)
+    }
+
+    /// Map coordinates of a polyline (spec S8): the one place the `GeoPoint` →
+    /// `CLLocationCoordinate2D` conversion happens, so it runs when a geometry
+    /// changes and never on a position tick.
+    private static func mapCoordinates(of points: [GeoPoint]) -> [CLLocationCoordinate2D] {
+        points.map { point in
+            CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+        }
     }
 
     /// The active alerts behind one station's warning marker (spec S9), taken
@@ -617,6 +669,36 @@ struct MapScreen: View {
               let last = stations.max(by: { $0.orderInLine < $1.orderInLine }) else { return [] }
         return [first.code, last.code]
     }
+}
+
+/// What the metro map draws that only depends on the line's topology and the
+/// alerts feed (spec S8): the line polyline, the terminal markers and the
+/// incident runs of the line, all ready for `MapContent`.
+///
+/// The 10 Hz position tick re-evaluates `body` but never rebuilds this value,
+/// so grouping the incidents and mapping every polyline to map coordinates
+/// happen off the render path.
+private struct MetroMapOverlay {
+    /// Coordinates of the line's polyline; empty until the geometry loads.
+    var line: [CLLocationCoordinate2D] = []
+    /// Codes of the two end stations of the line, which get the terminal
+    /// marker instead of the plain one (S4).
+    var terminalCodes: Set<Int> = []
+    /// Runs of consecutive affected stations, with the coordinates of each red
+    /// dashed overlay already mapped (spec S9).
+    var incidentRuns: [IncidentRunLayer] = []
+}
+
+/// One run of affected stations of the metro map with the coordinates of its
+/// overlay (spec S8, S9).
+private struct IncidentRunLayer: Identifiable {
+    let run: IncidentRun
+    /// Coordinates of the red dashed overlay; empty when the run has nothing to
+    /// draw, which is the case the map skips.
+    let coordinates: [CLLocationCoordinate2D]
+
+    /// Identity of the run it draws, so the overlay survives a re-derivation.
+    var id: Int { run.id }
 }
 
 /// Station marker on the map: the pre-rendered dot tinted with the line color

@@ -28,6 +28,11 @@ struct BusMapScreen: View {
     /// it, so there is no second copy of the catalog to keep in sync.
     private var store: BusCatalogStore { BusCatalogStore.shared }
     @State private var lineState: BusLineState?
+    /// What the map draws that does not depend on the 10 Hz position tick: the
+    /// route coordinates of both directions and the stops with an incident
+    /// (spec S8). Re-derived from the topology, the direction chip and the
+    /// alerts feed, never while `body` runs.
+    @State private var mapOverlay = BusMapOverlay()
     /// `ID_SENTIT` of the direction the `Anada`/`Tornada` chip selects: full
     /// opacity for its route and its buses, dimmed for the other one (spec S3).
     @State private var selectedDirectionID = 1
@@ -105,6 +110,10 @@ struct BusMapScreen: View {
                 guard let client = app.client, let line = store.selectedLine else { return }
                 let state = BusLineState(line: line, client: client)
                 self.lineState = state
+                // A new line is a new overlay: clearing it here also keeps one
+                // line's routes from being drawn over another's while the two
+                // publish the same `ID_SENTIT` values (spec S8).
+                refreshMapOverlay()
                 await state.run()
             }
             // Focus intents from the router (spec S11): applied when they
@@ -131,8 +140,21 @@ struct BusMapScreen: View {
             }
             .onChange(of: lineState?.directions.map(\.id)) { _, _ in
                 // Topology of the (new) line arrived: place focuses waiting
-                // for it can open their sheet now (spec S11).
+                // for it can open their sheet now (spec S11), and the map
+                // overlay (routes and incident stops) can be derived from it
+                // once instead of on every render (spec S8).
+                refreshMapOverlay()
                 resolvePendingFocuses()
+            }
+            // The direction chip changes which route is drawn at full colour
+            // and whose stops carry the incident markers, so the overlay is
+            // re-derived on the change (spec S8).
+            .onChange(of: selectedDirectionID) { _, _ in
+                refreshMapOverlay()
+            }
+            // A new bus alerts feed re-derives the incident stops (spec S8).
+            .onChange(of: app.busAlertsUpdatedAt) { _, _ in
+                refreshMapOverlay()
             }
             .sheet(isPresented: $showLinePicker) {
                 BusLinePickerSheet(store: store) { line in
@@ -270,6 +292,11 @@ struct BusMapScreen: View {
 
     @ViewBuilder
     private func lineMap(state: BusLineState, line: BusLine) -> some View {
+        // The routes and the incident stops come from `mapOverlay`, derived
+        // when the topology, the direction chip or the alerts changed
+        // (spec S8): neither the grouping of the incidents nor the
+        // `GeoPoint` → `CLLocationCoordinate2D` mapping of a route happens on
+        // the render path.
         Map(position: $cameraPosition) {
             if isLocationAuthorized {
                 // The rider's own dot (spec S11). Unauthorized, it is simply
@@ -280,13 +307,14 @@ struct BusMapScreen: View {
                 // One polyline per direction: the selected one at full color,
                 // the other at 40 % (spec S3). The opacity goes into the stroke
                 // color because a map overlay has no view opacity to set.
-                MapPolyline(coordinates: direction.route.points.map { point in
-                    CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
-                })
-                .stroke(
-                    Color(hex: line.colorHex).opacity(direction.id == selectedDirectionID ? 1 : 0.4),
-                    style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
-                )
+                let coordinates = mapOverlay.routeCoordinates[direction.id] ?? []
+                if coordinates.count >= 2 {
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(
+                            Color(hex: line.colorHex).opacity(direction.id == selectedDirectionID ? 1 : 0.4),
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
+                        )
+                }
             }
             if let direction = shownDirection(in: state), latitudeSpan < Self.stopSpanThreshold {
                 ForEach(direction.stops) { stop in
@@ -302,7 +330,7 @@ struct BusMapScreen: View {
                     }
                 }
             }
-            ForEach(incidentStops(in: state, line: line)) { stop in
+            ForEach(mapOverlay.incidentStops) { stop in
                 // Red warning marker on every stop with an incident right now
                 // (spec S9). Not zoom-gated: an incident is worth seeing from
                 // the whole-line view down.
@@ -412,6 +440,9 @@ struct BusMapScreen: View {
             }
         }
         .onAppear {
+            // A direction set that was already loaded (a focus that switched
+            // the line before the map appeared) needs its overlay too (S8).
+            refreshMapOverlay()
             if !state.directions.isEmpty, pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                 fitCamera(to: state)
             }
@@ -485,10 +516,17 @@ struct BusMapScreen: View {
     /// `IncidentIndex` pass over the same `AppModel.busAlerts` source
     /// `BusStopSheet` reads. One marker per physical stop code: the same stop
     /// of both directions shares it, preferring the direction on screen.
-    private func incidentStops(in state: BusLineState, line: BusLine) -> [BusStop] {
-        let code = String(line.code)
-        let alerts = app.activeBusAlerts(affecting: code)
+    ///
+    /// Static and takes its inputs explicitly because the map derives it when
+    /// the directions, the direction chip or the alerts change, never from the
+    /// 10 Hz render path (spec S8).
+    private static func incidentStops(
+        in state: BusLineState,
+        shown: BusDirection?,
+        alerts: [ServiceAlert]
+    ) -> [BusStop] {
         guard !alerts.isEmpty else { return [] }
+        let code = String(state.line.code)
         let allStops = state.directions.flatMap(\.stops)
         guard !allStops.isEmpty else { return [] }
         let incidents = IncidentIndex.incidents(
@@ -497,7 +535,6 @@ struct BusMapScreen: View {
             lineCode: code
         )
         guard !incidents.isEmpty else { return [] }
-        let shown = shownDirection(in: state)
         let ordered = (shown.map { [$0] } ?? []) + state.directions.filter { $0.id != shown?.id }
         var seen: Set<Int> = []
         var result: [BusStop] = []
@@ -506,6 +543,37 @@ struct BusMapScreen: View {
             result.append(stop)
         }
         return result
+    }
+
+    /// Re-derives the map overlay of the line on screen: the coordinates of
+    /// both routes and the stops with an incident (spec S8). Called when the
+    /// topology, the direction chip or the alerts feed changes.
+    private func refreshMapOverlay() {
+        guard let state = lineState else {
+            mapOverlay = BusMapOverlay()
+            return
+        }
+        var routes: [Int: [CLLocationCoordinate2D]] = [:]
+        for direction in state.directions {
+            routes[direction.id] = Self.mapCoordinates(of: direction.route.points)
+        }
+        mapOverlay = BusMapOverlay(
+            routeCoordinates: routes,
+            incidentStops: Self.incidentStops(
+                in: state,
+                shown: shownDirection(in: state),
+                alerts: app.activeBusAlerts(affecting: String(state.line.code))
+            )
+        )
+    }
+
+    /// Map coordinates of a polyline (spec S8): the one place the `GeoPoint` →
+    /// `CLLocationCoordinate2D` conversion happens, so it runs when a route
+    /// changes and never on a position tick.
+    private static func mapCoordinates(of points: [GeoPoint]) -> [CLLocationCoordinate2D] {
+        points.map { point in
+            CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+        }
     }
 
     /// The feed alerts behind one stop's warning marker: the ids `IncidentIndex`
@@ -748,6 +816,21 @@ struct BusMapScreen: View {
     /// map's constant, copied because both maps release the follow the same
     /// way (spec S10).
     private static let followPanToleranceDegrees = 0.002
+}
+
+/// What the bus map draws that only depends on the line's topology, the
+/// direction chip and the alerts feed (spec S8): the polyline of each direction
+/// and the stops that carry an incident marker.
+///
+/// The 10 Hz position tick re-evaluates `body` but never rebuilds this value,
+/// so neither the incident grouping nor the `GeoPoint` →
+/// `CLLocationCoordinate2D` mapping of a route happens on the render path.
+private struct BusMapOverlay {
+    /// Coordinates of each direction's route, keyed by `ID_SENTIT`.
+    var routeCoordinates: [Int: [CLLocationCoordinate2D]] = [:]
+    /// Stops with an incident active right now, one entry per physical stop
+    /// code (spec S9).
+    var incidentStops: [BusStop] = []
 }
 
 /// Stop dot on the bus map: a small line-colored circle with a white stroke.
