@@ -200,7 +200,11 @@ struct GlobalMapScreen: View {
     }
 
     private var networkMap: some View {
-        Map(position: $cameraPosition) {
+        let evaluationStart = DispatchTime.now().uptimeNanoseconds
+        defer {
+            PerfTrace.mapBodyEvaluated(nanoseconds: DispatchTime.now().uptimeNanoseconds - evaluationStart)
+        }
+        return Map(position: $cameraPosition) {
             // Lines: always drawn (spec S8).
             ForEach(shownMetroLayers) { layer in
                 polyline(layer: layer, lineWidth: 4)
@@ -272,6 +276,11 @@ struct GlobalMapScreen: View {
         // The zoom ladder and the marker counter-rotation both need the live
         // camera, so the span and heading update continuously (spec S8).
         .onMapCameraChange(frequency: .continuous) { context in
+            let nextSpan = context.region.span.latitudeDelta
+            let nextLevel = GlobalZoom.level(forLatitudeSpan: nextSpan)
+            if nextLevel != level, isActive {
+                recordBandChange(from: level, to: nextLevel, latitudeSpan: nextSpan)
+            }
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
         }
@@ -287,6 +296,33 @@ struct GlobalMapScreen: View {
                 .allowsHitTesting(false)
         }
         .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.metroLineLayers.count)
+    }
+
+    /// Telemetry only: counts match the annotation branches, not visible
+    /// pixels (MapKit may hide overlapping/offscreen annotations).
+    private func recordBandChange(from previous: GlobalZoomLevel, to next: GlobalZoomLevel, latitudeSpan: Double) {
+        let stationCount = next.includesStations ? shownStationDots.count + fgcStationsDots.count : 0
+        let vehicleCount = next.includesVehicles ? shownMetroVehicles.count + shownFGCVehicles.count : 0
+        let band: String
+        switch next {
+        case .lines: band = "lines"
+        case .linesAndStations: band = "stations"
+        case .linesStationsAndVehicles: band = "vehicles"
+        }
+        PerfTrace.bandChanged(band: band, stationCount: stationCount, vehicleCount: vehicleCount)
+        guard !previous.includesStations, next.includesStations else { return }
+        let trace = PerfTrace()
+        trace.begin("map.global.stations_appear", tags: [
+            "station_count": String(stationCount),
+            "latitude_span": String(format: "%.3f", latitudeSpan),
+            "fgc_enabled": String(selectedOperators.contains(.fgc))
+        ])
+        // A frame-observation window, not a measurement of station load time.
+        // It can exceed one second if the main actor is stalled.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            trace.end()
+        }
     }
 
     /// One line's polylines, stroked in the line color.

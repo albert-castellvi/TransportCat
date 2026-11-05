@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Root tab navigation: live map, line diagram, service alerts and Explora.
+@MainActor
 struct RootView: View {
     @StateObject private var app = AppModel.shared
     /// Network path state driving the offline banner (spec S21).
@@ -102,6 +103,16 @@ struct RootView: View {
                 .tag(AppTab.explore)
         }
         .environmentObject(app)
+        .onChange(of: modeRaw) { _, newMode in
+            let trace = PerfTrace()
+            trace.begin("ui.mode_switch", tags: [
+                "mode": (AppMode(rawValue: newMode) ?? .metro).rawValue,
+                "boundary": "next_display_link"
+            ])
+            // Switch observation to the next display opportunity; NOT tile
+            // readiness, GPU presentation, or animation completion.
+            trace.endOnNextFrame()
+        }
         // Incidents load at launch and refresh every minute, whichever tab is
         // open: the map and Xarxa need them without a visit to Avisos (S1).
         // The connectivity monitor starts alongside it (S21): it exists to
