@@ -12,12 +12,10 @@ struct TransportCatApp: App {
         if let dsn = Bundle.main.infoDictionary?["SentryDSN"] as? String, !dsn.isEmpty {
             SentrySDK.start { options in
                 options.dsn = dsn
-                // Free-plan friendly: TestFlight-sized audience, so every
-                // trace is kept while we measure the global map; profiles are
-                // sampled (they are the scarce quota). Lower tracesSampleRate
-                // once the audience grows.
-                options.tracesSampleRate = 1.0
-                options.profilesSampleRate = 0.2
+                // Public builds pay nothing for measurement; crashes and hangs stay enabled.
+                options.tracesSampleRate = PerfTelemetry.isEnabled ? 1.0 : 0.0
+                // Lower back once the fix is validated.
+                options.profilesSampleRate = PerfTelemetry.isEnabled ? 1.0 : 0.0
                 // In Sentry 8, auto performance tracing includes slow/frozen frames.
                 options.enableAutoPerformanceTracing = true
                 options.enableAppHangTracking = true

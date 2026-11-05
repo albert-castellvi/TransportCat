@@ -11,6 +11,7 @@ struct RootView: View {
     /// of them.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private var mode: AppMode {
         AppMode(rawValue: modeRaw) ?? .metro
@@ -103,7 +104,15 @@ struct RootView: View {
                 .tag(AppTab.explore)
         }
         .environmentObject(app)
+        .onAppear { syncFrameMonitoring() }
+        .onDisappear {
+            if PerfTelemetry.isEnabled { FrameMonitor.shared.end() }
+        }
+        .onChange(of: scenePhase) { _, _ in syncFrameMonitoring() }
+        .onChange(of: router.selectedTab) { _, _ in syncFrameMonitoring() }
         .onChange(of: modeRaw) { _, newMode in
+            guard PerfTelemetry.isEnabled else { return }
+            syncFrameMonitoring()
             let trace = PerfTrace()
             trace.begin("ui.mode_switch", tags: [
                 "mode": (AppMode(rawValue: newMode) ?? .metro).rawValue,
@@ -130,6 +139,16 @@ struct RootView: View {
         .task(id: mode) {
             guard mode == .fgc || mode == .global else { return }
             await FGCNetworkState.shared.run()
+        }
+    }
+
+    /// Root visibility is authoritative: retained offscreen maps cannot start sampling.
+    private func syncFrameMonitoring() {
+        guard PerfTelemetry.isEnabled else { return }
+        if scenePhase == .active, AppRouter.shared.selectedTab == .map {
+            FrameMonitor.shared.begin(mode: mode.rawValue)
+        } else {
+            FrameMonitor.shared.end()
         }
     }
 }

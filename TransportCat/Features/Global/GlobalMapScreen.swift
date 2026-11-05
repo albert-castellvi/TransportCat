@@ -24,6 +24,7 @@ struct GlobalMapScreen: View {
     /// `GlobalNetworkState`, which keeps the line states it already built.
     let isActive: Bool
     @EnvironmentObject private var app: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Operator filter chips, persisted as a comma-joined token list (S8).
     @AppStorage(GlobalOperatorSelection.storageKey) private var operatorsRaw = GlobalOperatorSelection.defaultRaw
@@ -93,6 +94,26 @@ struct GlobalMapScreen: View {
             .onAppear {
                 refreshFGCStations()
                 refreshLineCoordinates()
+                updateFrameContext(level: level, latitudeSpan: latitudeSpan)
+            }
+            .onChange(of: isActive) { _, active in
+                guard PerfTelemetry.isEnabled else { return }
+                if active {
+                    updateFrameContext(level: level, latitudeSpan: latitudeSpan)
+                } else {
+                    FrameMonitor.shared.end(ifMode: "global")
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard PerfTelemetry.isEnabled else { return }
+                if phase != .active { FrameMonitor.shared.end(ifMode: "global") }
+            }
+            .onDisappear {
+                guard PerfTelemetry.isEnabled else { return }
+                FrameMonitor.shared.end(ifMode: "global")
+            }
+            .onChange(of: operatorsRaw) { _, _ in
+                updateFrameContext(level: level, latitudeSpan: latitudeSpan)
             }
             .onChange(of: fgc.stations.count) { _, _ in refreshFGCStations() }
             // The layers themselves, not their count: the coordinates of every
@@ -200,9 +221,11 @@ struct GlobalMapScreen: View {
     }
 
     private var networkMap: some View {
-        let evaluationStart = DispatchTime.now().uptimeNanoseconds
+        let evaluationStart = PerfTelemetry.isEnabled ? DispatchTime.now().uptimeNanoseconds : 0
         defer {
-            PerfTrace.mapBodyEvaluated(nanoseconds: DispatchTime.now().uptimeNanoseconds - evaluationStart)
+            if PerfTelemetry.isEnabled {
+                PerfTrace.mapBodyEvaluated(nanoseconds: DispatchTime.now().uptimeNanoseconds - evaluationStart)
+            }
         }
         return Map(position: $cameraPosition) {
             // Lines: always drawn (spec S8).
@@ -277,6 +300,7 @@ struct GlobalMapScreen: View {
         // camera, so the span and heading update continuously (spec S8).
         .onMapCameraChange(frequency: .continuous) { context in
             let nextSpan = context.region.span.latitudeDelta
+            if PerfTelemetry.isEnabled, isActive { FrameMonitor.shared.cameraChanged(latitudeSpan: nextSpan) }
             let nextLevel = GlobalZoom.level(forLatitudeSpan: nextSpan)
             if nextLevel != level, isActive {
                 recordBandChange(from: level, to: nextLevel, latitudeSpan: nextSpan)
@@ -301,6 +325,8 @@ struct GlobalMapScreen: View {
     /// Telemetry only: counts match the annotation branches, not visible
     /// pixels (MapKit may hide overlapping/offscreen annotations).
     private func recordBandChange(from previous: GlobalZoomLevel, to next: GlobalZoomLevel, latitudeSpan: Double) {
+        guard PerfTelemetry.isEnabled else { return }
+        updateFrameContext(level: next, latitudeSpan: latitudeSpan, bandChanged: true)
         let stationCount = next.includesStations ? shownStationDots.count + fgcStationsDots.count : 0
         let vehicleCount = next.includesVehicles ? shownMetroVehicles.count + shownFGCVehicles.count : 0
         let band: String
@@ -323,6 +349,23 @@ struct GlobalMapScreen: View {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             trace.end()
         }
+    }
+
+    private func updateFrameContext(level: GlobalZoomLevel, latitudeSpan: Double, bandChanged: Bool = false) {
+        guard PerfTelemetry.isEnabled else { return }
+        let band: String
+        switch level {
+        case .lines: band = "lines"
+        case .linesAndStations: band = "stations"
+        case .linesStationsAndVehicles: band = "vehicles"
+        }
+        FrameMonitor.shared.updateGlobal(tags: [
+            "band": band,
+            "station_count": String(level.includesStations ? shownStationDots.count + fgcStationsDots.count : 0),
+            "vehicle_count": String(level.includesVehicles ? shownMetroVehicles.count + shownFGCVehicles.count : 0),
+            "fgc_enabled": String(selectedOperators.contains(.fgc)),
+            "latitude_span": String(format: "%.3f", latitudeSpan)
+        ], bandChanged: bandChanged)
     }
 
     /// One line's polylines, stroked in the line color.
