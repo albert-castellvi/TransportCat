@@ -18,6 +18,10 @@ struct IncidentsChip: View {
 
     @EnvironmentObject private var app: AppModel
     @State private var showIncidents = false
+    /// Alerts frozen when the sheet was opened (spec S15): the list keeps the
+    /// rows the rider saw on first paint instead of re-deriving them on every
+    /// 60 s alerts poll.
+    @State private var sheetAlerts: [ServiceAlert] = []
 
     init(lineCode: String, lineDisplayName: String) {
         self.feed = .metro(code: lineCode)
@@ -80,6 +84,8 @@ struct IncidentsChip: View {
     /// Tappable count capsule; the sheet is its only navigation.
     private func chip(active: [ServiceAlert]) -> some View {
         Button {
+            // Snapshot at open time, not at poll time (S15).
+            sheetAlerts = active
             showIncidents = true
         } label: {
             Label(countText(active.count), image: "icon-alert")
@@ -93,7 +99,7 @@ struct IncidentsChip: View {
         .sheet(isPresented: $showIncidents) {
             IncidentListSheet(
                 lineDisplayName: lineDisplayName,
-                alerts: active,
+                alerts: sheetAlerts,
                 updatedAt: feedUpdatedAt
             )
             .presentationDetents([.medium, .large])
@@ -179,8 +185,9 @@ private struct IncidentDetailRow: View {
         .padding(.vertical, 2)
     }
 
+    /// Cleaned copy: the feeds ship HTML in the alert text (S15).
     private var summary: String {
-        if let text = alert.text, !text.isEmpty { return text }
+        if let text = AlertText.cleaned(alert.text) { return text }
         return "Servei afectat"
     }
 

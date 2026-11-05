@@ -259,6 +259,7 @@ struct FGCMapScreen: View {
                             destination: vehicle.label,
                             rotation: vehicle.heading - 90 - cameraHeading,
                             showLabel: latitudeSpan < Self.labelSpanThreshold,
+                            showName: true,
                             opacity: 1
                         )
                     }

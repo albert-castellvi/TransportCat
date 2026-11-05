@@ -12,6 +12,17 @@ struct TransportCatApp: App {
         if let dsn = Bundle.main.infoDictionary?["SentryDSN"] as? String, !dsn.isEmpty {
             SentrySDK.start { options in
                 options.dsn = dsn
+                // Free-plan friendly: TestFlight-sized audience, so every
+                // trace is kept while we measure the global map; profiles are
+                // sampled (they are the scarce quota). Lower tracesSampleRate
+                // once the audience grows.
+                options.tracesSampleRate = 1.0
+                options.profilesSampleRate = 0.2
+                // In Sentry 8, auto performance tracing includes slow/frozen frames.
+                options.enableAutoPerformanceTracing = true
+                options.enableAppHangTracking = true
+                // Performance HTTP spans can also contain credential-bearing URLs.
+                options.enableNetworkTracking = false
                 // Breadcrumbs of HTTP calls record the query string, which
                 // holds the TMB credentials.
                 options.enableNetworkBreadcrumbs = false

@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Root tab navigation: live map, line diagram, service alerts and Explora.
+@MainActor
 struct RootView: View {
     @StateObject private var app = AppModel.shared
     /// Network path state driving the offline banner (spec S21).
@@ -15,31 +16,43 @@ struct RootView: View {
         AppMode(rawValue: modeRaw) ?? .metro
     }
 
+    /// The four modes of the Mapa tab, all of them alive at once (spec S12).
+    ///
+    /// They used to be swapped by a `switch`, which destroyed the outgoing
+    /// screen together with its `MKMapView`, its tiles and its `@State` — the
+    /// frozen frame and spinner the 2026-11-03 recording caught on FGC → bus.
+    /// Hosting them in a `ZStack` keeps all of that warm, so a mode switch is
+    /// an opacity change instead of a rebuild.
+    ///
+    /// Only the active mode is drawn, takes taps and is announced; the others
+    /// stay mounted at zero opacity with no hit testing and hidden from
+    /// VoiceOver, so two maps are never interactive at once. Each screen is
+    /// told through `isActive` to stop loading and polling while it is off
+    /// screen (spec S13).
+    private var mapModes: some View {
+        ZStack {
+            MapScreen(isActive: mode == .metro)
+                .modifier(RetainedMode(isActive: mode == .metro))
+            BusMapScreen(isActive: mode == .bus)
+                .modifier(RetainedMode(isActive: mode == .bus))
+            FGCMapScreen()
+                .modifier(RetainedMode(isActive: mode == .fgc))
+            GlobalMapScreen(isActive: mode == .global)
+                .modifier(RetainedMode(isActive: mode == .global))
+        }
+    }
+
     var body: some View {
         // The visible tab is the router's (spec S5): `AppRouter.open` switches
         // to the map, and a tab tap writes back, so both stay in sync.
         @Bindable var router = AppRouter.shared
         TabView(selection: $router.selectedTab) {
-            Group {
-                switch mode {
-                case .metro:
-                    MapScreen()
-                        .transition(.opacity)
-                case .bus:
-                    BusMapScreen()
-                        .transition(.opacity)
-                case .fgc:
-                    FGCMapScreen()
-                        .transition(.opacity)
-                case .global:
-                    GlobalMapScreen()
-                        .transition(.opacity)
-                }
-            }
-            // Cutting between the four modes would be harsh, so the screens
-            // fade into each other instead (polish pass), nothing when Reduce
-            // Motion is on.
-            .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
+            mapModes
+                // Cutting between the four modes would be harsh, so the screens
+                // fade into each other instead (polish pass), nothing when
+                // Reduce Motion is on. The fade is the opacity of the layers
+                // below: no screen enters or leaves any more (spec S12).
+                .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             // Spec S21: while the device has no network path, a capsule at the
             // top of the Mapa tab says the lines and trains on screen come
             // from saved data and the timetable. TabView only draws the
@@ -90,6 +103,16 @@ struct RootView: View {
                 .tag(AppTab.explore)
         }
         .environmentObject(app)
+        .onChange(of: modeRaw) { _, newMode in
+            let trace = PerfTrace()
+            trace.begin("ui.mode_switch", tags: [
+                "mode": (AppMode(rawValue: newMode) ?? .metro).rawValue,
+                "boundary": "next_display_link"
+            ])
+            // Switch observation to the next display opportunity; NOT tile
+            // readiness, GPU presentation, or animation completion.
+            trace.endOnNextFrame()
+        }
         // Incidents load at launch and refresh every minute, whichever tab is
         // open: the map and Xarxa need them without a visit to Avisos (S1).
         // The connectivity monitor starts alongside it (S21): it exists to
@@ -108,6 +131,22 @@ struct RootView: View {
             guard mode == .fgc || mode == .global else { return }
             await FGCNetworkState.shared.run()
         }
+    }
+}
+
+/// Makes one of the four retained map screens the visible one (spec S12): the
+/// active mode is drawn at full opacity, takes taps and is announced by
+/// VoiceOver, while the others stay mounted but invisible, non-interactive and
+/// silent. Keeping them mounted is the point — their `@State` and their
+/// `MKMapView` survive the switch.
+private struct RetainedMode: ViewModifier {
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? 1 : 0)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
     }
 }
 

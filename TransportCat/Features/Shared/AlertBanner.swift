@@ -21,8 +21,9 @@ struct AlertBanner: View {
         .background(Color(hex: lineColor).opacity(0.85))
     }
 
+    /// Cleaned copy: the feeds ship HTML in the alert text (S15).
     private func summary(of alert: ServiceAlert) -> String {
-        if let text = alert.text, !text.isEmpty { return text }
+        if let text = AlertText.cleaned(alert.text) { return text }
         if !alert.stationNames.isEmpty {
             return alert.stationNames.prefix(3).joined(separator: ", ")
         }
