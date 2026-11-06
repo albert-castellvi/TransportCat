@@ -36,7 +36,7 @@ Branch: `feat/follow-vehicle` (from main ef79a3d). Delivery: one PR, squash merg
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T0 | contracts | inline (parent): `Core/Follow/FollowModels.swift`, `FollowSession` signatures, `FollowCoordinator` API, the service and view stubs, compiled on CI before the writers | in progress | — |
+| T0 | contracts | inline (parent): `Core/Follow/FollowModels.swift`, `FollowSession` signatures, `FollowCoordinator` API, the service and view stubs, compiled on CI before the writers | committed; CI 42239563788 | contracts commit |
 | T1 | S5–S7 logic, S9 | pane `follow-core`: `FollowSession` rules + `FollowCoordinator` behaviour + tests | pending | — |
 | T2 | S8, S10 | pane `follow-system`: announcer, follow Live Activity (attributes, controller, widget, project.yml), alight scheduler. Risk item 5 (build config) | pending | — |
 | T3 | S4–S7 UI | pane `follow-ui`: HUD, panel, event cards, map stop labels | pending | — |
@@ -62,3 +62,4 @@ Branch: `feat/follow-vehicle` (from main ef79a3d). Delivery: one PR, squash merg
   - D3 Regular notification. Time-sensitive needs a new signed profile, and adding the entitlement without one breaks the TestFlight archive.
   - D4 A follow Live Activity supersedes the arrival one.
   - D5 A pan pauses the chase camera, not the session.
+- L5 Writers T1–T5 are launched in parallel (GLM 5.3, high) once the contract CI is green. Briefs: scratchpad `follow-common.md`, `task-f1-core.md`, `task-f2-system.md`, `task-f3-ui.md`, `task-f4-maps-mb.md`, `task-f5-fgc.md`. Contracts are fixed; each file has a single owner.
