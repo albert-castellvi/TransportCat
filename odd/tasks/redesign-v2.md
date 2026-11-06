@@ -61,13 +61,15 @@ Branch: `feat/redesign-v2` (from main d48cfa1). Delivery: ask-on-risk; work-unit
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T0 | S12 | inline (parent), Risk item 5 | in progress | — |
-| T1 | S1–S5 | delegated `chrome` (qwen3.8-flash, thinking max), wave 1 | pending | — |
-| T2 | S8–S10 | delegated `parades` (qwen3.8-flash, thinking max), wave 1 | pending | — |
-| T3 | S11 (NetworkArt, Avisos empty, loading) | delegated `motif` (qwen3.8-flash, thinking max), wave 1 | pending | — |
-| T4 | S6–S7 | delegated, wave 2 (after T1: same map files) | pending | — |
-| T5 | S13–S14 | delegated, wave 2 (after T1 + T2) | pending | — |
+| T0 | S12 | inline (parent), Risk item 5 | done: CI run 42209911222 built and passed all simulator tests on iOS 26 | 2ae59a9 |
+| T1 | S1–S5 | delegated pane `chrome` (glm5.3-flash, thinking high = max), wave 1 | committed; CI run 42213124800 pending. Parent review: RootView, BottomAccessory and every dependency verified at their definitions; added an explicit `.environmentObject(app)` on the accessory. Known limitation: on a first launch the termini and the bus swap stay hidden until the topology cache exists | 1479d0c |
+| T2 | S8–S10 | delegated pane `parades` (glm5.3-flash, thinking high = max), wave 1 | committed locally; push waits for T1 CI green. Follow-up F1 (T7): metro interchange badges read `GlobalNetworkState.shared.lineStates`, which is empty until Tot has run, so in Metro mode they are usually missing; switch to the places catalog (`Place.lineCodes`, as MapScreen does) | 497ce65 |
+| T3 | S11 (NetworkArt, Avisos empty, loading) | delegated pane `motif` (glm5.3-flash, thinking high = max), wave 1 | done: CI run 42211895995 compiled it and passed all tests, including NetworkArtTests. Review fixes: the copy is metro-only ("Cap incidència de servei al metro."), the facility row is generic ("N instal·lacions fora de servei"), explicit @ViewBuilder | 8c05e06 |
+| T4a | S6–S7 metro + bus maps | delegated pane `markers-mb` (GLM 5.3, high), wave 2 | pending | — |
+| T4b | S6–S7 FGC + Tot maps (D6 grouping helper) | delegated pane `markers-ft` (GLM 5.3, high), wave 2 | pending | — |
+| T5 | S13–S14 | delegated pane `nearby` (GLM 5.3, high), wave 2 | pending | — |
 | T6 | S11 header art on Parades | inline (parent), after T2 + T3 | pending | — |
+| W1 | wave 1 green | CI run 42218462529: 497 tests, 0 failures, iOS 26 | done | 1479d0c..(test fix) |
 | T7 | S15 + cleanup (dead `AlertBanner`, unused `ModeSelector`/pickers, docs, help) + final verify | parent + independent verifier | pending | — |
 
 Route evidence: the writer trigger is (a) parallelism. T1/T2/T3 have disjoint edit surfaces, and each is several files and well over 100 lines. T4 and T5 share the map files with T1, so they wait for wave 2.
@@ -88,4 +90,15 @@ Route evidence: the writer trigger is (a) parallelism. T1/T2/T3 have disjoint ed
   - D4 Interchange capsules are metro–metro only for now.
   - D5 Buses keep a solid ring. All bus positions are arrival-based estimates, which the card says; the dashed ring stays reserved for metro timetable positions.
   - D6 In Tot, one badge per affected line at its first affected station, grouped when the badges overlap.
-- L12 Next: T0 inline commit, then launch T1/T2/T3 in parallel herdr panes (gentle-shell, NaN, `--thinking max`).
+- L12 T0 committed (2ae59a9) with the docs commit (c906e9b); branch pushed, CI run 42209911222 dispatched.
+- L13 Model choice: qwen3.8-flash ignores the thinking level (the pane shows "auto" with both `--thinking max` and `:max`). GLM 5.3 flash honours it, capped at "high". Because the user asked for "el MAX de thiking", the writers T1–T3 run on GLM 5.3 at high, overriding the usual UI→qwen rule. Briefs: scratchpad `redesign-common.md`, `task-t1-chrome.md`, `task-t2-parades.md`, `task-t3-motif.md`. Cross-unit contracts: the `FreshnessChip` initializers stay unchanged; `BusDirectionSelection` (key "busDirectionID", `resolve`, `swapped`) is created by T1 and consumed by T2; `MapLoadingPlaceholder` keeps its initializers; `VehicleMarkerView` is created by T2 and reused by T4; `NearbyStopsList` is created by T2 and reused by T5.
+- L14 2026-11-06 user: "peto el CI" / "por favor revisa bien y que no vuelva a fallar". Wave 1 needed seven CI rounds:
+  - Writer mistakes: a duplicated member, an invented API name, a wrong argument plus a missing await, `if let` on a non-optional, a mixed-type ternary, a stray token, test argument order. Wrong test expectations found by hand: `Place.id` format, "5 min", walking-minute rounding, a floating-point tie.
+  - Parent mistake: `IPHONEOS_DEPLOYMENT_TARGET: "17.0"` at project.yml:21 overrode the 26.0 deploymentTarget (fixed c92edd6).
+  - Countermeasures:
+    - temporary `OTHER_SWIFT_FLAGS -continue-building-after-errors` (remove in T7);
+    - the parent reads every new test against the real models before pushing;
+    - a mandatory item-9 checklist in the writer briefs;
+    - contracts written as real compiled code before parallel writers start (`MapOverlays.swift`, `AppRouter.isNearbyPresented`).
+  - Result: CI run 42218462529 green, 497 tests and 0 failures.
+- L15 Wave 2 plan: T4a (metro + bus maps), T4b (FGC + Tot maps), T5 (nearby sheet + quick actions), in parallel with disjoint surfaces. `BusMarker` stays until T7 (T4b's files still use it). Briefs: scratchpad `task-t4a-markers-metro-bus.md`, `task-t4b-markers-fgc-tot.md`, `task-t5-nearby.md`.
