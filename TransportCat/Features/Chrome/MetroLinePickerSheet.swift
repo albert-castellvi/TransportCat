@@ -60,7 +60,7 @@ struct MetroLinePickerSheet: View {
                 }
             }
             .onAppear {
-                terminiByCode = MetroLineTermini.cachedTermini(lineCodes: MetroLine.allLines.map(\.code))
+                terminiByCode = MetroLineTermini.cachedTerminiMap(lineCodes: MetroLine.allLines.map(\.code))
             }
         }
         .presentationDetents([.medium, .large])
