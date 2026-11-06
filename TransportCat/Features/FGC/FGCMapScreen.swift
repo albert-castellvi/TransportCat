@@ -206,7 +206,19 @@ struct FGCMapScreen: View {
                 title: "Cap a \(vehicle.label)",
                 onClose: { selectedVehicle = nil }
             ) {
-                FGCVehicleCardRows(vehicleID: vehicle.id)
+                VStack(alignment: .leading, spacing: 8) {
+                    FGCVehicleCardRows(vehicleID: vehicle.id)
+                    // The existing train sheet: occupancy, stops and
+                    // "follow" stay reachable from a plain tap.
+                    Button {
+                        sheetVehicle = vehicle
+                    } label: {
+                        Label("Més detalls", systemImage: "info.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
             .transition(.opacity)
         }

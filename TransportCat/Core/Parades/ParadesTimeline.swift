@@ -106,39 +106,8 @@ enum ParadesTimeline {
         return "Ets aquí · \(tenths / 10),\(tenths % 10) km"
     }
 
-    // MARK: - Metro interchange badges
-
-    /// Metro–metro interchange badges of one station (D4): the display names of
-    /// the OTHER metro lines that serve it, in `MetroLine.allLines` order.
-    ///
-    /// The source is the places catalog (`PlaceCatalogStore.places`), whose
-    /// metro places carry every line of the station as display names ("L1").
-    /// It is cached on disk, so the badges exist in the Metro mode without the
-    /// global state having run (fix F1). Interchange identity is the folded
-    /// name match the feed itself uses. The line on screen is never listed,
-    /// and codes that are not metro lines are skipped.
-    static func metroInterchangeNames(
-        stationName: String,
-        lineDisplayName: String,
-        places: [Place]
-    ) -> [String] {
-        let needle = normalized(stationName)
-        guard !needle.isEmpty else { return [] }
-        var served: Set<String> = []
-        for place in places where place.kind == .metroStation && normalized(place.name) == needle {
-            served.formUnion(place.lineCodes)
-        }
-        served.remove(lineDisplayName)
-        return MetroLine.allLines.map(\.displayName).filter { served.contains($0) }
-    }
-
-    private static func normalized(_ text: String) -> String {
-        text.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "ca_ES")
-        )
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
+    // Metro interchange badges: `StationInterchange.metroLineDisplayNames`,
+    // the one rule the map and Parades share.
 
     // MARK: - Alert counts, one source
 

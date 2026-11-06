@@ -223,10 +223,12 @@ struct DiagramScreen: View {
                     arrivals: state.arrivalsByStop[station.code] ?? [],
                     via: 2
                 ),
-                interchangeCodes: ParadesTimeline.metroInterchangeNames(
-                    stationName: station.name,
-                    lineDisplayName: state.line.displayName,
-                    places: places
+                // The same rule the metro map draws its interchange capsules
+                // with (one rule for both screens).
+                interchangeCodes: StationInterchange.metroLineDisplayNames(
+                    for: station,
+                    places: places,
+                    lineCode: state.line.code
                 )
             )
         }

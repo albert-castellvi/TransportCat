@@ -615,6 +615,16 @@ struct BusMapScreen: View {
                     isEstimated: true,
                     estimatedText: "Posició estimada a partir de les arribades (iBus)"
                 )
+                // The existing bus sheet: next stops and "follow" stay
+                // reachable from a plain tap.
+                Button {
+                    selectedBus = position
+                } label: {
+                    Label("Més detalls", systemImage: "info.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
@@ -671,7 +681,7 @@ struct BusMapScreen: View {
     }
 
     /// Begin, end or the range between them, whichever the feed provides —
-    /// the same rule `IncidentSheet` renders, reworded for the map card.
+    /// the rule the former incident sheet rendered, reworded for the map card.
     private static func incidentDatesText(for alert: ServiceAlert) -> String? {
         switch (alert.beginDate, alert.endDate) {
         case let (begin?, end?):
@@ -686,7 +696,7 @@ struct BusMapScreen: View {
     }
 
     private static func dayText(_ date: Date) -> String {
-        // Same format `IncidentSheet` prints, shared as plain text here.
+        // The format the former incident sheet printed, as plain text.
         Self.incidentDayFormatter.string(from: date)
     }
 

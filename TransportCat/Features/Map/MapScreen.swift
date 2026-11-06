@@ -655,6 +655,16 @@ struct MapScreen: View {
                     isEstimated: train.isTheoretical,
                     estimatedText: "Posició estimada a partir de l'horari"
                 )
+                // The existing train sheet: next stations and "follow"
+                // stay reachable from a plain tap (no regression of S8).
+                Button {
+                    selectedTrain = train
+                } label: {
+                    Label("Més detalls", systemImage: "info.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }
@@ -696,7 +706,7 @@ struct MapScreen: View {
     }
 
     /// Begin, end or the range between them, whichever the feed provides —
-    /// the same rule `IncidentSheet` renders, reworded for the map card.
+    /// the rule the former incident sheet rendered, reworded for the map card.
     private static func incidentDatesText(for alert: ServiceAlert) -> String? {
         switch (alert.beginDate, alert.endDate) {
         case let (begin?, end?):
@@ -711,7 +721,7 @@ struct MapScreen: View {
     }
 
     private static func dayText(_ date: Date) -> String {
-        // Same format `IncidentSheet` prints, shared as plain text here.
+        // The format the former incident sheet printed, as plain text.
         Self.incidentDayFormatter.string(from: date)
     }
 

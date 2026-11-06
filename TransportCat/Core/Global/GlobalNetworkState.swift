@@ -15,7 +15,7 @@ struct GlobalStationDot: Identifiable, Hashable {
 }
 
 /// One metro station with at least one active incident (spec S8). The map
-/// draws a warning marker for it and taps open `IncidentSheet` with exactly
+/// draws a warning marker for it and taps open the incident card with exactly
 /// the alerts that cover the station.
 struct GlobalIncidentStation: Identifiable, Hashable {
     /// "metro:<station code>", unique across the map.

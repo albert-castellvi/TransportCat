@@ -606,14 +606,30 @@ struct GlobalMapScreen: View {
             title: "Cap a \(selected.vehicle.label)",
             onClose: { selectedVehicle = nil }
         ) {
-            if selected.operatorCode == AppModeCode.metro {
-                GlobalVehicleCardRows.Metro(
-                    lineCode: selected.vehicle.lineCode,
-                    vehicleID: selected.vehicle.id,
-                    isEstimated: isMetroVehicleEstimated(selected.vehicle)
-                )
-            } else {
-                GlobalVehicleCardRows.FGC(vehicleID: selected.vehicle.id)
+            VStack(alignment: .leading, spacing: 8) {
+                if selected.operatorCode == AppModeCode.metro {
+                    GlobalVehicleCardRows.Metro(
+                        lineCode: selected.vehicle.lineCode,
+                        vehicleID: selected.vehicle.id,
+                        isEstimated: isMetroVehicleEstimated(selected.vehicle)
+                    )
+                } else {
+                    GlobalVehicleCardRows.FGC(vehicleID: selected.vehicle.id)
+                }
+                // What a tap used to do before the card (spec S8, S10): hand
+                // the rider to the operator's map with the vehicle focused.
+                Button {
+                    AppRouter.shared.open(.vehicle(
+                        operator: selected.operatorCode,
+                        lineCode: selected.vehicle.lineCode,
+                        vehicleID: selected.vehicle.id
+                    ))
+                } label: {
+                    Label("Veure a la línia", systemImage: "arrow.up.right.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

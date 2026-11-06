@@ -11,7 +11,7 @@ import SwiftUI
 /// second fetcher.
 @MainActor
 struct BottomAccessory: View {
-    /// The same key `ModeSelector` writes (spec S4), so the accessory's menu
+    /// The `appMode` key every screen reads (spec S4), so the accessory's menu
     /// and the screens behind it agree without explicit wiring.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @EnvironmentObject private var app: AppModel
@@ -114,7 +114,7 @@ private struct MetroLineChip: View {
     }
 
     /// Whether the selected line has a service alert right now, from the same
-    /// feed the map's `IncidentsChip` read (spec S4).
+    /// feed the former incidents chip read (spec S4).
     private var hasServiceAlert: Bool {
         app.activeAlerts(affecting: selectedLineCode).contains { $0.severity == .service }
     }

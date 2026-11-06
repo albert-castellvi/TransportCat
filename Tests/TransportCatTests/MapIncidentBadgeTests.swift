@@ -222,6 +222,34 @@ final class MapIncidentBadgeTests: XCTestCase {
         XCTAssertEqual(result, ["L3", "L4"])
     }
 
+    /// Same name, but bus and FGC places: D4 is metro–metro only.
+    func testInterchangeIgnoresBusAndFGCPlaces() {
+        let places = [
+            Place(
+                kind: .busStop,
+                code: "100",
+                name: "La Pau",
+                position: GeoPoint(latitude: 41.38, longitude: 2.17),
+                lineCodes: ["L2"],
+                accessible: nil
+            ),
+            Place(
+                kind: .fgcStation,
+                code: "PAU",
+                name: "La Pau",
+                position: GeoPoint(latitude: 41.38, longitude: 2.17),
+                lineCodes: ["L4"],
+                accessible: nil
+            ),
+        ]
+        let result = StationInterchange.metroLineDisplayNames(
+            for: station(10, order: 1, name: "La Pau"),
+            places: places,
+            lineCode: "1"
+        )
+        XCTAssertEqual(result, [])
+    }
+
     func testStationWithoutAPlaceYieldsNoInterchange() {
         let result = StationInterchange.metroLineDisplayNames(
             for: station(10, order: 1, name: "Desconeguda"),
