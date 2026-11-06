@@ -34,8 +34,13 @@ struct MapScreen: View {
     /// Train whose sheet is open (spec S10). A snapshot copy: the sheet reads
     /// the live position from the line state by id, like the FGC map.
     @State private var selectedTrain: TrainPosition?
-    /// Station whose `IncidentSheet` is open (spec S9).
-    @State private var incidentStation: Station?
+    /// Vehicle the rider selected by tapping its marker (spec S6): tapping
+    /// again, closing the card or changing the line deselects it. A user
+    /// action, so it may re-diff; nothing on the 10 Hz position path touches
+    /// it.
+    @State private var selectedVehicleID: String?
+    /// Alert id whose service card is open through its run's badge (spec S7).
+    @State private var selectedIncidentAlertID: String?
     /// Train the camera is following, or nil (spec S10).
     @State private var followingTrainID: String?
     /// Where the camera was commanded to last, so the continuous callback can
@@ -48,13 +53,6 @@ struct MapScreen: View {
     @State private var pendingPlace: Place?
     /// Vehicle focus waiting for its train to appear in the feed (spec S11).
     @State private var pendingVehicleID: String?
-    /// Camera bearing of the visible map region, in degrees clockwise from
-    /// north. The train pictograms are rotated against it so they keep facing
-    /// along the track whatever the user does with the map (S2).
-    @State private var cameraHeading: Double = 0
-    /// Latitude span currently on screen, used to decide whether the train
-    /// labels are drawn at all (S3).
-    @State private var latitudeSpan: Double = MapScreen.barcelonaRegion.span.latitudeDelta
     // Named type instead of `Self` on purpose: a stored-property initializer has
     // no instance context, so the spelled-out type name is the form that is
     // guaranteed to compile.
@@ -169,11 +167,31 @@ struct MapScreen: View {
                 handlePendingFocus()
             }
             .onChange(of: selectedLineCode) { _, _ in
-                // A new line is a new subject: drop the old train, its follow
-                // and any incident sheet, as the FGC map does (S10).
+                // A new line is a new subject: drop the old train, its follow,
+                // the vehicle selection and any incident card (S10, S6, S7).
                 selectedTrain = nil
                 followingTrainID = nil
-                incidentStation = nil
+                selectedVehicleID = nil
+                selectedIncidentAlertID = nil
+            }
+            // The interchange capsules (D4) read the places catalog, which may
+            // arrive after the line's topology: a loaded catalog re-derives
+            // the overlay so late matches still draw (spec S6).
+            .onChange(of: PlaceCatalogStore.shared.places.count) { _, _ in
+                refreshMapOverlayIfPossible()
+            }
+            // The selected subject's glass card sits above the tab bar and the
+            // accessory, inside the safe area (spec S6, S7, mockup `V3Metro`).
+            // One card at a time: the incident badge and the vehicle marker
+            // deselect each other.
+            .overlay(alignment: .bottom) {
+                if let alertID = selectedIncidentAlertID,
+                   let alert = app.alerts.first(where: { $0.id == alertID }) {
+                    incidentCard(for: alert)
+                } else if let vehicleID = selectedVehicleID, let state = lineState,
+                          let train = state.vehiclePosition(id: vehicleID) {
+                    vehicleCard(for: train, state: state)
+                }
             }
         }
         // Spec S1: the map screens show no navigation bar; the map fills the
@@ -187,12 +205,6 @@ struct MapScreen: View {
             StationDetailView(station: station, line: selectedLine)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-        }
-        .sheet(item: $incidentStation) { station in
-            IncidentSheet(
-                alerts: incidentAlerts(for: station),
-                title: "\(selectedLine.displayName) · \(station.name)"
-            )
         }
         // The train sheet (spec S10): the stack declares the detents, and
         // closing it stops the follow, exactly like the FGC map.
@@ -225,14 +237,21 @@ struct MapScreen: View {
     /// permission request the map used to offer in its own button, an
     /// authorized one gets the camera centered on their last fix at the zoom
     /// already on screen — the system `MapUserLocationButton` behavior.
-    /// `onLocate` is the T5 hook for the nearby sheet.
+    /// `onLocate` is the T5 hook for the nearby sheet, and while the sheet is
+    /// open (spec S13) the button draws filled: accent background, white glyph.
     private var locationButton: some View {
         Button {
             locate()
         } label: {
             Image(systemName: "location.fill")
                 .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(router.isNearbyPresented ? Color.white : Color.accentColor)
                 .frame(width: 44, height: 44)
+                .background {
+                    if router.isNearbyPresented {
+                        Circle().fill(Color.accentColor)
+                    }
+                }
                 .glassEffect(in: Circle())
         }
         .buttonStyle(.plain)
@@ -323,57 +342,72 @@ struct MapScreen: View {
                     Button {
                         selectedStation = station
                     } label: {
-                        StationMarker(line: selectedLine, terminal: mapOverlay.terminalCodes.contains(station.code))
+                        if mapOverlay.interchangeLineCodes[station.code]?.isEmpty == false {
+                            InterchangeCapsule()
+                        } else {
+                            HollowStationDot(
+                                colorHex: selectedLine.colorHex,
+                                isTerminal: mapOverlay.terminalCodes.contains(station.code)
+                            )
+                        }
                     }
                 }
             }
             // Each run of consecutive affected stations overlays the track
-            // with a red dashed line (spec S9).
+            // with a dotted line in the line's own colour — never red, the
+            // colour stays the line's (spec S7, mockup `V3Markers`).
             ForEach(mapOverlay.incidentRuns) { incidentRun in
                 if incidentRun.coordinates.count >= 2 {
                     MapPolyline(coordinates: incidentRun.coordinates)
                         .stroke(
-                            Self.incidentRed,
-                            style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [7, 5])
+                            Color(hex: selectedLine.colorHex).opacity(0.9),
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [0.1, 9])
                         )
                 }
             }
-            // A red warning triangle per affected station, drawn after the
-            // station dots so it sits on top (spec S9). Empty title: the
-            // station dot underneath already carries the name, so a titled
-            // warning annotation drew the label twice on an incident station
-            // (map-perf S14a). The name stays in the accessibility label.
-            ForEach(mapOverlay.incidentRuns.flatMap(\.run.stations)) { station in
-                Annotation("", coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
+            // ONE amber badge per affected run, at the run's middle station
+            // (spec S7, mockup `V3Metro`). Empty title: the badge carries the
+            // line and the accessibility label names the alert.
+            ForEach(mapOverlay.incidentBadges) { badge in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: badge.latitude, longitude: badge.longitude)) {
                     Button {
-                        incidentStation = station
+                        // The badge and the vehicle card clear each other: one
+                        // glass card at a time (spec S6, S7).
+                        selectedVehicleID = nil
+                        selectedIncidentAlertID = badge.alertID
                     } label: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Self.incidentRed)
+                        IncidentBadge(text: badge.text)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Incidència a \(station.name)")
+                    .accessibilityLabel("Servei afectat a la línia \(badge.text)")
+                }
+            }
+            // Small grey icon next to every station with a facility alert out
+            // of service, slightly offset so the station dot stays visible
+            // (spec S7). Not tappable: the alert's text lives in the Parades
+            // and Avisos screens.
+            ForEach(mapOverlay.facilityStations) { mark in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
+                    FacilityStationIcon(kind: mark.kind)
+                        .offset(x: 12, y: -12)
+                        .accessibilityLabel("Incidència d'instal·lació a l'estació amb codi \(mark.stationCode)")
                 }
             }
             ForEach(state.positions) { position in
-                // Empty title: the destination is already on the marker.
+                // Empty title: the marker speaks for itself and the selected
+                // vehicle's glass card carries the destination (spec S6).
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.position.latitude, longitude: position.position.longitude)) {
-                    // Tapping the train opens its sheet with the follow
-                    // button (spec S10).
                     Button {
-                        selectedTrain = position
+                        // Tapping selects the vehicle and closes any incident
+                        // card; tapping again deselects (spec S6). The train
+                        // sheet stays for `AppRouter` `.vehicle` focuses.
+                        selectedIncidentAlertID = nil
+                        selectedVehicleID = selectedVehicleID == position.id ? nil : position.id
                     } label: {
-                        TrainMarker(
-                            imageName: "train-\(trainLine(for: position).assetKey)",
-                            destination: position.destination,
-                            rotation: position.heading - 90 - cameraHeading,
-                            showLabel: latitudeSpan < Self.labelSpanThreshold,
-                            theoretical: position.isTheoretical
-                        )
+                        vehicleMarker(for: position)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Tren \(trainLine(for: position).displayName) cap a \(position.destination)")
+                    .accessibilityLabel("Tren de la \(trainLine(for: position).displayName) cap a \(position.destination)")
                 }
             }
             // The rider's own dot once permission was granted (spec S11).
@@ -385,16 +419,10 @@ struct MapScreen: View {
         // Spec S1: the map fills the screen under the status bar; the chrome
         // overlays above keep their safe-area insets.
         .ignoresSafeArea(.container, edges: .top)
-        .onMapCameraChange(frequency: .onEnd) { context in
-            cameraHeading = context.camera.heading
-            latitudeSpan = context.region.span.latitudeDelta
-            cameraSpan = context.region.span
-        }
         // Pan detection for the follow (spec S10): a change whose center is
         // not near the point we last commanded is the rider moving the map,
         // so the camera releases the train. Zoom keeps the follow.
         .onMapCameraChange(frequency: .continuous) { context in
-            latitudeSpan = context.region.span.latitudeDelta
             cameraSpan = context.region.span
             guard followingTrainID != nil, let anchor = followAnchor else { return }
             let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
@@ -456,18 +484,14 @@ struct MapScreen: View {
         }
     }
 
-    // MARK: - Incidents on the map (S9)
-
-    /// The red of a service incident, the same `IncidentSheet` gives its
-    /// severity icon.
-    private static let incidentRed = Color(hex: "D92D20")
+    // MARK: - Incidents on the map (S7)
 
     /// Everything the map draws besides the position markers, derived from the
     /// line's topology and the alerts feed (spec S8). Called when either
     /// changes, never from the 10 Hz render path: the incident grouping, the
-    /// track slicing of every run and the `GeoPoint` → `CLLocationCoordinate2D`
-    /// mapping of every polyline happen once per change instead of ten times a
-    /// second.
+    /// track slicing of every run, the badge placement and the multiple
+    /// `GeoPoint` → `CLLocationCoordinate2D` mappings happen once per change
+    /// instead of ten times a second.
     ///
     /// `IncidentIndex` reads the clock, so an alert that runs out stops being
     /// drawn at the next alerts poll (once a minute, the granularity
@@ -480,15 +504,82 @@ struct MapScreen: View {
             stations: state.stations,
             lineCode: state.line.code
         )
+        // Severity split (S7): service alerts own the dotted runs and the
+        // badges, facility alerts draw their small grey icon per station.
+        var serviceIncidents: [Int: [StationIncident]] = [:]
+        var facilityStations: [FacilityStationMark] = []
+        for station in state.stations {
+            guard let list = incidents[station.code], !list.isEmpty else { continue }
+            let facilityList = list.filter { ParadesTimeline.isFacilityIncident($0) }
+            let serviceList = list.filter { !ParadesTimeline.isFacilityIncident($0) }
+            if !facilityList.isEmpty {
+                facilityStations.append(
+                    FacilityStationMark(
+                        stationCode: station.code,
+                        kind: facilityList[0].kind,
+                        latitude: station.latitude,
+                        longitude: station.longitude
+                    )
+                )
+            }
+            if !serviceList.isEmpty {
+                serviceIncidents[station.code] = serviceList
+            }
+        }
+        var runs: [IncidentRunLayer] = []
+        var badges: [IncidentRunBadge] = []
+        for overlay in IncidentSegments.overlays(
+            stations: state.stations,
+            incidents: serviceIncidents,
+            geometry: geometry
+        ) {
+            if overlay.points.count >= 2 {
+                runs.append(
+                    IncidentRunLayer(run: overlay.run, coordinates: Self.mapCoordinates(of: overlay.points))
+                )
+            }
+            if let badge = IncidentBadgePlacement.badge(
+                for: overlay.run,
+                lineDisplayName: state.line.displayName,
+                serviceIncidents: serviceIncidents
+            ) {
+                badges.append(badge)
+            }
+        }
         mapOverlay = MetroMapOverlay(
             line: geometry.map { Self.mapCoordinates(of: $0.points) } ?? [],
             terminalCodes: Self.terminalStationCodes(in: state.stations),
-            incidentRuns: IncidentSegments
-                .overlays(stations: state.stations, incidents: incidents, geometry: geometry)
-                .map { overlay in
-                    IncidentRunLayer(run: overlay.run, coordinates: Self.mapCoordinates(of: overlay.points))
-                }
+            incidentRuns: runs,
+            incidentBadges: badges,
+            facilityStations: facilityStations,
+            interchangeLineCodes: Self.interchangeLineCodes(
+                stations: state.stations,
+                lineCode: state.line.code
+            )
         )
+    }
+
+    /// Metro–metro interchange lines per station code (D4), read from the
+    /// places catalog through `StationInterchange`: the same source
+    /// `MapScreen` matches a `Place` focus against.
+    private static func interchangeLineCodes(
+        stations: [Station],
+        lineCode: String
+    ) -> [Int: [String]] {
+        let places = PlaceCatalogStore.shared.places
+        guard !places.isEmpty else { return [:] }
+        var result: [Int: [String]] = [:]
+        for station in stations {
+            let codes = StationInterchange.metroLineDisplayNames(
+                for: station,
+                places: places,
+                lineCode: lineCode
+            )
+            if !codes.isEmpty {
+                result[station.code] = codes
+            }
+        }
+        return result
     }
 
     /// Re-derives the overlay of the line on screen, or clears it while no line
@@ -511,18 +602,124 @@ struct MapScreen: View {
         }
     }
 
-    /// The active alerts behind one station's warning marker (spec S9), taken
-    /// from the same `IncidentIndex` the markers come from so the sheet and
-    /// the map can never disagree.
-    private func incidentAlerts(for station: Station) -> [ServiceAlert] {
-        let incidents = IncidentIndex.incidents(
-            for: app.alerts,
-            stations: [station],
-            lineCode: selectedLine.code
+    // MARK: - Selected subject cards (S6, S7)
+
+    /// The marker of one train (spec S6, mockup `V3Markers`): the unified
+    /// marker in the line's colour with the heading wedge; the selected train
+    /// gets the halo plus a small glass label with its destination under the
+    /// marker. The overlay adds nothing to the layout frame, so MapKit keeps
+    /// centering the annotation on the coordinate.
+    private func vehicleMarker(for position: TrainPosition) -> some View {
+        VehicleMarkerView(
+            colorHex: trainLine(for: position).colorHex,
+            glyph: .train,
+            headingDegrees: position.heading,
+            isEstimated: position.isTheoretical,
+            isSelected: selectedVehicleID == position.id
         )
-        let ids = Set((incidents[station.code] ?? []).map(\.alertID))
-        return app.alerts.filter { ids.contains($0.id) }
+        .overlay(alignment: .bottom) {
+            if selectedVehicleID == position.id {
+                Text(position.destination)
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .glassEffect(in: Capsule())
+                    .fixedSize()
+                    .offset(y: 22)
+            }
+        }
     }
+
+    /// Glass card of the selected train (spec S6, mockup `V3Metro`): the line
+    /// badge, the destination, the next stop with its countdown when the data
+    /// exists (never a new request: the row reads the same positions and
+    /// stations the screen already holds), and where the position comes from.
+    private func vehicleCard(for train: TrainPosition, state: LineState) -> some View {
+        let line = trainLine(for: train)
+        return MapGlassCard(
+            badgeText: line.displayName,
+            badgeColorHex: line.colorHex,
+            title: train.destination.isEmpty ? "Destí desconegut" : "Cap a \(train.destination)",
+            onClose: { selectedVehicleID = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let station = state.station(forCode: train.nextStationCode) {
+                    Text("Pròxima: \(station.name) · \(Arrival.countdownText(seconds: train.secondsToArrival))")
+                        .font(.subheadline.weight(.medium))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(
+                            "Pròxima \(station.name), arriba en \(Arrival.countdownText(seconds: train.secondsToArrival))"
+                        )
+                }
+                VehiclePositionSource(
+                    isEstimated: train.isTheoretical,
+                    estimatedText: "Posició estimada a partir de l'horari"
+                )
+            }
+        }
+    }
+
+    /// Glass card of a run's amber badge (spec S7, mockup `V3Metro`): the
+    /// alert's text and time and a jump to the Avisos tab. The badge is
+    /// tapped, so the card carries the line itself.
+    private func incidentCard(for alert: ServiceAlert) -> some View {
+        MapGlassCard(
+            badgeText: selectedLine.displayName,
+            badgeColorHex: selectedLine.colorHex,
+            title: "Servei afectat",
+            onClose: { selectedIncidentAlertID = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let text = AlertText.cleaned(alert.text) {
+                    Text(text)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let datesText = Self.incidentDatesText(for: alert) {
+                    Text(datesText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    AppRouter.shared.selectedTab = .alerts
+                    selectedIncidentAlertID = nil
+                } label: {
+                    Text("Veure a Avisos")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.white.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// Begin, end or the range between them, whichever the feed provides —
+    /// the same rule `IncidentSheet` renders, reworded for the map card.
+    private static func incidentDatesText(for alert: ServiceAlert) -> String? {
+        switch (alert.beginDate, alert.endDate) {
+        case let (begin?, end?):
+            return "Del \(dayText(begin)) al \(dayText(end))"
+        case let (begin?, nil):
+            return "Des del \(dayText(begin))"
+        case let (nil, end?):
+            return "Fins al \(dayText(end))"
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    private static func dayText(_ date: Date) -> String {
+        // Same format `IncidentSheet` prints, shared as plain text here.
+        Self.incidentDayFormatter.string(from: date)
+    }
+
+    private static let incidentDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
+    }()
 
     // MARK: - Follow (S10)
 
@@ -569,7 +766,7 @@ struct MapScreen: View {
             // Close anything the previous subject left open, then follow the
             // station: the line change reloads the state, and the station
             // centering resolves with its topology (fitCamera path).
-            incidentStation = nil
+            selectedIncidentAlertID = nil
             if let line = place.lineCodes.first.flatMap(Self.metroLine(matching:)), line.code != selectedLineCode {
                 pendingPlace = place
                 selectedLineCode = line.code
@@ -699,18 +896,14 @@ struct MapScreen: View {
         span: MKCoordinateSpan(latitudeDelta: 0.16, longitudeDelta: 0.14)
     )
 
-    /// Below this visible latitude span the destination labels are drawn; above
-    /// it they overlapped each other on the busy lines (S3).
-    private static let labelSpanThreshold = 0.05
-
     /// The line a train marker belongs to: the code of the position itself,
     /// falling back to the line on screen when the feed reports an unknown one.
     private func trainLine(for position: TrainPosition) -> MetroLine {
         MetroLine.line(forCode: position.lineCode) ?? selectedLine
     }
 
-    /// Codes of the two end stations of the shown line, which get the terminal
-    /// marker instead of the plain one (S4).
+    /// Codes of the two end stations of the shown line, which get the slightly
+    /// bigger hollow dot (S4).
     private static func terminalStationCodes(in stations: [Station]) -> Set<Int> {
         guard let first = stations.min(by: { $0.orderInLine < $1.orderInLine }),
               let last = stations.max(by: { $0.orderInLine < $1.orderInLine }) else { return [] }
@@ -728,8 +921,9 @@ private struct MetroLoadKey: Equatable {
 }
 
 /// What the metro map draws that only depends on the line's topology and the
-/// alerts feed (spec S8): the line polyline, the terminal markers and the
-/// incident runs of the line, all ready for `MapContent`.
+/// alerts feed (spec S8): the line polyline, the terminal dots, the incident
+/// runs with their badges, the facility marks and the interchange capsules,
+/// all ready for `MapContent`.
 ///
 /// The 10 Hz position tick re-evaluates `body` but never rebuilds this value,
 /// so grouping the incidents and mapping every polyline to map coordinates
@@ -737,19 +931,27 @@ private struct MetroLoadKey: Equatable {
 private struct MetroMapOverlay {
     /// Coordinates of the line's polyline; empty until the geometry loads.
     var line: [CLLocationCoordinate2D] = []
-    /// Codes of the two end stations of the line, which get the terminal
-    /// marker instead of the plain one (S4).
+    /// Codes of the two end stations of the line, which get the slightly
+    /// bigger hollow dot (S4).
     var terminalCodes: Set<Int> = []
-    /// Runs of consecutive affected stations, with the coordinates of each red
-    /// dashed overlay already mapped (spec S9).
+    /// Runs of consecutive affected stations, with the coordinates of each
+    /// dotted overlay already mapped (spec S7).
     var incidentRuns: [IncidentRunLayer] = []
+    /// One badge per run, at its middle station (spec S7).
+    var incidentBadges: [IncidentRunBadge] = []
+    /// Stations with a facility alert out of service (spec S7).
+    var facilityStations: [FacilityStationMark] = []
+    /// Display names of the other metro lines serving each station (D4),
+    /// from the places catalog; the reader draws a capsule for a non-empty
+    /// entry.
+    var interchangeLineCodes: [Int: [String]] = [:]
 }
 
 /// One run of affected stations of the metro map with the coordinates of its
-/// overlay (spec S8, S9).
+/// overlay (spec S7).
 private struct IncidentRunLayer: Identifiable {
     let run: IncidentRun
-    /// Coordinates of the red dashed overlay; empty when the run has nothing to
+    /// Coordinates of the dotted overlay; empty when the run has nothing to
     /// draw, which is the case the map skips.
     let coordinates: [CLLocationCoordinate2D]
 
@@ -757,60 +959,35 @@ private struct IncidentRunLayer: Identifiable {
     var id: Int { run.id }
 }
 
-/// Station marker on the map: the pre-rendered dot tinted with the line color
-/// (S4), 18 pt for a normal station and 22 pt for a terminal.
-private struct StationMarker: View {
-    let line: MetroLine
-    let terminal: Bool
+/// Hollow station dot on the map (spec S6, mockup `V3Markers`): white with a
+/// stroke in the line colour, sitting on the track. A terminal is slightly
+/// bigger. The 44 pt frame around the dot is the touch target.
+private struct HollowStationDot: View {
+    let colorHex: String
+    let isTerminal: Bool
 
     var body: some View {
-        Image("\(terminal ? "terminal" : "station")-\(line.assetKey)")
-            .resizable()
+        Circle()
+            .fill(Color.white)
             .frame(width: size, height: size)
+            .overlay(Circle().stroke(Color(hex: colorHex), lineWidth: 3))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
     }
 
-    private var size: CGFloat { terminal ? 22 : 18 }
+    /// Mockup: radius 5.5 with a 3 pt stroke on a station, 6.5 on a terminal.
+    private var size: CGFloat { isTerminal ? 16 : 14 }
 }
 
-/// Moving train marker with its destination label (S1).
-private struct TrainMarker: View {
-    let imageName: String
-    let destination: String
-    /// Rotation applied to the pictogram: `heading - 90 - cameraHeading`, the
-    /// assets face east and the map may be rotated by the user.
-    let rotation: Double
-    let showLabel: Bool
-    /// A train computed from the timetable, not a live one: drawn faded so the
-    /// rider can tell it apart at a glance (spec S7).
-    let theoretical: Bool
-
+/// White capsule of a metro–metro interchange (D4, mockup `V3Markers`): 20 pt
+/// wide and 26 pt tall, filled white with a dark stroke.
+private struct InterchangeCapsule: View {
     var body: some View {
-        // MapKit centers an annotation on its coordinate, so only the image is
-        // rotated and `rotationEffect` keeps the layout size at 42x18.67 pt
-        // (the 72:32 aspect of the v2 train art): the label lives in an overlay
-        // on that unrotated frame, which adds nothing to the marker size and
-        // always stays upright.
-        Image(imageName)
-            .resizable()
-            .frame(width: 42, height: 18.67)
-            .rotationEffect(.degrees(rotation))
-            .opacity(theoretical ? 0.7 : 1)
-            .overlay(alignment: .bottom) {
-                if showLabel {
-                    Text(destination)
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.thinMaterial, in: Capsule())
-                        .fixedSize()
-                        // Measured from the frame's bottom edge, 9.33 pt under
-                        // the marker center. The pictogram is 42 pt long, so
-                        // heading north or south it reaches 21 pt under that
-                        // center: this offset puts the label's top edge just
-                        // below it, so the two never overlap in any heading.
-                        .offset(y: 20)
-                }
-            }
-            .accessibilityLabel("Tren \(destination)")
+        Capsule()
+            .fill(Color.white)
+            .frame(width: 20, height: 26)
+            .overlay(Capsule().stroke(Color(hex: "1C1C1E"), lineWidth: 2.5))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
     }
 }
