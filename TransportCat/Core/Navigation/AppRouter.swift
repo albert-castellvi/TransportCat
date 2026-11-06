@@ -72,6 +72,10 @@ final class AppRouter {
 
     /// Visible tab.
     var selectedTab: AppTab = .map
+    /// Whether the "A prop teu" sheet is open over the map (redesign S13).
+    /// Set by the map's location button and the home-screen quick action; the
+    /// map screens read it to draw the location button filled while it is on.
+    var isNearbyPresented = false
     /// Focus the map has not handled yet.
     private(set) var pendingFocus: Destination?
 
