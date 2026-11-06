@@ -4,11 +4,9 @@ import SwiftUI
 @MainActor
 struct RootView: View {
     @StateObject private var app = AppModel.shared
-    /// Network path state driving the offline banner (spec S21).
-    @State private var connectivity = ConnectivityMonitor.shared
     /// Metro, bus, FGC or the global mode (specs S1, S6, S8). The same key the
-    /// `ModeSelector` chips write, so picking a mode on one tab switches both
-    /// of them.
+    /// bottom accessory's mode menu writes, so picking a mode anywhere — menu,
+    /// map or Parades screen — switches all of them.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -45,63 +43,60 @@ struct RootView: View {
 
     var body: some View {
         // The visible tab is the router's (spec S5): `AppRouter.open` switches
-        // to the map, and a tab tap writes back, so both stay in sync.
+        // to the map, and a tab tap writes back, so both stay in sync. iOS 26
+        // Tab API (spec S5): one `Tab` per tab, selection values typed like
+        // `router.selectedTab`, and the search role hosting Explora.
         @Bindable var router = AppRouter.shared
         TabView(selection: $router.selectedTab) {
-            mapModes
-                // Cutting between the four modes would be harsh, so the screens
-                // fade into each other instead (polish pass), nothing when
-                // Reduce Motion is on. The fade is the opacity of the layers
-                // below: no screen enters or leaves any more (spec S12).
-                .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
-            // Spec S21: while the device has no network path, a capsule at the
-            // top of the Mapa tab says the lines and trains on screen come
-            // from saved data and the timetable. TabView only draws the
-            // selected tab, so the banner is never on another tab.
-            .overlay(alignment: .top) {
-                if !connectivity.isOnline {
-                    OfflineBanner()
-                }
+            Tab("Mapa", image: "tab-map", value: AppTab.map) {
+                mapModes
+                    // Cutting between the four modes would be harsh, so the
+                    // screens fade into each other instead (polish pass),
+                    // nothing when Reduce Motion is on. The fade is the
+                    // opacity of the layers below: no screen enters or leaves
+                    // any more (spec S12).
+                    .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             }
-            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: connectivity.isOnline)
-            .tabItem {
-                Label("Mapa", image: "tab-map")
-            }
-            .tag(AppTab.map)
             // Renamed from "Xarxa" when the bus mode arrived: the tab now
-            // shows the lines of whichever mode is on (spec S1).
-            Group {
-                switch mode {
-                case .metro:
-                    DiagramScreen()
-                        .transition(.opacity)
-                case .bus:
-                    BusDiagramScreen()
-                        .transition(.opacity)
-                case .fgc:
-                    FGCLinesScreen()
-                        .transition(.opacity)
-                case .global:
-                    GlobalLinesScreen()
-                        .transition(.opacity)
+            // shows the lines of whichever mode is on (spec S1). The v2
+            // redesign renames it again to Parades (spec S5, decision L6).
+            Tab("Parades", image: "tab-network", value: AppTab.lines) {
+                Group {
+                    switch mode {
+                    case .metro:
+                        DiagramScreen()
+                            .transition(.opacity)
+                    case .bus:
+                        BusDiagramScreen()
+                            .transition(.opacity)
+                    case .fgc:
+                        FGCLinesScreen()
+                            .transition(.opacity)
+                    case .global:
+                        GlobalLinesScreen()
+                            .transition(.opacity)
+                    }
                 }
+                .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
             }
-            .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
-            .tabItem {
-                Label("Línies", image: "tab-network")
+            Tab("Avisos", image: "tab-alert", value: AppTab.alerts) {
+                AlertsScreen()
             }
-            .tag(AppTab.lines)
-            AlertsScreen()
-                .tabItem {
-                    Label("Avisos", image: "tab-alert")
-                }
-                .tag(AppTab.alerts)
-            // The fourth tab (spec S12): search, favorites and nearby places.
-            ExploreScreen()
-                .tabItem {
-                    Label("Explora", systemImage: "magnifyingglass")
-                }
-                .tag(AppTab.explore)
+            // The fourth tab (spec S12): search, favorites and nearby places,
+            // moved into the tab bar's own search role for the v2 redesign.
+            Tab("Explora", systemImage: "magnifyingglass", value: AppTab.explore, role: .search) {
+                ExploreScreen()
+            }
+        }
+        // Spec S4: the bottom accessory above the tab bar, with the mode menu
+        // and the context control of the mode on screen. It reads only shared
+        // state and static catalog data, so showing it on every tab adds no
+        // poller and never duplicates one.
+        .tabViewBottomAccessory {
+            // Injected explicitly: the accessory is hosted by the tab bar, and
+            // its metro chip reads `AppModel` through `@EnvironmentObject`.
+            BottomAccessory()
+                .environmentObject(app)
         }
         .environmentObject(app)
         .onAppear { syncFrameMonitoring() }
@@ -123,11 +118,14 @@ struct RootView: View {
             trace.endOnNextFrame()
         }
         // Incidents load at launch and refresh every minute, whichever tab is
-        // open: the map and Xarxa need them without a visit to Avisos (S1).
+        // open: the map and Parades need them without a visit to Avisos (S1).
         // The connectivity monitor starts alongside it (S21): it exists to
         // gate the offline behaviors, nothing more.
         .task {
-            connectivity.start()
+            // The connectivity monitor starts alongside the alerts poll: the
+            // status capsule reads its `isOnline` to switch to the offline
+            // wording the banner used to carry (spec S2 of the redesign).
+            ConnectivityMonitor.shared.start()
             await app.startAlertsPolling()
         }
         // The one FGC poller (spec S6): `run()` loads the topology once and
@@ -166,19 +164,5 @@ private struct RetainedMode: ViewModifier {
             .opacity(isActive ? 1 : 0)
             .allowsHitTesting(isActive)
             .accessibilityHidden(!isActive)
-    }
-}
-
-/// The capsule the Mapa tab shows while the device is offline (spec S21):
-/// saved topologies and theoretical timetables are what the map is drawing.
-private struct OfflineBanner: View {
-    var body: some View {
-        Label("Sense connexió · dades desades i horaris teòrics", systemImage: "wifi.slash")
-            .font(.footnote.weight(.semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.thinMaterial, in: Capsule())
-            .padding(.top, 8)
-            .transition(AppMotion.chipTransition)
     }
 }

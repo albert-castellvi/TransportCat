@@ -23,6 +23,9 @@ struct GlobalMapScreen: View {
     /// poller only runs while Tot is visible, and coming back resumes on
     /// `GlobalNetworkState`, which keeps the line states it already built.
     let isActive: Bool
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @EnvironmentObject private var app: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -85,15 +88,23 @@ struct GlobalMapScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLayers)
             }
-            // Toggling an operator is a selection, so it clicks (polish pass).
-            .sensoryFeedback(.selection, trigger: operatorsRaw)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
+            // Spec S1: no header — the mode selector and the operator chips
+            // move to the bottom accessory, the map fills the screen under
+            // the status bar, and the v2 chrome lives in overlays.
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
             // The one global poller, alive only while this mode is the one on
             // screen (specs S8, S13): the task is keyed on `isActive`, so
             // leaving Tot cancels the poll and its 10 Hz ticker, and coming
@@ -138,6 +149,8 @@ struct GlobalMapScreen: View {
             // station incidents without waiting for the next metro pass.
             .onChange(of: app.alertsUpdatedAt) { _, _ in state.refreshIncidents() }
         }
+        // Spec S1: the map screens show no navigation bar.
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $selectedIncident) { incident in
             IncidentSheet(alerts: incident.alerts, title: "Incidències · \(incident.name)")
                 .presentationDetents([.medium, .large])
@@ -145,72 +158,80 @@ struct GlobalMapScreen: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - The v2 chrome (spec S1)
 
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            operatorChips
-            chipsRow
-        }
-    }
-
-    /// Metro / Bus / FGC toggle chips (spec S8), in the `ModeSelector` capsule
-    /// style: selected chips are white with black text, hidden operators are
-    /// dimmed so the rider always sees all three filters.
-    private var operatorChips: some View {
-        HStack(spacing: 8) {
-            ForEach(GlobalOperator.allCases, id: \.self) { operatorKind in
-                let isSelected = selectedOperators.contains(operatorKind)
-                Button {
-                    var selection = selectedOperators
-                    if isSelected {
-                        selection.remove(operatorKind)
-                    } else {
-                        selection.insert(operatorKind)
-                    }
-                    withAnimation(AppMotion.smooth(duration: 0.2, reduceMotion: reduceMotion)) {
-                        operatorsRaw = GlobalOperatorSelection.encode(selection)
-                    }
-                } label: {
-                    Text(operatorKind.label)
-                        .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isSelected ? Color.black : Color.white)
-                        .padding(.horizontal, 14)
-                        .frame(height: 30)
-                        .background(Capsule().fill(isSelected ? Color.white : Color(white: 0.17)))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(operatorKind.label)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
-    /// Freshness of the 30 s metro pass (FGC keeps its own chip on its own
-    /// screen). Arrives with the first answer, like every other map here.
+    /// The status capsule over the map (spec S2): freshness of the 30 s metro
+    /// pass and connectivity in one glass capsule, like every map here (FGC
+    /// keeps its own chip on its own screen). It joins the chrome when the
+    /// first answer arrives, exactly the moment the old chip row appeared.
     @ViewBuilder
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
-            if state.updatedAt != nil || state.lastPollFailed {
-                FreshnessChip(
-                    updatedAt: state.updatedAt,
-                    lastAttemptFailed: state.lastPollFailed,
-                    feedEmpty: false
-                )
-                .transition(AppMotion.chipTransition)
-            }
+    private var statusCapsule: some View {
+        if state.updatedAt != nil || state.lastPollFailed || !isOnline {
+            FreshnessChip(
+                updatedAt: state.updatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: false
+            )
+            .transition(AppMotion.chipTransition)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
     }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request, and an authorized one gets the camera centered on
+    /// their last fix — the system `MapUserLocationButton` behavior. An
+    /// undecided or unknown span falls back to the street scale the metro map
+    /// centers places at (spec S11).
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .glassEffect(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
+    }
+
+    private func locate() {
+        guard LocationService.shared.authorization != .notDetermined else {
+            LocationService.shared.requestWhenInUse()
+            return
+        }
+        guard showsUserLocation, let point = LocationService.shared.location else {
+            return
+        }
+        // The zoom-band span is kept current only at band changes on purpose
+        // (a write per camera change would re-diff the whole map), so the
+        // centering keeps the last known band and never zooms in beyond the
+        // street scale.
+        let span = max(latitudeSpan, Self.locateSpanFloor)
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+                )
+            )
+        }
+        onLocate?()
+    }
+
+    /// Span floor of a user centering, the same street scale the metro map
+    /// centers a focused place at (spec S11).
+    private static let locateSpanFloor = 0.02
 
     // MARK: - Map
 
@@ -262,11 +283,9 @@ struct GlobalMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if showsUserLocation {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         // The zoom ladder and the marker counter-rotation both need the live
         // camera, but neither may rewrite state on every callback (spec S8):
         // the band goes through `GlobalZoom`'s hysteresis and is stored only

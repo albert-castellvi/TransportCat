@@ -11,6 +11,9 @@ struct MapScreen: View {
     /// off-screen mode does neither, and coming back resumes on the retained
     /// `LineState` without refetching its topology.
     let isActive: Bool
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The selection is persisted under the key `AppRouter` writes for a
@@ -75,32 +78,58 @@ struct MapScreen: View {
         location.authorization == .notDetermined
     }
 
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// line's first poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ModeSelector()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                LinePicker(selectedLineCode: $selectedLineCode)
-                chipsRow
+            ZStack {
                 mapArea
                     // The placeholder and the map swap with a short fade when
-                    // the line's state first arrives (polish pass) and when its
-                    // stations do: until then the placeholder stays up instead
-                    // of an empty map (spec S2).
+                    // the line's state first arrives (polish pass) and when
+                    // its stations do: until then the placeholder stays up
+                    // instead of an empty map (spec S2).
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: mapAreaPhase)
             }
+            // Spec S1: no header — the mode selector, the line chips and the
+            // counts move to the bottom accessory, the map fills the screen
+            // under the status bar (`ignoresSafeArea` on the map only), and
+            // the v2 chrome lives in overlays: the status capsule top-left and
+            // the glass location button top-right.
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .top) {
+                if let state = lineState, state.isFeedEmpty {
+                    // Below the capsule instead of colliding with it (spec S1).
+                    NoRealtimeDataCard(compact: true, theoretical: state.isTheoretical)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 52)
+                        .transition(AppMotion.chipTransition)
+                }
+            }
+            // The capsule joins the chrome the moment the line's state exists:
+            // fade and shrink it in instead of a pop (polish pass), the same
+            // way the old chip row did.
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState?.isFeedEmpty)
             // Changing the line is a selection, so it clicks (polish pass).
             .sensoryFeedback(.selection, trigger: selectedLineCode)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
-            // The loader task must live on the always-visible container: the
-            // map itself only renders once LineState exists, so a task attached
-            // there would never start (infinite "Carregant…").
-            //
-            // Spec S13: the task is keyed on the mode as well as on the line,
-            // so leaving metro cancels the poll and returning restarts it with
-            // the state it kept — no topology is fetched twice.
+            // Loader task comment (unchanged, spec S13): the task must live on
+            // the always-visible container; keyed on the mode as well as on
+            // the line, so leaving metro cancels the poll and returning
+            // resumes with the state it kept.
             .task(id: MetroLoadKey(isActive: isActive, lineCode: selectedLineCode)) {
                 guard isActive else { return }
                 guard let client = app.client else { return }
@@ -147,6 +176,9 @@ struct MapScreen: View {
                 incidentStation = nil
             }
         }
+        // Spec S1: the map screens show no navigation bar; the map fills the
+        // screen and the sheets stay presented by the stack underneath.
+        .toolbar(.hidden, for: .navigationBar)
         // The station sheet is presented by the stack itself and declares its
         // detents here instead of inside the presented view: presenting it from
         // a view nested in the stack is what left its first rows under the
@@ -173,27 +205,61 @@ struct MapScreen: View {
         }
     }
 
-    /// Freshness of the line data and count of its incidents (spec S7).
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
-            if let state = lineState {
-                FreshnessChip(lineState: state)
-                    .transition(AppMotion.chipTransition)
-            }
-            IncidentsChip(
-                lineCode: selectedLineCode,
-                lineDisplayName: selectedLine.displayName
-            )
-            .transition(AppMotion.chipTransition)
+    /// The status capsule over the map (spec S2): freshness of the line data
+    /// and connectivity in one glass capsule. Online it waits for the line's
+    /// state, as the old chip row did; offline it is always there, because the
+    /// saved-data wording is what the map needs before the first poll answers.
+    @ViewBuilder
+    private var statusCapsule: some View {
+        if let state = lineState {
+            FreshnessChip(lineState: state)
+                .transition(AppMotion.chipTransition)
+        } else if !isOnline {
+            FreshnessChip(updatedAt: nil, lastAttemptFailed: false, feedEmpty: false)
+                .transition(AppMotion.chipTransition)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 16)
-        .padding(.bottom, 8)
-        // The freshness chip joins the row the moment the line's state exists:
-        // fade and shrink it in instead of a pop (polish pass).
-        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
-        // Same for the incidents chip when the alerts feed first answers.
-        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.alertsUpdatedAt)
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request the map used to offer in its own button, an
+    /// authorized one gets the camera centered on their last fix at the zoom
+    /// already on screen — the system `MapUserLocationButton` behavior.
+    /// `onLocate` is the T5 hook for the nearby sheet.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .glassEffect(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
+    }
+
+    private func locate() {
+        if isLocationNotDetermined {
+            // No decision taken yet: one tap asks for permission (spec S11).
+            location.requestWhenInUse()
+            return
+        }
+        guard isLocationAuthorized else { return }
+        location.start()
+        guard let point = location.location else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: cameraSpan
+                )
+            )
+        }
+        onLocate?()
     }
 
     /// The state of one line, built on first use and kept afterwards (spec S4).
@@ -316,12 +382,9 @@ struct MapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            // The system locate button only where it can do something (S11).
-            if isLocationAuthorized {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
@@ -349,25 +412,6 @@ struct MapScreen: View {
                     .padding(16)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
-            // No decision taken yet: one tap asks for permission. A denied
-            // permission shows nothing here and never blocks the map (S11).
-            // Sits above the polling spinner so the two never overlap.
-            if isLocationNotDetermined {
-                Button {
-                    location.requestWhenInUse()
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .frame(width: 40, height: 40)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Activa la ubicació")
-                .padding(.trailing, 16)
-                .padding(.bottom, 72)
-            }
-        }
         .overlay {
             if let error = state.errorMessage {
                 Text(error)
@@ -375,16 +419,6 @@ struct MapScreen: View {
                     .padding(10)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .padding(16)
-            }
-        }
-        .overlay(alignment: .top) {
-            // Five lines publish no arrivals: an empty map would read as a bug,
-            // so the reason is stated, in a compact strip at the top so it does
-            // not cover the line itself (spec S8).
-            if state.isFeedEmpty {
-                NoRealtimeDataCard(compact: true, theoretical: state.isTheoretical)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
             }
         }
         .onAppear {

@@ -26,6 +26,9 @@ struct BusMapScreen: View {
     /// off-screen mode does neither, and coming back resumes on the retained
     /// `BusLineState` without fetching its topology again.
     let isActive: Bool
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Catalog and picker state, shared with the bus Línies screen so both
@@ -39,10 +42,12 @@ struct BusMapScreen: View {
     /// (spec S8). Re-derived from the topology, the direction chip and the
     /// alerts feed, never while `body` runs.
     @State private var mapOverlay = BusMapOverlay()
-    /// `ID_SENTIT` of the direction the `Anada`/`Tornada` chip selects: full
-    /// opacity for its route and its buses, dimmed for the other one (spec S3).
-    @State private var selectedDirectionID = 1
-    @State private var showLinePicker = false
+    /// `ID_SENTIT` of the direction on screen, shared with the bottom
+    /// accessory through `BusDirectionSelection`'s storage key (spec S4): the
+    /// accessory's swap button writes it, and this screen resolves it against
+    /// the line's directions the same way. Full opacity for its route and its
+    /// stops, dimmed for the other one (spec S3).
+    @AppStorage(BusDirectionSelection.storageKey) private var storedDirectionID = 1
     /// Stop whose sheet is open (spec S6).
     @State private var selectedStop: BusStop?
     /// Stop whose incident sheet is open (spec S9).
@@ -87,19 +92,61 @@ struct BusMapScreen: View {
         location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
     }
 
+    /// Whether the map may draw the rider's position at all. A denied or
+    /// restricted permission simply leaves the dot and the button away (S11).
+    private var isLocationAuthorized: Bool {
+        location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
+    }
+
+    /// Whether the location permission has not been decided yet: the location
+    /// button then asks for it instead of centering (spec S11, S3).
+    private var isLocationNotDetermined: Bool {
+        location.authorization == .notDetermined
+    }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// first poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     // The placeholder and the map swap with a short fade when
                     // the line's state first arrives (polish pass).
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             }
+            // Spec S1: no header — the mode selector, the line button, the
+            // direction picker and the counts move to the bottom accessory,
+            // the map fills the screen under the status bar, and the v2
+            // chrome lives in overlays (spec S1).
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .top) {
+                if let state = lineState, state.hasNoBuses {
+                    // Below the capsule instead of colliding with it (spec S1).
+                    NoBusesCard()
+                        .padding(.horizontal, 16)
+                        .padding(.top, 52)
+                        .transition(AppMotion.chipTransition)
+                }
+            }
+            // The capsule joins the chrome the moment the line's state exists:
+            // fade and shrink it in instead of a pop (polish pass).
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             // Changing the bus line is a selection, so it clicks (polish pass).
             .sensoryFeedback(.selection, trigger: store.selectedLine?.code)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
             // Both loader tasks live on the always-visible container: the map
             // only renders once a line is selected and its state exists, so a
             // task attached there would never start.
@@ -163,21 +210,18 @@ struct BusMapScreen: View {
                 refreshMapOverlay()
                 resolvePendingFocuses()
             }
-            // The direction chip changes which route is drawn at full colour
-            // and whose stops carry the incident markers, so the overlay is
-            // re-derived on the change (spec S8).
-            .onChange(of: selectedDirectionID) { _, _ in
+            // The (shared) direction changes which route is drawn at full
+            // colour and whose stops carry the incident markers, so the
+            // overlay is re-derived on the change (spec S8, S4).
+            .onChange(of: storedDirectionID) { _, _ in
                 refreshMapOverlay()
             }
             // A new bus alerts feed re-derives the incident stops (spec S8).
             .onChange(of: app.busAlertsUpdatedAt) { _, _ in
                 refreshMapOverlay()
             }
-            .sheet(isPresented: $showLinePicker) {
-                BusLinePickerSheet(store: store) { line in
-                    store.selectedLineCode = line.code
-                }
-            }
+            // Spec S1: the map screens show no navigation bar.
+            .toolbar(.hidden, for: .navigationBar)
         }
         // Declared on the stack itself, like the metro station sheet: presented
         // from a view nested in the stack its first rows end up under the
@@ -220,67 +264,72 @@ struct BusMapScreen: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - The v2 chrome (spec S1)
 
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            BusLineButton(line: store.selectedLine) {
-                showLinePicker = true
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            directionControl
-            chipsRow
+    /// The status capsule over the map (spec S2): freshness of the bus poll
+    /// and connectivity in one glass capsule. Online it waits for the line's
+    /// state, as the old chip row did; offline it is always there, because the
+    /// saved-data wording is what the map needs before the first poll answers.
+    @ViewBuilder
+    private var statusCapsule: some View {
+        if let state = lineState {
+            FreshnessChip(
+                updatedAt: state.arrivalsUpdatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: state.hasNoBuses
+            )
+            .transition(AppMotion.chipTransition)
+        } else if !isOnline {
+            FreshnessChip(updatedAt: nil, lastAttemptFailed: false, feedEmpty: false)
+                .transition(AppMotion.chipTransition)
         }
     }
 
-    /// "Anada · <destí>" / "Tornada · <destí>" (spec S3). Hidden while the
-    /// stops of the line have not arrived, when there is nothing to choose.
-    @ViewBuilder
-    private var directionControl: some View {
-        if let state = lineState, !state.directions.isEmpty {
-            Picker("Direcció", selection: $selectedDirectionID) {
-                ForEach(state.directions) { direction in
-                    Text("\(direction.name) · \(direction.destinationName)")
-                        .tag(direction.id)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request the map used to offer in its own button, an
+    /// authorized one gets the camera centered on their last fix at the zoom
+    /// already on screen — the system `MapUserLocationButton` behavior.
+    /// `onLocate` is the T5 hook for the nearby sheet.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .glassEffect(in: Circle())
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
     }
 
-    /// Freshness of the bus poll and count of the line's incidents (spec S3,
-    /// S5, S7).
-    @ViewBuilder
-    private var chipsRow: some View {
-        if let line = store.selectedLine {
-            HStack(spacing: 8) {
-                if let state = lineState {
-                    FreshnessChip(
-                        updatedAt: state.arrivalsUpdatedAt,
-                        lastAttemptFailed: state.lastPollFailed,
-                        feedEmpty: state.hasNoBuses
-                    )
-                    .transition(AppMotion.chipTransition)
-                }
-                IncidentsChip(busLineCode: String(line.code), lineDisplayName: line.name)
-                    .transition(AppMotion.chipTransition)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 16)
-            .padding(.bottom, 8)
-            // The freshness chip joins the row the moment the line's state
-            // exists: fade and shrink it in instead of a pop (polish pass).
-            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
-            // Same for the incidents chip when the bus alerts feed first answers.
-            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.busAlertsUpdatedAt)
+    private func locate() {
+        if isLocationNotDetermined {
+            location.requestWhenInUse()
+            return
         }
+        guard isLocationAuthorized else { return }
+        location.start()
+        guard let point = location.location else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: cameraSpan
+                )
+            )
+        }
+        onLocate?()
+    }
+
+    /// The direction the shared storage resolves to, against the line's
+    /// directions: nil until the topology has arrived (spec S4).
+    private func resolvedDirectionID(in state: BusLineState) -> Int? {
+        BusDirectionSelection.resolve(stored: storedDirectionID, available: state.directions.map(\.id))
     }
 
     // MARK: - Map
@@ -326,9 +375,10 @@ struct BusMapScreen: View {
                 // color because a map overlay has no view opacity to set.
                 let coordinates = mapOverlay.routeCoordinates[direction.id] ?? []
                 if coordinates.count >= 2 {
+                    let shown = resolvedDirectionID(in: state)
                     MapPolyline(coordinates: coordinates)
                         .stroke(
-                            Color(hex: line.colorHex).opacity(direction.id == selectedDirectionID ? 1 : 0.4),
+                            Color(hex: line.colorHex).opacity(direction.id == shown ? 1 : 0.4),
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
                         )
                 }
@@ -381,9 +431,9 @@ struct BusMapScreen: View {
                             // the chip, so it no longer reads as a ghost copy
                             // of a selected one (map-perf S14c).
                             showLabel: latitudeSpan < Self.labelSpanThreshold
-                                && position.directionID == selectedDirectionID,
-                            showName: position.directionID == selectedDirectionID,
-                            opacity: position.directionID == selectedDirectionID ? 1 : 0.55
+                                && position.directionID == resolvedDirectionID(in: state),
+                            showName: position.directionID == resolvedDirectionID(in: state),
+                            opacity: position.directionID == resolvedDirectionID(in: state) ? 1 : 0.55
                         )
                     }
                     .buttonStyle(.plain)
@@ -391,11 +441,9 @@ struct BusMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if isLocationAuthorized {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
@@ -438,24 +486,14 @@ struct BusMapScreen: View {
                     .padding(16)
             }
         }
-        .overlay(alignment: .top) {
-            // A line with no bus in the feed reads as a broken map, so the
-            // reason is stated in a strip that does not cover the route (S9).
-            if state.hasNoBuses {
-                NoBusesCard()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-            }
-        }
         .overlay(alignment: .bottom) {
             if state.totalStopCount > 0 {
                 sourceStrip(state: state)
             }
         }
         .onChange(of: state.directions.map(\.id)) { _, ids in
-            if !ids.contains(selectedDirectionID) {
-                selectedDirectionID = ids.first ?? 1
-            }
+            // The shared storage resolves against the new directions (spec
+            // S4), so the clamp the old local `@State` needed is gone.
             // Fitted whenever the directions first become non-empty, which
             // covers both the first load and a change of line — but never
             // over a focus intent, whose centering would be erased (S11).
@@ -469,24 +507,6 @@ struct BusMapScreen: View {
             refreshMapOverlay()
             if !state.directions.isEmpty, pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                 fitCamera(to: state)
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            // S11: before a decision the map offers a button that asks for
-            // when-in-use permission; after one it never appears again.
-            if location.authorization == .notDetermined {
-                Button {
-                    location.requestWhenInUse()
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .padding(10)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Activa la ubicació")
-                .padding(.trailing, 16)
-                .padding(.top, 8)
             }
         }
         // No content-keyed `.animation` on the direction set: it animated the
@@ -516,10 +536,12 @@ struct BusMapScreen: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The direction the chips select, falling back to the first one of the
-    /// line so a line that only publishes one direction still draws its stops.
+    /// The direction the shared storage selects, falling back to the first one
+    /// of the line so a line that only publishes one direction still draws its
+    /// stops (spec S4).
     private func shownDirection(in state: BusLineState) -> BusDirection? {
-        state.directions.first { $0.id == selectedDirectionID } ?? state.directions.first
+        let resolved = resolvedDirectionID(in: state)
+        return state.directions.first { $0.id == resolved } ?? state.directions.first
     }
 
     /// Incidents of one stop from the bus alerts feed (spec S7). Both

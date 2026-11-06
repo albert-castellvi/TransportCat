@@ -15,6 +15,9 @@ import SwiftUI
 /// the router's line, place and vehicle focuses.
 @MainActor
 struct FGCMapScreen: View {
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The line chips write this key and both FGC screens read it, so the map
     /// and the lines list always show the same line (spec S7, S9).
@@ -70,6 +73,19 @@ struct FGCMapScreen: View {
         location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
     }
 
+    /// Whether the location permission has not been decided yet: the location
+    /// button then asks for it instead of centering (spec S11, S3).
+    private var isLocationNotDetermined: Bool {
+        location.authorization == .notDetermined
+    }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// first poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
     /// The line actually on screen: the stored code when it is selectable,
     /// otherwise the first selectable line.
     private var shownLineCode: String {
@@ -82,17 +98,28 @@ struct FGCMapScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     // The placeholder and the map swap with a short fade when
                     // the topology first arrives (polish pass).
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: shownLayer != nil)
             }
+            // Spec S1: no header — the mode selector and the line chips move
+            // to the bottom accessory, the map fills the screen under the
+            // status bar, and the v2 chrome lives in overlays.
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLiveSignal)
             // Changing the FGC line is a selection, so it clicks, like the bus.
             .sensoryFeedback(.selection, trigger: selectedLineCode)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 refreshMapContent()
                 fitCamera()
@@ -133,6 +160,8 @@ struct FGCMapScreen: View {
                 resolvePendingVehicleFocus()
             }
         }
+        // Spec S1: the map screens show no navigation bar.
+        .toolbar(.hidden, for: .navigationBar)
         // The train sheet is presented by the stack itself and declares its
         // detents here, as the metro and bus station sheets learned to do.
         // Closing the sheet stops the follow (spec S8).
@@ -147,44 +176,70 @@ struct FGCMapScreen: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - The v2 chrome (spec S1)
 
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            FGCLinePicker(layers: state.lineLayers, selectedLineCode: $selectedLineCode)
-            chipsRow
-        }
-    }
-
-    /// Freshness of the 30 s FGC poll (spec S7). It joins the header when the
-    /// first poll has an answer — good or bad — and fades out the placeholder
-    /// row the way the bus chip arrives with its line state. No incidents
-    /// chip: FGC publishes no line-disruption feed (spec S10).
+    /// The status capsule over the map (spec S2): freshness of the 30 s FGC
+    /// poll and connectivity in one glass capsule, like every map here. It
+    /// joins the chrome when the first poll has an answer — good or bad —
+    /// exactly the moment the old chip row appeared.
     @ViewBuilder
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
-            if hasLiveSignal {
-                FreshnessChip(
-                    updatedAt: state.arrivalsUpdatedAt,
-                    lastAttemptFailed: state.lastPollFailed,
-                    feedEmpty: false
-                )
-                .transition(AppMotion.chipTransition)
-            }
+    private var statusCapsule: some View {
+        if hasLiveSignal || !isOnline {
+            FreshnessChip(
+                updatedAt: state.arrivalsUpdatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: false
+            )
+            .transition(AppMotion.chipTransition)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 16)
-        .padding(.bottom, 8)
-        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLiveSignal)
     }
 
     /// Whether the live feed has said anything yet: a successful poll or a
-    /// failed one. Before that the chip would only read "Sense dades".
+    /// failed one. Before that the capsule would only read "Sense dades"
+    /// online, while offline the saved-data wording is already the answer.
     private var hasLiveSignal: Bool {
         state.arrivalsUpdatedAt != nil || state.lastPollFailed
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request the map used to offer in its own button, an
+    /// authorized one gets the camera centered on their last fix at the zoom
+    /// already on screen — the system `MapUserLocationButton` behavior.
+    /// `onLocate` is the T5 hook for the nearby sheet.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .glassEffect(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
+    }
+
+    private func locate() {
+        if isLocationNotDetermined {
+            location.requestWhenInUse()
+            return
+        }
+        guard isLocationAuthorized else { return }
+        location.start()
+        guard let point = location.location else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: cameraSpan
+                )
+            )
+        }
+        onLocate?()
     }
 
     // MARK: - Map
@@ -272,11 +327,9 @@ struct FGCMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if isLocationAuthorized {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
             latitudeSpan = context.region.span.latitudeDelta
@@ -313,24 +366,6 @@ struct FGCMapScreen: View {
                 .background(.thinMaterial, in: Capsule())
                 .padding(12)
                 .allowsHitTesting(false)
-        }
-        .overlay(alignment: .topTrailing) {
-            // S11: before a decision the map offers a button that asks for
-            // when-in-use permission; after one it never appears again.
-            if location.authorization == .notDetermined {
-                Button {
-                    location.requestWhenInUse()
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .padding(10)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Activa la ubicació")
-                .padding(.trailing, 16)
-                .padding(.top, 8)
-            }
         }
         .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.lineLayers.count)
     }
