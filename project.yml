@@ -19,10 +19,6 @@ settings:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
-    # Temporary for the redesign branch: report every compile error of a target
-    # in one CI run instead of stopping at the first failing file. Remove
-    # before merging (redesign-v2 T7).
-    OTHER_SWIFT_FLAGS: "$(inherited) -continue-building-after-errors"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
