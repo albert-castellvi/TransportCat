@@ -8,5 +8,6 @@ struct TransportCatWidgetsBundle: WidgetBundle {
     var body: some Widget {
         ArrivalWidget()
         ArrivalLiveActivity()
+        FollowLiveActivity()
     }
 }

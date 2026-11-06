@@ -97,6 +97,7 @@ targets:
       # Live Activity attributes shared by both targets (the controller is
       # app-only and is not listed).
       - path: TransportCat/Core/LiveActivity/ArrivalActivityAttributes.swift
+      - path: TransportCat/Core/LiveActivity/FollowActivityAttributes.swift
       # Core closure of the Intents + widget (imports and type references).
       - path: TransportCat/Core/TMB/JSONValue.swift
       - path: TransportCat/Core/TMB/TMBClient.swift
