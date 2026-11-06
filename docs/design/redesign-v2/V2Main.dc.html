@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Mapa v2 — controls a baix</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: {{c.land}}; color: {{c.text}}">
+
+<svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+<defs>
+<pattern id="grid2" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<path d="M0 0H22M0 0V22" fill="none" stroke="{{c.street}}" stroke-width="1.2"></path>
+</pattern>
+</defs>
+<rect width="390" height="844" fill="{{c.land}}"></rect>
+<rect width="390" height="844" fill="url(#grid2)"></rect>
+<path d="M0 470 L390 300" stroke="{{c.avenue}}" stroke-width="6" fill="none"></path>
+<path d="M40 160 L390 70" stroke="{{c.avenue}}" stroke-width="5" fill="none"></path>
+<path d="M150 0 L215 475 L250 844" stroke="{{c.avenue}}" stroke-width="4" fill="none"></path>
+<ellipse cx="105" cy="665" rx="75" ry="52" fill="{{c.park}}"></ellipse>
+<ellipse cx="300" cy="520" rx="28" ry="18" fill="{{c.park}}"></ellipse>
+<polygon points="390,500 390,844 100,844" fill="{{c.water}}"></polygon>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5">
+<g opacity="{{op.bus}}" style="transition: opacity .3s"><path d="M30 780 L120 640 L215 475 L300 330 L380 200" stroke="#1F5BEF"></path></g>
+<g opacity="{{op.otherMetro}}" style="transition: opacity .3s">
+<path d="M390 340 L320 400 L265 445 L240 500 L200 600 L160 700" stroke="#9B2C8F"></path>
+<path d="M0 400 L90 430 L170 450 L215 475 L240 560 L230 650 L190 720" stroke="#3AA935"></path>
+<path d="M180 190 L230 300 L280 420 L340 540" stroke="#FFC300"></path>
+<path d="M30 240 L110 300 L180 350 L250 390 L330 430 L390 450" stroke="#0077C8"></path>
+</g>
+<g opacity="{{op.s2}}" style="transition: opacity .3s"><path d="M0 330 L60 360 L130 410 L212 478" stroke="#84BD00"></path></g>
+<g opacity="{{op.s1}}" style="transition: opacity .3s"><path d="M0 250 L70 300 L140 380 L215 475" stroke="#F39200"></path></g>
+<g opacity="{{op.l1}}" style="transition: opacity .3s"><path d="M20 620 L120 560 L215 475 L260 400 L330 300 L390 250" stroke="#E3242B"></path></g>
+</g>
+<g opacity="{{op.l1Stations}}" stroke="#ffffff" stroke-width="1.5" fill="#E3242B" style="transition: opacity .3s">
+<circle cx="68" cy="591" r="5"></circle><circle cx="120" cy="560" r="5"></circle><circle cx="167" cy="518" r="5"></circle><circle cx="215" cy="475" r="5"></circle><circle cx="295" cy="350" r="5"></circle><circle cx="330" cy="300" r="5"></circle><circle cx="365" cy="271" r="5"></circle>
+</g>
+<g opacity="{{op.s1Stations}}" stroke="#ffffff" stroke-width="1.5" fill="#9E9E9E" style="transition: opacity .3s">
+<circle cx="35" cy="275" r="5"></circle><circle cx="70" cy="300" r="5"></circle><circle cx="140" cy="380" r="5"></circle><circle cx="178" cy="428" r="5"></circle><circle cx="215" cy="475" r="5"></circle>
+</g>
+<g opacity="{{op.busStops}}" stroke="#1F5BEF" stroke-width="2" fill="#ffffff" style="transition: opacity .3s">
+<circle cx="30" cy="780" r="4"></circle><circle cx="75" cy="710" r="4"></circle><circle cx="120" cy="640" r="4"></circle><circle cx="215" cy="475" r="4"></circle><circle cx="258" cy="402" r="4"></circle><circle cx="340" cy="265" r="4"></circle><circle cx="380" cy="200" r="4"></circle>
+</g>
+</svg>
+
+<sc-if value="{{isMetro}}" hint-placeholder-val="{{ true }}">
+<div style="position: absolute; left: 152px; top: 511px; width: 30px; height: 13px; border-radius: 4px; background: #E3242B; border: 1.5px solid #ffffff; box-sizing: border-box; transform: rotate(-42deg)"></div>
+<div style="position: absolute; left: 140px; top: 532px; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%)">Fondo</div>
+<div style="position: absolute; left: 280px; top: 343px; width: 30px; height: 13px; border-radius: 4px; background: #E3242B; border: 1.5px solid #ffffff; box-sizing: border-box; transform: rotate(-55deg)"></div>
+<div style="position: absolute; left: 238px; top: 366px; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%)">Hospital de Bellvitge</div>
+</sc-if>
+<sc-if value="{{isBus}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 150px; top: 545px; height: 24px; padding: 0 7px; border-radius: 12px; background: #1F5BEF; border: 1.5px solid #ffffff; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center">H12</div>
+<div style="position: absolute; left: 282px; top: 318px; height: 24px; padding: 0 7px; border-radius: 12px; background: #1F5BEF; border: 1.5px solid #ffffff; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center">H12</div>
+</sc-if>
+<sc-if value="{{isFgc}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 90px; top: 334px; width: 30px; height: 13px; border-radius: 4px; background: #F39200; border: 1.5px solid #ffffff; box-sizing: border-box; transform: rotate(49deg)"></div>
+<div style="position: absolute; left: 60px; top: 356px; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%)">Terrassa Nacions Unides</div>
+</sc-if>
+<sc-if value="{{showIncident}}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-label="Incidència a Rocafort" style="position: absolute; left: 238px; top: 378px; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; padding: 0; font-family: inherit; cursor: pointer; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%)">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#FF453A"></path><path d="M12 10v4M12 17v.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"></path></svg>
+</button>
+</sc-if>
+
+<div style="position: absolute; left: 0; top: 0; width: 390px; height: 120px; background: {{c.edgeFade}}; pointer-events: none"></div>
+
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; white-space: nowrap; border-radius: 18px; font-size: 13px; font-weight: 600; color: {{c.text}}; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<sc-if value="{{status.isOffline}}" hint-placeholder-val="{{ false }}">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF9F0A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.5a10 10 0 0 1 5-2.7M19 12.5a10 10 0 0 0-2.4-1.7M12 20h.01"></path></svg>
+</sc-if>
+<sc-if value="{{status.hasDot}}" hint-placeholder-val="{{ true }}">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: {{status.dot}}"></span>
+</sc-if>
+<span>{{status.label}}</span>
+<span style="font-weight: 500; color: {{c.sub}}">{{status.detail}}</span>
+</div>
+
+<button type="button" aria-label="La meva ubicació" style="position: absolute; top: 54px; right: 16px; width: 44px; height: 44px; border-radius: 22px; padding: 0; display: flex; align-items: center; justify-content: center; font-family: inherit; cursor: pointer; color: {{c.accent}}; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 11 21 3l-8 18-2-8-8-2Z"></path></svg>
+</button>
+
+<p style="position: absolute; left: 22px; bottom: 158px; margin: 0; font-size: 11px; font-weight: 500; color: {{c.sub}}">Dades: TMB · FGC (CC BY 4.0)</p>
+
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="Tancar el menú" onClick="{{closeMenu}}" style="position: absolute; inset: 0; border: 0; padding: 0; background: {{c.scrim}}; cursor: default"></button>
+<div role="menu" aria-label="Mode de transport" style="position: absolute; left: 16px; bottom: 156px; width: 236px; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; border-radius: 26px; background: {{c.menuBg}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%)">
+<sc-for list="{{modes}}" as="m" hint-placeholder-count="4">
+<button type="button" role="menuitemradio" aria-checked="{{m.on}}" onClick="{{m.pick}}" style="height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border: 0; border-radius: 20px; text-align: left; font-family: inherit; cursor: pointer; font-size: 16px; font-weight: 600; color: {{c.text}}; background: {{m.bg}}">
+<span style="width: 12px; height: 12px; border-radius: 6px; flex: none; background: {{m.color}}"></span>
+<span style="flex: 1 1 auto">{{m.label}}</span>
+<span style="font-size: 12px; font-weight: 500; color: {{c.sub}}">{{m.hint}}</span>
+<sc-if value="{{m.on}}" hint-placeholder-val="{{ false }}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{c.accent}}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-haspopup="menu" aria-expanded="{{menuOpen}}" aria-label="Mode: {{modeLabel}}. Canviar de mode" onClick="{{toggleMenu}}" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; font-family: inherit; cursor: pointer; font-size: 15px; font-weight: 700; color: {{c.text}}; background: {{c.inner}}">
+{{modeLabel}}
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+
+<sc-if value="{{isMetro}}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-label="Línia L1, Hospital de Bellvitge – Fondo, 1 avís. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; font-family: inherit; cursor: pointer; text-align: left; font-size: 15px; font-weight: 600; color: {{c.text}}; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 16px; background: #E3242B; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">L1</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Bellvitge – Fondo</span>
+<svg width="16" height="16" viewBox="0 0 24 24" style="flex: none" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#FF9F0A"></path><path d="M12 10v4M12 17v.5" stroke="#1c1c1e" stroke-width="2.2" stroke-linecap="round"></path></svg>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+</sc-if>
+
+<sc-if value="{{isBus}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="Línia H12, cap a Besòs. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; font-family: inherit; cursor: pointer; text-align: left; font-size: 15px; font-weight: 600; color: {{c.text}}; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 8px; box-sizing: border-box; border-radius: 16px; background: #1F5BEF; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">H12</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Cap a Besòs</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+<button type="button" aria-label="Invertir la direcció" style="flex: none; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 23px; display: flex; align-items: center; justify-content: center; font-family: inherit; cursor: pointer; color: {{c.text}}; background: {{c.inner}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"></path></svg>
+</button>
+</sc-if>
+
+<sc-if value="{{isFgc}}" hint-placeholder-val="{{ false }}">
+<button type="button" aria-label="Línia S1, Terrassa. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; font-family: inherit; cursor: pointer; text-align: left; font-size: 15px; font-weight: 600; color: {{c.text}}; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 16px; background: #F39200; color: #1a1a1a; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">S1</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Terrassa Nacions Unides</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+</sc-if>
+
+<sc-if value="{{isTot}}" hint-placeholder-val="{{ false }}">
+<div role="group" aria-label="Operadors visibles" style="flex: 1 1 auto; min-width: 0; display: flex; gap: 4px">
+<sc-for list="{{toggles}}" as="t" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1 1 0; min-width: 0; height: 46px; padding: 0 6px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; font-family: inherit; cursor: pointer; font-size: 14px; font-weight: 600; color: {{t.color}}; background: {{t.bg}}; transition: background .2s, color .2s">
+<span style="width: 10px; height: 10px; border-radius: 5px; flex: none; background: {{t.dot}}; box-shadow: 0 0 0 1.5px {{t.ring}}"></span>
+{{t.label}}
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: inherit; cursor: pointer; font-size: 10px; font-weight: 600; color: {{c.accent}}; background: {{c.tabSel}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: inherit; cursor: pointer; font-size: 10px; font-weight: 600; color: {{c.text}}; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="12" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><path d="M8.5 6h3a4 4 0 0 1 4 4M8.5 18h3a4 4 0 0 0 4-4"></path></svg>
+Línies
+</button>
+<button type="button" aria-pressed="false" aria-label="Avisos, 1 nou" style="position: relative; flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-family: inherit; cursor: pointer; font-size: 10px; font-weight: 600; color: {{c.text}}; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+<span aria-hidden="true" style="position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #FF3B30; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">1</span>
+</button>
+</nav>
+<button type="button" aria-label="Explorar i cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; font-family: inherit; cursor: pointer; color: {{c.text}}; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"startMode":{"editor":"enum","options":["metro","bus","fgc","tot"],"default":"metro"},"status":{"editor":"enum","options":["live","stale","offline"],"default":"live"},"startMenu":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: null, menu: null, ops: { metro: true, bus: false, fgc: true } };
+  }
+  renderVals() {
+    const dark = (this.props.theme ?? 'dark') !== 'light';
+    const c = dark ? {
+      land: '#1c1e22', street: '#26292e', avenue: '#30343a', park: '#1d2a21', water: '#0d2230',
+      glass: 'rgba(44,46,52,0.55)', menuBg: 'rgba(40,42,48,0.80)', glassEdge: 'rgba(255,255,255,0.16)',
+      glassShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45)',
+      text: '#ffffff', sub: 'rgba(235,235,245,0.75)', inner: 'rgba(255,255,255,0.13)',
+      pillOn: 'rgba(255,255,255,0.92)', pillOnText: '#111114', accent: '#409CFF',
+      tabSel: 'rgba(255,255,255,0.14)', scrim: 'rgba(0,0,0,0.30)', rowSel: 'rgba(255,255,255,0.12)',
+      edgeFade: 'linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0))'
+    } : {
+      land: '#f3f1ec', street: '#e4e0d8', avenue: '#ffffff', park: '#d5e7cc', water: '#aacfe6',
+      glass: 'rgba(255,255,255,0.62)', menuBg: 'rgba(255,255,255,0.85)', glassEdge: 'rgba(255,255,255,0.85)',
+      glassShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 30px rgba(0,0,0,0.14)',
+      text: '#111114', sub: 'rgba(60,60,67,0.85)', inner: 'rgba(0,0,0,0.06)',
+      pillOn: '#111114', pillOnText: '#ffffff', accent: '#0066D6',
+      tabSel: 'rgba(0,0,0,0.06)', scrim: 'rgba(0,0,0,0.12)', rowSel: 'rgba(0,0,0,0.06)',
+      edgeFade: 'linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0))'
+    };
+    const mode = this.state.mode ?? this.props.startMode ?? 'metro';
+    const menuOpen = this.state.menu ?? this.props.startMenu ?? false;
+    const ops = this.state.ops;
+    const tot = mode === 'tot';
+    const show = (on) => (on ? '1' : '0');
+    const labels = { metro: 'Metro', bus: 'Bus', fgc: 'FGC', tot: 'Tot' };
+    const modes = [
+      ['metro', '#E3242B', 'L1'], ['bus', '#1F5BEF', 'H12'], ['fgc', '#F39200', 'S1'], ['tot', dark ? '#ffffff' : '#111114', 'Xarxa']
+    ].map(([id, color, hint]) => ({
+      label: labels[id], color, hint,
+      on: id === mode,
+      bg: id === mode ? c.rowSel : 'transparent',
+      pick: () => this.setState({ mode: id, menu: false })
+    }));
+    const opColors = { metro: '#E3242B', bus: '#1F5BEF', fgc: '#F39200' };
+    const toggles = ['metro', 'bus', 'fgc'].map((id) => ({
+      label: labels[id],
+      on: ops[id],
+      dot: ops[id] ? opColors[id] : 'transparent',
+      ring: opColors[id],
+      bg: ops[id] ? c.pillOn : 'transparent',
+      color: ops[id] ? c.pillOnText : c.sub,
+      pick: () => this.setState({ ops: { ...ops, [id]: !ops[id] } })
+    }));
+    const statusKind = this.props.status ?? 'live';
+    const status = {
+      live: { label: 'En directe', detail: 'fa 8 s', dot: '#30D158', hasDot: true, isOffline: false },
+      stale: { label: 'Retard', detail: 'fa 2 min', dot: '#FF9F0A', hasDot: true, isOffline: false },
+      offline: { label: 'Sense connexió', detail: 'horari previst', dot: 'transparent', hasDot: false, isOffline: true }
+    }[statusKind];
+    return {
+      c, modes, toggles, status, menuOpen,
+      modeLabel: labels[mode],
+      toggleMenu: () => this.setState({ menu: !menuOpen }),
+      closeMenu: () => this.setState({ menu: false }),
+      isMetro: mode === 'metro', isBus: mode === 'bus', isFgc: mode === 'fgc', isTot: tot,
+      showIncident: mode === 'metro' || (tot && ops.metro),
+      op: {
+        l1: show(mode === 'metro' || (tot && ops.metro)),
+        otherMetro: show(tot && ops.metro),
+        s1: show(mode === 'fgc' || (tot && ops.fgc)),
+        s2: show(tot && ops.fgc),
+        bus: show(mode === 'bus' || (tot && ops.bus)),
+        l1Stations: show(mode === 'metro'),
+        s1Stations: show(mode === 'fgc'),
+        busStops: show(mode === 'bus')
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

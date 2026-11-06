@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Tot amb trams afectats</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #1c1e22; color: #ffffff">
+
+<svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+<defs>
+<pattern id="grid6" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<path d="M0 0H22M0 0V22" fill="none" stroke="#26292e" stroke-width="1.2"></path>
+</pattern>
+</defs>
+<rect width="390" height="844" fill="#1c1e22"></rect>
+<rect width="390" height="844" fill="url(#grid6)"></rect>
+<path d="M0 470 L390 300" stroke="#30343a" stroke-width="6" fill="none"></path>
+<ellipse cx="105" cy="665" rx="75" ry="52" fill="#1d2a21"></ellipse>
+<polygon points="390,500 390,844 100,844" fill="#0d2230"></polygon>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5">
+<path d="M390 340 L320 400 L265 445 L240 500 L200 600 L160 700" stroke="#9B2C8F"></path>
+<path d="M0 400 L90 430 L170 450 L215 475 L240 560 L230 650 L190 720" stroke="#3AA935"></path>
+<path d="M180 190 L230 300 L280 420 L340 540" stroke="#FFC300"></path>
+<path d="M30 240 L110 300 L180 350 L250 390 L330 430 L390 450" stroke="#0077C8"></path>
+<path d="M0 330 L60 360 L130 410 L212 478" stroke="#84BD00"></path>
+<path d="M0 250 L70 300 L140 380 L215 475" stroke="#F39200"></path>
+<path d="M20 620 L120 560 L215 475 L260 400 L330 300 L390 250" stroke="#E3242B"></path>
+</g>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M215 475 L260 400 L295 350" stroke="#1c1e22" stroke-width="8"></path>
+<path d="M215 475 L260 400 L295 350" stroke="#E3242B" stroke-width="4.5" stroke-dasharray="0.1 8"></path>
+<path d="M110 300 L180 350" stroke="#1c1e22" stroke-width="8"></path>
+<path d="M110 300 L180 350" stroke="#0077C8" stroke-width="4.5" stroke-dasharray="0.1 8"></path>
+<path d="M240 500 L200 600" stroke="#1c1e22" stroke-width="8"></path>
+<path d="M240 500 L200 600" stroke="#9B2C8F" stroke-width="4.5" stroke-dasharray="0.1 8"></path>
+<path d="M240 560 L230 650" stroke="#1c1e22" stroke-width="8"></path>
+<path d="M240 560 L230 650" stroke="#3AA935" stroke-width="4.5" stroke-dasharray="0.1 8"></path>
+<path d="M60 360 L130 410" stroke="#1c1e22" stroke-width="8"></path>
+<path d="M60 360 L130 410" stroke="#84BD00" stroke-width="4.5" stroke-dasharray="0.1 8"></path>
+</g>
+</svg>
+
+<sc-for list="{{badges}}" as="b" hint-placeholder-count="4">
+<button type="button" aria-label="{{b.aria}}" style="position: absolute; left: {{b.left}}px; top: {{b.top}}px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center">
+<span style="height: 30px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 5px; border-radius: 15px; background: #FF9F0A; color: #1c1c1e; font-family: Inter, system-ui, sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap; border: 2px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.45)">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#1c1c1e"></path><path d="M12 10v4M12 17v.5" stroke="#FF9F0A" stroke-width="2.4" stroke-linecap="round"></path></svg>
+{{b.text}}
+</span>
+</button>
+</sc-for>
+
+<div style="position: absolute; left: 0; top: 0; width: 390px; height: 120px; background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0)); pointer-events: none"></div>
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 13px; font-weight: 600; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span>En directe</span>
+<span style="font-weight: 500; color: rgba(235,235,245,0.75)">ara mateix</span>
+</div>
+<button type="button" aria-label="La meva ubicació" style="position: absolute; top: 54px; right: 16px; width: 44px; height: 44px; border-radius: 22px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #409CFF; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 11 21 3l-8 18-2-8-8-2Z"></path></svg>
+</button>
+
+<p style="position: absolute; left: 22px; bottom: 158px; margin: 0; font-size: 11px; font-weight: 500; color: rgba(235,235,245,0.75)">Dades: TMB · FGC (CC BY 4.0)</p>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-label="Mode: Tot. Canviar de mode" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 700; color: #ffffff; background: rgba(255,255,255,0.13)">
+Tot
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+<div role="group" aria-label="Operadors visibles" style="flex: 1 1 auto; min-width: 0; display: flex; gap: 4px">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: #111114; background: rgba(255,255,255,0.92)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #E3242B"></span>Metro</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: rgba(235,235,245,0.75); background: transparent"><span style="width: 10px; height: 10px; border-radius: 5px; box-shadow: 0 0 0 1.5px #1F5BEF"></span>Bus</button>
+<button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: #111114; background: rgba(255,255,255,0.92)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #F39200"></span>FGC</button>
+</div>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #409CFF; background: rgba(255,255,255,0.14)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="12" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><path d="M8.5 6h3a4 4 0 0 1 4 4M8.5 18h3a4 4 0 0 0 4-4"></path></svg>
+Línies
+</button>
+<button type="button" aria-pressed="false" aria-label="Avisos, 12: 5 de servei i 7 d’instal·lacions" style="position: relative; flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+<span aria-hidden="true" style="position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #FF3B30; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">12</span>
+</button>
+</nav>
+<button type="button" aria-label="Explorar i cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const badges = [
+      { x: 262, y: 405, text: 'L1', aria: 'Servei afectat a la L1' },
+      { x: 128, y: 300, text: 'L5', aria: 'Servei afectat a la L5' },
+      { x: 236, y: 590, text: '2 línies', aria: 'Servei afectat a la L2 i la L3. Toca per veure-les' },
+      { x: 70, y: 362, text: 'S2', aria: 'Servei afectat a la S2' }
+    ].map((b) => ({ ...b, left: b.x - 22, top: b.y - 22 }));
+    return { badges };
+  }
+}
+</script>
+</body>
+</html>

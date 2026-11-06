@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Parades — Tot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #0f1012; color: #ffffff">
+
+<svg width="390" height="300" viewBox="0 0 390 300" aria-hidden="true" style="position: absolute; left: 0; top: 0; opacity: {{artOp}}">
+<defs>
+<linearGradient id="fadeTg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="1"></stop><stop offset="0.5" stop-color="#ffffff" stop-opacity="0.7"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+<mask id="fadeT"><rect width="390" height="300" fill="url(#fadeTg)"></rect></mask>
+</defs>
+<g mask="url(#fadeT)">
+<g fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+<path d="M70 -20 V100 L150 180 H270" stroke="#2EAA4A"></path>
+<path d="M-20 150 H60 L230 -20" stroke="#1E6FD9"></path>
+<path d="M-20 300 L300 -20" stroke="#E3242B"></path>
+<path d="M150 -20 V40 L410 300" stroke="#9B2C8F"></path>
+<path d="M300 40 L330 70 V170 L360 200 H410" stroke="#F5A623"></path>
+</g>
+<g fill="#ffffff"><circle cx="70" cy="40" r="3.5"></circle><circle cx="205" cy="180" r="3.5"></circle><circle cx="20" cy="150" r="3.5"></circle><circle cx="200" cy="10" r="3.5"></circle><circle cx="60" cy="220" r="3.5"></circle><circle cx="250" cy="30" r="3.5"></circle><circle cx="260" cy="150" r="3.5"></circle><circle cx="330" cy="220" r="3.5"></circle><circle cx="330" cy="120" r="3.5"></circle></g>
+<g fill="#ffffff" stroke="#1c1c1e" stroke-width="4"><circle cx="160" cy="50" r="9"></circle><circle cx="195" cy="85" r="9"></circle><circle cx="90" cy="120" r="9"></circle><circle cx="125" cy="155" r="9"></circle></g>
+<circle cx="270" cy="180" r="7" fill="#ffffff" stroke="#2EAA4A" stroke-width="4"></circle>
+<circle cx="300" cy="40" r="7" fill="#ffffff" stroke="#F5A623" stroke-width="4"></circle>
+</g>
+</svg>
+
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 13px; font-weight: 600; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span>En directe</span>
+<span style="font-weight: 500; color: rgba(235,235,245,0.75)">ara mateix</span>
+</div>
+
+<main style="position: absolute; top: 104px; left: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px">
+<h1 style="margin: 0 4px 4px; font-size: 34px; font-weight: 700; letter-spacing: -0.01em; text-shadow: 0 1px 12px rgba(15,16,18,0.9), 0 0 2px rgba(15,16,18,0.9)">Parades</h1>
+
+<h2 style="margin: 4px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(235,235,245,0.75)">A prop teu</h2>
+<sc-for list="{{stops}}" as="s" hint-placeholder-count="2">
+<section aria-label="{{s.name}}" style="border-radius: 22px; padding: 12px 14px 6px; background: #1c1d21; display: flex; flex-direction: column">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 4px">
+<h3 style="margin: 0; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.name}}</h3>
+<span style="flex: none; font-size: 13px; font-weight: 600; color: #409CFF">{{s.distance}}</span>
+</div>
+<sc-for list="{{s.rows}}" as="r" hint-placeholder-count="2">
+<a href="#linia" style="min-height: 48px; display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; text-decoration: none; color: #ffffff; border-top: 1px solid rgba(255,255,255,0.08)">
+<span style="justify-self: start; height: 26px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 13px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: {{r.color}}; color: {{r.ink}}">{{r.code}}</span>
+<span style="min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 12px; font-weight: 500; color: rgba(235,235,245,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.dest1}}</span>
+<span style="font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{r.t1Color}}">{{r.t1}}</span>
+</span>
+<span style="min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 12px; font-weight: 500; color: rgba(235,235,245,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.dest2}}</span>
+<span style="font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{r.t2Color}}">{{r.t2}}</span>
+</span>
+</a>
+</sc-for>
+</section>
+</sc-for>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin: 8px 4px 0">
+<h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(235,235,245,0.75)">Estat de les línies</h2>
+<span style="font-size: 13px; font-weight: 600; color: #FFB340">3 afectades</span>
+</div>
+<div role="list" style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="12">
+<a role="listitem" href="#linia" aria-label="{{l.aria}}" style="position: relative; height: 36px; min-width: 52px; padding: 0 10px; box-sizing: border-box; border-radius: 18px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px; font-weight: 700; background: {{l.color}}; color: {{l.ink}}; box-shadow: {{l.ring}}">
+{{l.code}}
+<sc-if value="{{l.affected}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 9px; background: #FF9F0A; border: 2px solid #0f1012; display: flex; align-items: center; justify-content: center">
+<svg width="10" height="10" viewBox="0 0 24 24"><path d="M12 5v9M12 19v.5" stroke="#1c1c1e" stroke-width="4" stroke-linecap="round"></path></svg>
+</span>
+</sc-if>
+</a>
+</sc-for>
+</div>
+</main>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: linear-gradient(to bottom, rgba(15,16,18,0), rgba(15,16,18,0.92) 45%); pointer-events: none"></div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-label="Mode: Tot. Canviar de mode" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 700; color: #ffffff; background: rgba(255,255,255,0.13)">
+Tot
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+<div role="group" aria-label="Operadors visibles" style="flex: 1 1 auto; min-width: 0; display: flex; gap: 4px">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: #111114; background: rgba(255,255,255,0.92)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #E3242B"></span>Metro</button>
+<button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: #111114; background: rgba(255,255,255,0.92)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #1F5BEF"></span>Bus</button>
+<button type="button" aria-pressed="true" style="flex: 1 1 0; min-width: 0; height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600; color: #111114; background: rgba(255,255,255,0.92)"><span style="width: 10px; height: 10px; border-radius: 5px; background: #F39200"></span>FGC</button>
+</div>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #409CFF; background: rgba(255,255,255,0.14)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5v14"></path><circle cx="7" cy="5" r="2.2" fill="currentColor"></circle><circle cx="7" cy="12" r="2.2" fill="currentColor"></circle><circle cx="7" cy="19" r="2.2" fill="currentColor"></circle><path d="M12 5h8M12 12h6M12 19h8"></path></svg>
+Parades
+</button>
+<button type="button" aria-pressed="false" aria-label="Avisos, 3 nous" style="position: relative; flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+<span aria-hidden="true" style="position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #FF3B30; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">3</span>
+</button>
+</nav>
+<button type="button" aria-label="Cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"headerArt":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = (t) => (t === 'ara' ? '#30D158' : '#ffffff');
+    const row = (code, color, ink, dest1, t1, dest2, t2) => ({ code, color, ink, dest1, t1, dest2, t2, t1Color: c(t1), t2Color: c(t2) });
+    const stops = [
+      { name: 'Sagrada Família', distance: '180 m', rows: [
+        row('L2', '#9B2C8F', '#ffffff', 'Badalona P. Fabra', '2 min', 'Paral·lel', '4 min'),
+        row('L5', '#0077C8', '#ffffff', 'Vall d’Hebron', 'ara', 'Cornellà Centre', '6 min')
+      ] },
+      { name: 'Mallorca - Sardenya', distance: '90 m', rows: [
+        row('H10', '#1F5BEF', '#ffffff', 'Badal', '3 min', 'Olímpica', '7 min'),
+        row('V21', '#6AB023', '#0b2a00', 'Pg. Marítim', '5 min', 'Bonanova', '12 min')
+      ] }
+    ];
+    const lines = [
+      ['L1', '#E3242B', '#ffffff', false], ['L2', '#9B2C8F', '#ffffff', true], ['L3', '#3AA935', '#111114', false],
+      ['L4', '#FFC300', '#111114', false], ['L5', '#0077C8', '#ffffff', true], ['L9N', '#F38B00', '#111114', false],
+      ['L9S', '#F38B00', '#111114', false], ['L10N', '#00A6D6', '#111114', false], ['L10S', '#00A6D6', '#111114', false],
+      ['L11', '#8DC63F', '#111114', false], ['S1', '#F39200', '#111114', false], ['S2', '#84BD00', '#111114', true],
+      ['L6', '#8E86C4', '#111114', false], ['L7', '#B0703A', '#111114', false]
+    ].map(([code, color, ink, affected]) => ({
+      code, color, ink, affected,
+      ring: affected ? '0 0 0 2px #0f1012, 0 0 0 4px #FF9F0A' : 'none',
+      aria: code + (affected ? ', servei afectat' : ', servei normal')
+    }));
+    return { stops, lines, artOp: (this.props.headerArt ?? false) ? 0.55 : 0 };
+  }
+}
+</script>
+</body>
+</html>
