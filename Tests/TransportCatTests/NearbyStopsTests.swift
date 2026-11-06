@@ -78,7 +78,8 @@ final class NearbyStopsTests: XCTestCase {
             userLocation: GeoPoint(latitude: 41.38, longitude: 2.17),
             places: [far, near]
         )
-        XCTAssertEqual(entries.map(\.place.id), ["1"])
+        // `Place.id` is "<kind>:<code>"; the code is what the fixture names.
+        XCTAssertEqual(entries.map(\.place.code), ["1"])
     }
 
     // MARK: - sort order (walking time, then name) and cap
@@ -87,14 +88,15 @@ final class NearbyStopsTests: XCTestCase {
         let a = place(id: "a", name: "Casa de l'Aigua", lat: 41.38, lon: 2.17)
         let b = place(id: "b", name: "Almeda", lat: 41.38, lon: 2.17)
         let c = place(id: "c", name: "Badal", lat: 41.38, lon: 2.17)
-        // Same walking time for a and b (both 100 m), c is closer.
+        // a and b share a walking time (300 m = 4 min) and sort by name; c is
+        // a shorter walk (20 m = 1 min) and comes first.
         let unsorted = [
-            entry(place: a, distanceMeters: 100),
-            entry(place: b, distanceMeters: 100),
+            entry(place: a, distanceMeters: 300),
+            entry(place: b, distanceMeters: 300),
             entry(place: c, distanceMeters: 20),
         ]
         let sorted = NearbyStops.sorted(unsorted)
-        XCTAssertEqual(sorted.map(\.place.id), ["c", "b", "a"])
+        XCTAssertEqual(sorted.map(\.place.code), ["c", "b", "a"])
     }
 
     func testSortedCapsAtMaxStops() {
@@ -120,7 +122,7 @@ final class NearbyStopsTests: XCTestCase {
         }
         let sorted = NearbyStops.sorted(far + [closest])
         XCTAssertEqual(sorted.count, NearbyStops.maxStops)
-        XCTAssertEqual(sorted.first?.place.id, "near")
+        XCTAssertEqual(sorted.first?.place.code, "near")
     }
 
     func testSortedEmptyInputStaysEmpty() {
@@ -214,7 +216,8 @@ final class NearbyStopsTests: XCTestCase {
         XCTAssertEqual(rows[0].colorHex, "003888")
         XCTAssertEqual(rows[0].textColorHex, "FFFFFF")
         XCTAssertEqual(rows[0].firstTime, "ara")
-        XCTAssertEqual(rows[0].secondTime, "3 min")
+        // 300 s is five whole minutes (`Arrival.countdownText` truncates).
+        XCTAssertEqual(rows[0].secondTime, "5 min")
     }
 
     func testLineRowsCarryFGCStatusWithoutMinutes() {

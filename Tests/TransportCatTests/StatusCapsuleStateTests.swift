@@ -105,14 +105,14 @@ final class StatusCapsuleStateTests: XCTestCase {
     // MARK: - Theoretical timetable
 
     func testTheoreticalFeedIsNamedInsteadOfCountingAge() {
-        let theoretical = state(theoretical: true, updatedAfter: 8)
+        let theoretical = state(updatedAfter: 8, theoretical: true)
         XCTAssertEqual(theoretical.icon, .dot(.theoretical))
         XCTAssertEqual(theoretical.label, "Horari teòric")
         XCTAssertEqual(theoretical.detail, "")
     }
 
     func testTheoreticalWinsOverEmptyFeedLikeTheFreshnessChipDid() {
-        let both = state(theoretical: true, feedEmpty: true)
+        let both = state(feedEmpty: true, theoretical: true)
         XCTAssertEqual(both.icon, .dot(.theoretical))
         XCTAssertEqual(both.label, "Horari teòric")
     }
