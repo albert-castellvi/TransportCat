@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Seguiment en viu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+@keyframes tc-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-48}}
+@keyframes tc-pulse{0%{transform:translate(-50%,-50%) scale(0.6);opacity:0.55}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
+@keyframes tc-wave{0%,100%{transform:scaleY(0.35)}50%{transform:scaleY(1)}}
+.tc-flow{animation:tc-flow 1.1s linear infinite}
+.tc-pulse{animation:tc-pulse 1.8s ease-out infinite}
+.tc-wave{transform-origin:center;animation:tc-wave 0.9s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.tc-flow,.tc-pulse,.tc-wave{animation:none}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #ffffff; background: linear-gradient(to bottom, #0b1020 0%, #141a2b 30%, #1a1d24 31%)">
+
+<div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 844px; perspective: 760px; perspective-origin: 50% 28%">
+<div style="position: absolute; left: -185px; top: -560px; width: 760px; height: 1400px; transform: rotateX(58deg); transform-origin: 50% 100%; transform-style: preserve-3d">
+<svg width="760" height="1400" viewBox="0 0 760 1400" style="position: absolute; left: 0; top: 0">
+<defs>
+<pattern id="street7" width="80" height="80" patternUnits="userSpaceOnUse">
+<rect width="80" height="80" fill="#1c1f25"></rect>
+<path d="M0 0H80M0 0V80" stroke="#2a2e36" stroke-width="10"></path>
+</pattern>
+<filter id="glow7" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+</defs>
+<rect width="760" height="1400" fill="url(#street7)"></rect>
+</svg>
+<sc-for list="{{blocks}}" as="b" hint-placeholder-count="20">
+<div style="position: absolute; left: {{b.x}}px; top: {{b.yFace}}px; width: {{b.w}}px; height: {{b.face}}px; background: #2b2f38"></div>
+<div style="position: absolute; left: {{b.x}}px; top: {{b.y}}px; width: {{b.w}}px; height: {{b.h}}px; border-radius: 3px; background: {{b.top}}"></div>
+</sc-for>
+<svg width="760" height="1400" viewBox="0 0 760 1400" style="position: absolute; left: 0; top: 0">
+<defs>
+<filter id="glow7b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+</defs>
+<path d="M380 1400 L380 700" stroke="#9B2C8F" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.35"></path>
+<path d="M380 700 L385 575 L430 400 L468 230 L462 60 L440 0" stroke="#C04FB4" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.55" filter="url(#glow7b)"></path>
+<path d="M380 700 L385 575 L430 400 L468 230 L462 60 L440 0" stroke="#9B2C8F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+<path class="tc-flow" d="M380 700 L385 575 L430 400 L468 230 L462 60 L440 0" stroke="#F3D5EF" stroke-width="3" stroke-dasharray="10 14" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+<g fill="#ffffff" stroke="#9B2C8F" stroke-width="5">
+<circle cx="380" cy="980" r="11" opacity="0.5"></circle>
+<circle cx="385" cy="575" r="13"></circle>
+<circle cx="430" cy="400" r="11"></circle>
+<rect x="452" y="214" width="32" height="34" rx="16" stroke="#1a1d24"></rect>
+<circle cx="462" cy="60" r="11"></circle>
+</g>
+<ellipse cx="380" cy="700" rx="46" ry="46" fill="rgba(155,44,143,0.35)"></ellipse>
+</svg>
+
+<sc-for list="{{billboards}}" as="l" hint-placeholder-count="4">
+<div style="position: absolute; left: {{l.x}}px; top: {{l.y}}px; transform: translate(-50%, -100%) rotateX(-58deg); transform-origin: 50% 100%">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 10px">
+<div style="display: flex; align-items: center; gap: 7px; height: {{l.h}}px; padding: 0 {{l.pad}}px; border-radius: 999px; white-space: nowrap; font-size: {{l.size}}px; font-weight: 700; background: {{l.bg}}; color: {{l.fg}}; border: 2px solid {{l.ring}}; box-shadow: 0 10px 24px rgba(0,0,0,0.5)">
+<sc-if value="{{l.flag}}" hint-placeholder-val="{{ false }}">
+<svg width="{{l.size}}" height="{{l.size}}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3v18M5 4h11l-2 4 2 4H5"></path></svg>
+</sc-if>
+<span>{{l.name}}</span>
+<span style="font-weight: 800; color: {{l.timeColor}}">{{l.time}}</span>
+</div>
+<div style="width: 2px; height: 26px; background: linear-gradient(to bottom, rgba(255,255,255,0.7), rgba(255,255,255,0))"></div>
+</div>
+</div>
+</sc-for>
+
+<div style="position: absolute; left: 380px; top: 700px; transform: translate(-50%, -100%) rotateX(-58deg); transform-origin: 50% 100%">
+<div style="position: relative; width: 80px; height: 96px">
+<div class="tc-pulse" style="position: absolute; left: 40px; top: 70px; width: 70px; height: 70px; border-radius: 50%; border: 3px solid #E07BD5"></div>
+<svg width="80" height="80" viewBox="0 0 44 44" style="position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6))">
+<path d="M22 1 L29 10 L15 10 Z" fill="#9B2C8F" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"></path>
+<circle cx="22" cy="22" r="13" fill="#9B2C8F" stroke="#ffffff" stroke-width="2.2"></circle>
+<g fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="16.5" y="14.5" width="11" height="12" rx="3"></rect><path d="M16.5 20H27.5M18.5 29l1.5-2.5M25.5 29 24 26.5"></path></g>
+</svg>
+</div>
+</div>
+</div>
+</div>
+
+<div style="position: absolute; left: 0; top: 0; width: 390px; height: 150px; background: linear-gradient(to bottom, rgba(5,8,16,0.75), rgba(5,8,16,0)); pointer-events: none"></div>
+
+<div style="position: absolute; top: 56px; left: 16px; right: 16px; display: flex; align-items: center; gap: 8px">
+<div role="status" style="flex: 1 1 auto; min-width: 0; height: 48px; padding: 0 14px 0 6px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; border-radius: 24px; background: rgba(44,46,52,0.62); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="flex: none; height: 34px; min-width: 40px; padding: 0 8px; box-sizing: border-box; border-radius: 17px; background: #9B2C8F; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center">L2</span>
+<span style="min-width: 0; display: flex; flex-direction: column">
+<span style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Seguint · cap a Badalona</span>
+<span style="display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: rgba(235,235,245,0.75)"><span style="width: 7px; height: 7px; border-radius: 4px; background: #30D158"></span>En directe · 34 km/h</span>
+</span>
+</div>
+<button type="button" aria-pressed="true" aria-label="Anuncis en veu activats" style="flex: none; width: 48px; height: 48px; border-radius: 24px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: #0A84FF; border: 1px solid rgba(255,255,255,0.3)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"></path><path d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+<button type="button" aria-label="Deixar de seguir" style="flex: none; width: 48px; height: 48px; border-radius: 24px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.62); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+</button>
+</div>
+<button type="button" aria-label="Vista 2D" style="position: absolute; top: 116px; right: 16px; width: 48px; height: 48px; border-radius: 24px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 800; color: #ffffff; background: rgba(44,46,52,0.62); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">2D</button>
+
+<sc-if value="{{isAnnounce}}" hint-placeholder-val="{{ false }}">
+<section aria-live="polite" aria-label="Anunci" style="position: absolute; top: 176px; left: 16px; right: 16px; box-sizing: border-box; padding: 16px 18px; border-radius: 28px; display: flex; flex-direction: column; gap: 6px; background: rgba(30,32,38,0.86); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 18px 40px rgba(0,0,0,0.55); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%)">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #E07BD5">Pròxima parada</span>
+<span style="display: flex; align-items: center; gap: 3px; height: 18px" aria-label="S'està anunciant en veu">
+<span class="tc-wave" style="width: 3px; height: 16px; border-radius: 2px; background: #ffffff"></span>
+<span class="tc-wave" style="width: 3px; height: 16px; border-radius: 2px; background: #ffffff; animation-delay: .15s"></span>
+<span class="tc-wave" style="width: 3px; height: 16px; border-radius: 2px; background: #ffffff; animation-delay: .3s"></span>
+<span class="tc-wave" style="width: 3px; height: 16px; border-radius: 2px; background: #ffffff; animation-delay: .45s"></span>
+</span>
+</div>
+<span style="font-size: 32px; font-weight: 800; letter-spacing: -0.01em">Sant Martí</span>
+<span style="font-size: 14px; font-weight: 500; color: rgba(235,235,245,0.8)">Sortida pel costat dret · Ascensor fora de servei</span>
+</section>
+</sc-if>
+
+<sc-if value="{{isAlight}}" hint-placeholder-val="{{ false }}">
+<section aria-live="assertive" aria-label="Baixa a la pròxima" style="position: absolute; top: 176px; left: 16px; right: 16px; box-sizing: border-box; padding: 18px; border-radius: 28px; display: flex; flex-direction: column; gap: 8px; background: #30D158; color: #0b2a12; box-shadow: 0 18px 44px rgba(48,209,88,0.4)">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"></path></svg>
+<span style="font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase">Baixa a la pròxima</span>
+</div>
+<span style="font-size: 34px; font-weight: 800; letter-spacing: -0.01em">La Pau</span>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; font-weight: 600">
+<span>Correspondència</span>
+<span style="height: 24px; min-width: 32px; padding: 0 7px; box-sizing: border-box; border-radius: 12px; background: #FFC300; color: #111114; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center">L4</span>
+<span>· arribes en 1 min</span>
+</div>
+<button type="button" style="margin-top: 4px; height: 46px; border-radius: 23px; border: 0; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; color: #ffffff; background: #0b2a12">D'acord</button>
+</section>
+</sc-if>
+
+<section aria-label="Pròxima parada" style="position: absolute; left: 8px; right: 8px; bottom: 8px; box-sizing: border-box; padding: 18px 18px 16px; border-radius: 36px; display: flex; flex-direction: column; gap: 14px; background: rgba(28,30,36,0.88); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 -10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%)">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(235,235,245,0.7)">Pròxima parada</span>
+<span style="font-size: 30px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{next.name}}</span>
+</div>
+<span style="flex: none; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; color: {{next.timeColor}}">{{next.time}}</span>
+</div>
+
+<div aria-label="Recorregut" style="position: relative; height: 54px">
+<div style="position: absolute; left: 10px; right: 10px; top: 10px; height: 6px; border-radius: 3px; background: rgba(155,44,143,0.45)"></div>
+<div style="position: absolute; left: 10px; width: {{progressWidth}}; top: 10px; height: 6px; border-radius: 3px; background: #9B2C8F"></div>
+<sc-for list="{{strip}}" as="s" hint-placeholder-count="5">
+<div style="position: absolute; left: {{s.left}}; top: 0; width: 76px; margin-left: -38px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: {{s.dot}}px; height: {{s.dot}}px; margin-top: {{s.offset}}px; box-sizing: border-box; border-radius: 50%; background: {{s.fill}}; border: 3px solid {{s.stroke}}"></span>
+<span style="max-width: 76px; font-size: 11px; font-weight: {{s.weight}}; text-align: center; line-height: 1.15; color: {{s.color}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.name}}</span>
+</div>
+</sc-for>
+<div style="position: absolute; left: {{vehicleLeft}}; top: 1px; width: 24px; height: 24px; margin-left: -12px; border-radius: 12px; background: #9B2C8F; border: 2px solid #ffffff; box-shadow: 0 0 0 4px rgba(155,44,143,0.35)"></div>
+</div>
+
+<button type="button" style="height: 56px; box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; gap: 12px; border: 0; border-radius: 20px; cursor: pointer; text-align: left; font-family: inherit; color: #ffffff; background: rgba(255,255,255,0.08)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"></path></svg>
+<span style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 15px; font-weight: 700">Baixo a La Pau</span>
+<span style="font-size: 12px; font-weight: 500; color: rgba(235,235,245,0.75)">T'avisarem en arribar a Sant Martí</span>
+</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scene":{"editor":"enum","options":["follow","announce","alight"],"default":"follow"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const scene = this.props.scene ?? 'follow';
+    const green = '#30D158';
+    const step = scene === 'follow' ? 0 : scene === 'announce' ? 1 : 2;
+    const route = [
+      { name: 'Bac de Roda', x: 385, y: 575, time: '1 min' },
+      { name: 'Sant Martí', x: 430, y: 400, time: '3 min' },
+      { name: 'La Pau', x: 468, y: 214, time: '5 min', dest: true },
+      { name: 'Verneda', x: 462, y: 60, time: '7 min' }
+    ].slice(step).map((s, i) => ({ ...s, time: i === 0 ? (step === 2 ? '1 min' : s.time) : s.time }));
+    const billboards = route.map((s, i) => {
+      const isNext = i === 0;
+      return {
+        x: s.x, y: s.y, name: s.name, time: s.time,
+        flag: !!s.dest,
+        h: isNext ? 46 : 36, pad: isNext ? 16 : 12, size: isNext ? 17 : 14,
+        bg: s.dest ? green : isNext ? '#ffffff' : 'rgba(30,32,38,0.88)',
+        fg: s.dest || isNext ? '#111114' : '#ffffff',
+        ring: s.dest ? '#ffffff' : isNext ? '#9B2C8F' : 'rgba(255,255,255,0.25)',
+        timeColor: s.dest ? '#0b2a12' : isNext ? '#9B2C8F' : 'rgba(235,235,245,0.8)'
+      };
+    });
+    const next = route[0];
+    const names = ['Clot', 'Bac de Roda', 'Sant Martí', 'La Pau', 'Verneda'];
+    const passedUpTo = step;
+    const strip = names.map((name, i) => {
+      const passed = i <= passedUpTo;
+      const isDest = name === 'La Pau';
+      return {
+        name,
+        left: (8 + i * 21) + '%',
+        dot: isDest ? 22 : 16,
+        offset: isDest ? 2 : 5,
+        fill: isDest ? green : passed ? '#9B2C8F' : '#1c1e24',
+        stroke: isDest ? '#ffffff' : passed ? '#9B2C8F' : 'rgba(155,44,143,0.8)',
+        weight: isDest || i === passedUpTo + 1 ? 800 : 500,
+        color: isDest ? green : passed ? 'rgba(235,235,245,0.55)' : '#ffffff'
+      };
+    });
+    const vehiclePct = 8 + passedUpTo * 21 + 10.5;
+    return {
+      blocks: this.blocks(),
+      billboards,
+      next: { name: next.name, time: next.time, timeColor: next.dest ? green : '#ffffff' },
+      strip,
+      vehicleLeft: vehiclePct + '%',
+      progressWidth: 'calc(' + vehiclePct + '% - 10px)',
+      isAnnounce: scene === 'announce',
+      isAlight: scene === 'alight'
+    };
+  }
+  blocks() {
+    const out = [];
+    const cols = [60, 160, 520, 620];
+    for (let r = 0; r < 14; r++) {
+      for (const c of cols) {
+        const seed = (r * 7 + c) % 5;
+        const w = 60, h = 52 + seed * 4;
+        const face = 10 + seed * 6;
+        const y = 1360 - r * 100 - h;
+        out.push({ x: c, y, w, h, face, yFace: y + h, top: seed % 2 ? '#3a3f4a' : '#343944' });
+      }
+    }
+    return out;
+  }
+}
+</script>
+</body>
+</html>
