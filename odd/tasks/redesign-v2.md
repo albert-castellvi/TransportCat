@@ -65,12 +65,12 @@ Branch: `feat/redesign-v2` (from main d48cfa1). Delivery: ask-on-risk; work-unit
 | T1 | S1–S5 | delegated pane `chrome` (glm5.3-flash, thinking high = max), wave 1 | committed; CI run 42213124800 pending. Parent review: RootView, BottomAccessory and every dependency verified at their definitions; added an explicit `.environmentObject(app)` on the accessory. Known limitation: on a first launch the termini and the bus swap stay hidden until the topology cache exists | 1479d0c |
 | T2 | S8–S10 | delegated pane `parades` (glm5.3-flash, thinking high = max), wave 1 | committed locally; push waits for T1 CI green. Follow-up F1 (T7): metro interchange badges read `GlobalNetworkState.shared.lineStates`, which is empty until Tot has run, so in Metro mode they are usually missing; switch to the places catalog (`Place.lineCodes`, as MapScreen does) | 497ce65 |
 | T3 | S11 (NetworkArt, Avisos empty, loading) | delegated pane `motif` (glm5.3-flash, thinking high = max), wave 1 | done: CI run 42211895995 compiled it and passed all tests, including NetworkArtTests. Review fixes: the copy is metro-only ("Cap incidència de servei al metro."), the facility row is generic ("N instal·lacions fora de servei"), explicit @ViewBuilder | 8c05e06 |
-| T4a | S6–S7 metro + bus maps | delegated pane `markers-mb` (GLM 5.3, high), wave 2 | pending | — |
-| T4b | S6–S7 FGC + Tot maps (D6 grouping helper) | delegated pane `markers-ft` (GLM 5.3, high), wave 2 | pending | — |
-| T5 | S13–S14 | delegated pane `nearby` (GLM 5.3, high), wave 2 | pending | — |
-| T6 | S11 header art on Parades | inline (parent), after T2 + T3 | pending | — |
+| T4a | S6–S7 metro + bus maps | delegated pane `markers-mb` (GLM 5.3, high), wave 2 | done (parent review: rules, tests, inits) | T4a commit |
+| T4b | S6–S7 FGC + Tot maps (D6 grouping helper) | delegated pane `markers-ft` (GLM 5.3, high), wave 2 | done (CI 42224359028: 531 tests, 0 failures) | T4b commit |
+| T5 | S13–S14 | delegated pane `nearby` (GLM 5.3, high), wave 2 | done; FGCMapScreen init fix 01b59ea | T5 commit |
+| T6 | S11 header art on Parades + fix F1 | inline (parent) | done (CI 42221077017: 498 tests, 0 failures) | T6 commit |
 | W1 | wave 1 green | CI run 42218462529: 497 tests, 0 failures, iOS 26 | done | 1479d0c..(test fix) |
-| T7 | S15 + cleanup (dead `AlertBanner`, unused `ModeSelector`/pickers, docs, help) + final verify | parent + independent verifier | pending | — |
+| T7 | S15 + cleanup | parent + independent verifier | done: 'Més detalls' / 'Veure a la línia' restore follow and the line jump; one interchange rule; dead views removed; temporary flag removed; verifier 0 blockers; CI 42226854647 526 tests, 0 failures | T7 commits |
 
 Route evidence: the writer trigger is (a) parallelism. T1/T2/T3 have disjoint edit surfaces, and each is several files and well over 100 lines. T4 and T5 share the map files with T1, so they wait for wave 2.
 
@@ -102,3 +102,8 @@ Route evidence: the writer trigger is (a) parallelism. T1/T2/T3 have disjoint ed
     - contracts written as real compiled code before parallel writers start (`MapOverlays.swift`, `AppRouter.isNearbyPresented`).
   - Result: CI run 42218462529 green, 497 tests and 0 failures.
 - L15 Wave 2 plan: T4a (metro + bus maps), T4b (FGC + Tot maps), T5 (nearby sheet + quick actions), in parallel with disjoint surfaces. `BusMarker` stays until T7 (T4b's files still use it). Briefs: scratchpad `task-t4a-markers-metro-bus.md`, `task-t4b-markers-fgc-tot.md`, `task-t5-nearby.md`.
+- L16 2026-11-06 user: "en cuanto este lanza la segunda oleada, y en cuanto este todo, lanza a testfligh". Wave 2 ran in parallel.
+  - Parent review fixes: the FGCMapScreen explicit init hid onLocate (01b59ea); the cards lost 'follow' and Tot's line jump (restored in T7).
+  - Independent verifier (pane verify-feature, report in scratchpad verify-feature-report.md): S1–S15 MET, 0 blockers, 0 regressions vs d48cfa1.
+  - Advisories: the timeline regularity tags were dropped (spec S8); on a first launch the accessory shows no termini until the topology cache exists.
+  - Final CI 42226854647: 526 tests, 0 failures, without the temporary flag. Next: PR to main, squash merge, TestFlight.
