@@ -119,7 +119,7 @@ final class ParadesTimelineTests: XCTestCase {
         XCTAssertTrue(ParadesTimeText.now.isImminent)
         XCTAssertFalse(ParadesTimeText.none.isImminent)
         XCTAssertFalse(ParadesTimeText.minutes("2 min").isImminent)
-xcode    }
+    }
 
     // MARK: - metroTerminiNames (sticky header)
 
