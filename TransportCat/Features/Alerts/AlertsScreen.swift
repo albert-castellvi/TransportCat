@@ -1,5 +1,44 @@
 import SwiftUI
 
+/// How the Avisos screen reads one alerts feed snapshot (spec S11): the
+/// "Tot funciona" empty state appears when no SERVICE alert is shown, and
+/// facility alerts stay reachable through a count row that leads to them.
+/// Pure and Foundation-only so `NetworkArtTests` covers the decision.
+struct AlertsStateSummary: Equatable {
+    /// Alerts that interrupt the service, in feed order.
+    let serviceAlerts: [ServiceAlert]
+    /// Alerts for elevators, escalators and corridors, in feed order.
+    let facilityAlerts: [ServiceAlert]
+
+    init(alerts: [ServiceAlert]) {
+        self.serviceAlerts = alerts.filter { $0.severity == .service }
+        self.facilityAlerts = alerts.filter { $0.severity == .facility }
+    }
+
+    /// No service alert across the shown operators: the screen shows the
+    /// network motif instead of the alert list.
+    var showsEmptyState: Bool {
+        serviceAlerts.isEmpty
+    }
+
+    /// How many facility alerts the count row leads to.
+    var facilityCount: Int {
+        facilityAlerts.count
+    }
+
+    /// Row title, after the `V5Empty` mockup: "3 instal·lacions fora de
+    /// servei". Generic on purpose: facility alerts also cover corridors and
+    /// accesses (e.g. PP2), not only elevators and escalators.
+    static func facilityTitle(count: Int) -> String {
+        count == 1
+            ? "1 instal·lació fora de servei"
+            : "\(count) instal·lacions fora de servei"
+    }
+
+    /// Row subtitle, matching the `V5Empty` mockup.
+    static let facilitySubtitle = "No afecten la circulació"
+}
+
 /// Service status: active disruptions across the whole metro network.
 struct AlertsScreen: View {
     @EnvironmentObject private var app: AppModel
@@ -39,12 +78,16 @@ struct AlertsScreen: View {
                     Text(error)
                         .font(.footnote)
                         .foregroundStyle(.red)
-                } else if app.alerts.isEmpty {
-                    Label("Sense afectacions registrades", systemImage: "checkmark.circle")
-                        .foregroundStyle(.green)
                 } else {
-                    ForEach(app.alerts) { alert in
-                        AlertRow(alert: alert)
+                    let summary = AlertsStateSummary(alerts: app.alerts)
+                    if summary.showsEmptyState {
+                        emptyState(summary)
+                    } else {
+                        // Same flat list as before: service and facility
+                        // alerts together, in feed order.
+                        ForEach(app.alerts) { alert in
+                            AlertRow(alert: alert)
+                        }
                     }
                 }
             }
@@ -57,6 +100,85 @@ struct AlertsScreen: View {
                 await app.refreshAlerts()
             }
         }
+    }
+
+    /// The "Tot funciona" empty state (spec S11, `V5Empty` mockup): the icon's
+    /// network in full colour, then the facility-alert count row when the feed
+    /// still has elevators or escalators out of service.
+    @ViewBuilder
+    private func emptyState(_ summary: AlertsStateSummary) -> some View {
+        VStack(spacing: 20) {
+            NetworkArt(.illustration, accessibilityLabel: Text("Il·lustració de la xarxa de metro"))
+                .frame(height: 254)
+                .frame(maxWidth: .infinity)
+
+            VStack(spacing: 8) {
+                Text("Tot funciona")
+                    .font(.title2.weight(.bold))
+                // This screen reads the metro alerts feed only, so the copy
+                // claims nothing about bus or FGC.
+                Text("Cap incidència de servei al metro.")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+
+        // Facility alerts stay reachable (spec S11): the count row leads to
+        // them, exactly like the mockup's "instal·lacions" row.
+        if summary.facilityCount > 0 {
+            NavigationLink {
+                FacilityAlertsScreen(alerts: summary.facilityAlerts)
+            } label: {
+                FacilityAlertsRow(count: summary.facilityCount)
+            }
+        }
+    }
+}
+
+/// The facility-alert count row of the empty state (spec S11, `V5Empty`):
+/// grey mark, the count, and "No afecten la circulació".
+private struct FacilityAlertsRow: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "figure.roll")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(AlertsStateSummary.facilityTitle(count: count))
+                    .font(.body.weight(.semibold))
+                Text(AlertsStateSummary.facilitySubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+}
+
+/// The facility alerts behind the count row: the same rows the full list
+/// uses, with no extra data loading.
+private struct FacilityAlertsScreen: View {
+    let alerts: [ServiceAlert]
+
+    var body: some View {
+        List {
+            ForEach(alerts) { alert in
+                AlertRow(alert: alert)
+            }
+        }
+        .navigationTitle(Text("Instal·lacions"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
