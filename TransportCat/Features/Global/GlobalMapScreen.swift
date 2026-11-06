@@ -39,11 +39,27 @@ struct GlobalMapScreen: View {
     @State private var selectedIncident: GlobalIncidentStation?
     /// Camera bearing, so the train pictograms keep facing along the track
     /// whatever the rider does with the map (as on every other map here).
+    /// Written only when the heading moves a visible amount (one degree,
+    /// `GlobalCamera`): below that the counter-rotation is identical, and
+    /// skipping the write keeps continuous camera changes from re-diffing
+    /// the whole map content.
     @State private var cameraHeading: Double = 0
-    /// Visible latitude span — the input of the zoom ladder (S8). It starts at
-    /// the opening span below (spec S9), so the first paint is already on the
-    /// band it opens with, before MapKit reports the first camera change.
+    /// Visible latitude span at the last band change — the input of the zoom
+    /// ladder (S8). Only written when the band actually changes: the camera
+    /// callbacks feed `GlobalZoom`'s hysteresis directly, so a span wobbling
+    /// inside the margin never rewrites state (and never re-diffs the map).
+    /// It starts at the opening span below (spec S9), so the first paint is
+    /// already on the band it opens with, before MapKit reports the first
+    /// camera change.
     @State private var latitudeSpan: Double = GlobalMapScreen.initialRegion.span.latitudeDelta
+    /// The zoom band the map draws right now (spec S8). Stored, not derived
+    /// from `latitudeSpan`, so it only changes when `GlobalZoom`'s
+    /// hysteresis says the span cleared a threshold by the margin — a 10 Hz
+    /// vehicle tick or a sub-threshold camera wobble never invalidates the
+    /// map content through it.
+    @State private var zoomLevel: GlobalZoomLevel = GlobalZoom.level(
+        forLatitudeSpan: GlobalMapScreen.initialRegion.span.latitudeDelta
+    )
     // Named type instead of `Self` on purpose: a stored-property initializer
     // has no instance context.
     @State private var cameraPosition: MapCameraPosition = .region(GlobalMapScreen.initialRegion)
@@ -65,10 +81,6 @@ struct GlobalMapScreen: View {
 
     private var selectedOperators: Set<GlobalOperator> {
         GlobalOperatorSelection.decode(operatorsRaw)
-    }
-
-    private var level: GlobalZoomLevel {
-        GlobalZoom.level(forLatitudeSpan: latitudeSpan)
     }
 
     var body: some View {
@@ -94,12 +106,12 @@ struct GlobalMapScreen: View {
             .onAppear {
                 refreshFGCStations()
                 refreshLineCoordinates()
-                updateFrameContext(level: level, latitudeSpan: latitudeSpan)
+                updateFrameContext(level: zoomLevel, latitudeSpan: latitudeSpan)
             }
             .onChange(of: isActive) { _, active in
                 guard PerfTelemetry.isEnabled else { return }
                 if active {
-                    updateFrameContext(level: level, latitudeSpan: latitudeSpan)
+                    updateFrameContext(level: zoomLevel, latitudeSpan: latitudeSpan)
                 } else {
                     FrameMonitor.shared.end(ifMode: "global")
                 }
@@ -113,7 +125,7 @@ struct GlobalMapScreen: View {
                 FrameMonitor.shared.end(ifMode: "global")
             }
             .onChange(of: operatorsRaw) { _, _ in
-                updateFrameContext(level: level, latitudeSpan: latitudeSpan)
+                updateFrameContext(level: zoomLevel, latitudeSpan: latitudeSpan)
             }
             .onChange(of: fgc.stations.count) { _, _ in refreshFGCStations() }
             // The layers themselves, not their count: the coordinates of every
@@ -228,62 +240,21 @@ struct GlobalMapScreen: View {
             }
         }
         return Map(position: $cameraPosition) {
-            // Lines: always drawn (spec S8).
-            ForEach(shownMetroLayers) { layer in
-                polyline(layer: layer, lineWidth: 4)
-            }
-            ForEach(shownFGCLayers) { layer in
-                polyline(layer: layer, lineWidth: 4)
-            }
-            ForEach(shownBusLayers) { layer in
-                polyline(layer: layer, lineWidth: 3)
-            }
+            linePolylines
 
             // Stations join from 0.25° down (spec S8 and S9: the launch span
             // is above that threshold, so no dots on the first paint).
-            if level.includesStations {
-                ForEach(shownStationDots) { dot in
-                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: dot.position.latitude, longitude: dot.position.longitude)) {
-                        StationDot(colorHex: dot.colorHex)
-                            .accessibilityLabel("Estació \(dot.name)")
-                    }
-                }
-                ForEach(fgcStationsDots) { station in
-                    if let point = station.point {
-                        Annotation("", coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)) {
-                            StationDot(colorHex: "9E9E9E")
-                                .accessibilityLabel("Estació \(station.name)")
-                        }
-                    }
-                }
+            if zoomLevel.includesStations {
+                stationDotsContent
             }
 
-            // Incidents are not tied to the station band (spec S9): they are the
-            // one thing the overview zoom must show, so the lines-only first
-            // paint already carries them — and they stay on every closer band
-            // exactly as before.
             if selectedOperators.contains(.metro) {
-                ForEach(state.incidentStations) { incident in
-                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: incident.position.latitude, longitude: incident.position.longitude)) {
-                        Button {
-                            selectedIncident = incident
-                        } label: {
-                            IncidentMarker()
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Incidència a \(incident.name)")
-                    }
-                }
+                incidentMarkersContent
             }
 
             // Vehicles with labels join below 0.08° (spec S8).
-            if level.includesVehicles {
-                ForEach(shownMetroVehicles) { vehicle in
-                    vehicleAnnotation(vehicle, operator: AppModeCode.metro)
-                }
-                ForEach(shownFGCVehicles) { vehicle in
-                    vehicleAnnotation(vehicle, operator: AppModeCode.fgc)
-                }
+            if zoomLevel.includesVehicles {
+                vehicleAnnotationsContent
             }
 
             if showsUserLocation {
@@ -297,16 +268,25 @@ struct GlobalMapScreen: View {
             }
         }
         // The zoom ladder and the marker counter-rotation both need the live
-        // camera, so the span and heading update continuously (spec S8).
+        // camera, but neither may rewrite state on every callback (spec S8):
+        // the band goes through `GlobalZoom`'s hysteresis and is stored only
+        // when it really changes, and the heading only when it moves a
+        // visible degree — so camera changes cannot invalidate the map by
+        // themselves.
         .onMapCameraChange(frequency: .continuous) { context in
             let nextSpan = context.region.span.latitudeDelta
             if PerfTelemetry.isEnabled, isActive { FrameMonitor.shared.cameraChanged(latitudeSpan: nextSpan) }
-            let nextLevel = GlobalZoom.level(forLatitudeSpan: nextSpan)
-            if nextLevel != level, isActive {
-                recordBandChange(from: level, to: nextLevel, latitudeSpan: nextSpan)
+            let nextLevel = GlobalZoom.level(forLatitudeSpan: nextSpan, previous: zoomLevel)
+            if nextLevel != zoomLevel {
+                if isActive {
+                    recordBandChange(from: zoomLevel, to: nextLevel, latitudeSpan: nextSpan)
+                }
+                zoomLevel = nextLevel
+                latitudeSpan = nextSpan
             }
-            cameraHeading = context.camera.heading
-            latitudeSpan = context.region.span.latitudeDelta
+            if GlobalCamera.isHeadingChangeSignificant(from: cameraHeading, to: context.camera.heading) {
+                cameraHeading = context.camera.heading
+            }
         }
         // Attribution of the feeds drawn here (spec S10 wording).
         .overlay(alignment: .bottomLeading) {
@@ -320,6 +300,83 @@ struct GlobalMapScreen: View {
                 .allowsHitTesting(false)
         }
         .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.metroLineLayers.count)
+    }
+
+    // MARK: - Map content sections
+
+    /// The map content is split by data source so each section reads only its
+    /// own inputs: the lines and the stations below never touch the 10 Hz
+    /// vehicle streams, so a vehicle tick re-diffs them without changing a
+    /// single value — and every `Equatable` marker view in them skips its
+    /// body instead of being rebuilt (spec S8).
+
+    /// Lines: always drawn (spec S8). Depends only on the layer arrays and
+    /// the coordinates cached per layer change — never on the vehicle
+    /// streams.
+    @MapContentBuilder
+    private var linePolylines: some MapContent {
+        ForEach(shownMetroLayers) { layer in
+            polyline(layer: layer, lineWidth: 4)
+        }
+        ForEach(shownFGCLayers) { layer in
+            polyline(layer: layer, lineWidth: 4)
+        }
+        ForEach(shownBusLayers) { layer in
+            polyline(layer: layer, lineWidth: 3)
+        }
+    }
+
+    /// Station dots, from 0.25° down (spec S8 and S9: the launch span is
+    /// above that threshold, so no dots on the first paint). Reads only the
+    /// station lists — the dots are stable, `Equatable` value views, so a
+    /// vehicle tick's re-diff skips every unchanged dot's body.
+    @MapContentBuilder
+    private var stationDotsContent: some MapContent {
+        ForEach(shownStationDots) { dot in
+            Annotation("", coordinate: CLLocationCoordinate2D(latitude: dot.position.latitude, longitude: dot.position.longitude)) {
+                StationDot(name: dot.name, colorHex: dot.colorHex)
+            }
+        }
+        ForEach(fgcStationsDots) { station in
+            if let point = station.point {
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)) {
+                    StationDot(name: station.name, colorHex: "9E9E9E")
+                }
+            }
+        }
+    }
+
+    /// Incident markers are not tied to the station band (spec S9): they are
+    /// the one thing the overview zoom must show, so the lines-only first
+    /// paint already carries them — and they stay on every closer band
+    /// exactly as before. Depends only on the incident list.
+    @MapContentBuilder
+    private var incidentMarkersContent: some MapContent {
+        ForEach(state.incidentStations) { incident in
+            Annotation("", coordinate: CLLocationCoordinate2D(latitude: incident.position.latitude, longitude: incident.position.longitude)) {
+                Button {
+                    selectedIncident = incident
+                } label: {
+                    IncidentMarker()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Incidència a \(incident.name)")
+            }
+        }
+    }
+
+    /// Vehicles with labels join below 0.08° (spec S8). The only section that
+    /// reads the 10 Hz vehicle streams, and only while the band draws them —
+    /// a vehicle republish changes values here and nowhere else in the map
+    /// content.
+    @MapContentBuilder
+    private var vehicleAnnotationsContent: some MapContent {
+        ForEach(shownMetroVehicles) { vehicle in
+            vehicleAnnotation(vehicle, operator: AppModeCode.metro)
+        }
+        ForEach(shownFGCVehicles) { vehicle in
+            vehicleAnnotation(vehicle, operator: AppModeCode.fgc)
+        }
     }
 
     /// Telemetry only: counts match the annotation branches, not visible
@@ -561,8 +618,14 @@ struct GlobalMapScreen: View {
 }
 
 /// Station dot on the global map: the same 10 pt ring the FGC and bus maps
-/// draw for their stops, in the owning line's color.
-private struct StationDot: View {
+/// draw for their stops, in the owning line's color. A small value-type view
+/// that is deliberately `Equatable` (with the accessibility label folded in,
+/// so the whole annotation label is one comparable value): stations never
+/// move, so when a 10 Hz vehicle tick re-diffs the map content, SwiftUI
+/// compares the dot values and skips every unchanged dot's body — the
+/// vehicle streams can never redraw the 263 station dots.
+private struct StationDot: View, Equatable {
+    let name: String
     let colorHex: String
 
     var body: some View {
@@ -570,11 +633,14 @@ private struct StationDot: View {
             .fill(Color(hex: colorHex))
             .frame(width: 10, height: 10)
             .overlay(Circle().stroke(.white, lineWidth: 1.5))
+            .accessibilityLabel("Estació \(name)")
     }
 }
 
 /// Red warning marker on a station with an active incident (spec S8, S9).
-private struct IncidentMarker: View {
+/// `Equatable` like every marker label here, so the incident section re-diffs
+/// without rebuilding the markers.
+private struct IncidentMarker: View, Equatable {
     var body: some View {
         Image(systemName: "exclamationmark.triangle.fill")
             .font(.system(size: 14, weight: .bold))
@@ -586,7 +652,12 @@ private struct IncidentMarker: View {
 
 /// Metro train pictogram for the global map, drawn like the metro map's own
 /// marker (the 72:32 art at 42 pt) with its destination label below it.
-private struct TrainPictogram: View {
+/// `Equatable` so SwiftUI skips the whole marker when neither the art, the
+/// destination nor the rotation changed; when only the rotation does (a train
+/// gliding along its track), the label below is its own `Equatable` view and
+/// skips its body — the `.thinMaterial` capsule is not rebuilt on every
+/// 10 Hz tick, which keeps the identical look at a fraction of the cost.
+private struct TrainPictogram: View, Equatable {
     let imageName: String
     let destination: String
     let rotation: Double
@@ -600,13 +671,26 @@ private struct TrainPictogram: View {
             .frame(width: 42, height: 18.67)
             .rotationEffect(.degrees(rotation))
             .overlay(alignment: .bottom) {
-                Text(destination)
-                    .font(.caption2.bold())
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.thinMaterial, in: Capsule())
-                    .fixedSize()
-                    .offset(y: 20)
+                TrainDestinationLabel(destination: destination)
             }
+    }
+}
+
+/// Destination capsule under a train pictogram: the text plus its
+/// `.thinMaterial` background, exactly as `MapScreen`'s marker draws it.
+/// `Equatable` on purpose — the destination rarely changes, so a 10 Hz
+/// position tick skips this body entirely and the material capsule is reused
+/// instead of being recomputed.
+private struct TrainDestinationLabel: View, Equatable {
+    let destination: String
+
+    var body: some View {
+        Text(destination)
+            .font(.caption2.bold())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.thinMaterial, in: Capsule())
+            .fixedSize()
+            .offset(y: 20)
     }
 }
