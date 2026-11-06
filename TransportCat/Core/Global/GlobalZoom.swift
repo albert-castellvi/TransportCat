@@ -48,6 +48,39 @@ enum GlobalZoom {
         return .linesAndStations
     }
 
+    /// How far past a threshold the span must travel before the band changes
+    /// (spec S8): a 4% margin on the crossed threshold, so a span wobbling
+    /// around 0.25° or 0.08° cannot flip the band — and rebuild the whole map
+    /// content — on every camera frame.
+    static let hysteresisMargin: Double = 0.04
+
+    /// The level for a camera latitude span with band hysteresis (spec S8):
+    /// the band only changes once the span moves past the crossed threshold
+    /// by `hysteresisMargin`; while the span stays inside that margin band,
+    /// `previous` wins. Far from both thresholds this returns exactly what
+    /// `level(forLatitudeSpan:)` returns, and a single large jump may cross
+    /// two bands at once, like the plain function always did.
+    static func level(forLatitudeSpan span: Double, previous: GlobalZoomLevel) -> GlobalZoomLevel {
+        let linesExit = linesOnlyAboveDegrees * (1 - hysteresisMargin)
+        let linesEnter = linesOnlyAboveDegrees * (1 + hysteresisMargin)
+        let vehiclesEnter = vehiclesBelowDegrees * (1 - hysteresisMargin)
+        let vehiclesExit = vehiclesBelowDegrees * (1 + hysteresisMargin)
+        switch previous {
+        case .lines:
+            // Zooming in: keep the lines band until the span is a clear
+            // margin below the station threshold.
+            return span <= linesExit ? level(forLatitudeSpan: span) : .lines
+        case .linesAndStations:
+            if span > linesEnter { return .lines }
+            if span < vehiclesEnter { return .linesStationsAndVehicles }
+            return .linesAndStations
+        case .linesStationsAndVehicles:
+            // Zooming out: keep the vehicle band until the span is a clear
+            // margin above the vehicle threshold.
+            return span >= vehiclesExit ? level(forLatitudeSpan: span) : .linesStationsAndVehicles
+        }
+    }
+
     /// Depth of a level in the zoom ladder: 0 for lines only, 2 for the full
     /// map. Lets callers assert that zooming in never removes detail.
     static func rank(of level: GlobalZoomLevel) -> Int {
@@ -56,5 +89,24 @@ enum GlobalZoom {
         case .linesAndStations: return 1
         case .linesStationsAndVehicles: return 2
         }
+    }
+}
+
+/// Pure camera-input rules of the global map that are not part of the zoom
+/// ladder (spec S8): what the continuous camera callbacks may write to
+/// `@State` without invalidating the whole map for no visible change.
+enum GlobalCamera {
+    /// Smallest heading change (degrees) worth storing: below it the marker
+    /// counter-rotation is visually identical, and skipping the write keeps
+    /// camera motion from re-diffing the map content.
+    static let headingWriteThresholdDegrees: Double = 1
+
+    /// Whether a heading change is large enough to store: the shortest way
+    /// around the compass (0°–360° wraparound included) must reach the
+    /// threshold.
+    static func isHeadingChangeSignificant(from previous: Double, to next: Double) -> Bool {
+        let difference = abs(next - previous).truncatingRemainder(dividingBy: 360)
+        let shortest = min(difference, 360 - difference)
+        return shortest >= headingWriteThresholdDegrees
     }
 }

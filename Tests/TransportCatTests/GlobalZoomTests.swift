@@ -51,6 +51,80 @@ final class GlobalZoomTests: XCTestCase {
         XCTAssertEqual(GlobalZoom.level(forLatitudeSpan: 0.001), .linesStationsAndVehicles)
     }
 
+    // MARK: - Band hysteresis
+
+    /// Inside the margin around a crossed threshold the previous band wins, so
+    /// a span wobbling there cannot rebuild the map content.
+    func testHysteresisKeepsPreviousBandInsideTheMargin() {
+        // 0.245 sits just under the lines-only threshold; the margin holds it.
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.245, previous: .lines),
+            .lines
+        )
+        // 0.255 sits just over the threshold; still the station band.
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.255, previous: .linesAndStations),
+            .linesAndStations
+        )
+        // 0.079 sits just over the vehicle threshold; still the station band.
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.079, previous: .linesAndStations),
+            .linesAndStations
+        )
+        // 0.081 sits just over the vehicle threshold; still the vehicle band.
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.081, previous: .linesStationsAndVehicles),
+            .linesStationsAndVehicles
+        )
+    }
+
+    /// Past the margin the band changes, in both directions and across both
+    /// thresholds.
+    func testHysteresisFlipsPastTheMargin() {
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.23, previous: .lines),
+            .linesAndStations
+        )
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.27, previous: .linesAndStations),
+            .lines
+        )
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.07, previous: .linesAndStations),
+            .linesStationsAndVehicles
+        )
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.09, previous: .linesStationsAndVehicles),
+            .linesAndStations
+        )
+    }
+
+    /// Far from both thresholds hysteresis is invisible: the result equals the
+    /// plain threshold rule for every previous band, and a single large jump
+    /// may cross two bands at once.
+    func testHysteresisEqualsTheThresholdRuleFarFromTheEdges() {
+        let previousLevels: [GlobalZoomLevel] = [.lines, .linesAndStations, .linesStationsAndVehicles]
+        for span in [1.0, 0.15, 0.001] {
+            let expected = GlobalZoom.level(forLatitudeSpan: span)
+            for previous in previousLevels {
+                XCTAssertEqual(
+                    GlobalZoom.level(forLatitudeSpan: span, previous: previous),
+                    expected,
+                    "span \(span) from \(previous) should match the plain rule"
+                )
+            }
+        }
+        // Two bands in one jump, in both directions.
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 0.001, previous: .lines),
+            .linesStationsAndVehicles
+        )
+        XCTAssertEqual(
+            GlobalZoom.level(forLatitudeSpan: 1.0, previous: .linesStationsAndVehicles),
+            .lines
+        )
+    }
+
     // MARK: - Monotonicity
 
     /// Zooming in never removes detail: walking from a wide span to a tight
@@ -61,6 +135,36 @@ final class GlobalZoomTests: XCTestCase {
         for index in 1..<ranks.count {
             XCTAssertGreaterThanOrEqual(ranks[index], ranks[index - 1])
         }
+    }
+}
+
+/// Tests for the global map's camera-input rules (spec S8).
+///
+/// The rule is pure: a heading change is only worth storing when the shortest
+/// way around the compass reaches one degree, so a 359.5° -> 0.4° wobble is a
+/// 0.9° change and stays unwritten.
+final class GlobalCameraTests: XCTestCase {
+    func testHeadingChangeBelowThresholdIsNotSignificant() {
+        XCTAssertFalse(GlobalCamera.isHeadingChangeSignificant(from: 0, to: 0.5))
+    }
+
+    func testHeadingChangeAtThresholdIsSignificant() {
+        XCTAssertTrue(GlobalCamera.isHeadingChangeSignificant(from: 0, to: 1))
+    }
+
+    /// The shortest way around the compass crosses 0°/360°, so 359.5° -> 0.4°
+    /// is 0.9° and not 359.1°: still below the threshold.
+    func testHeadingChangeAcrossNorthIsMeasuredTheShortWay() {
+        XCTAssertFalse(GlobalCamera.isHeadingChangeSignificant(from: 359.5, to: 0.4))
+    }
+
+    func testHeadingChangeAcrossNorthCanBeSignificant() {
+        XCTAssertTrue(GlobalCamera.isHeadingChangeSignificant(from: 359, to: 1))
+    }
+
+    /// 10° -> 350° is a 20° turn the short way, not 340°.
+    func testHeadingChangeIsSymmetricAcrossTheCompass() {
+        XCTAssertTrue(GlobalCamera.isHeadingChangeSignificant(from: 10, to: 350))
     }
 }
 
