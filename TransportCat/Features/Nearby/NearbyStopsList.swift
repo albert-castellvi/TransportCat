@@ -118,10 +118,10 @@ struct NearbyStopsList: View {
                 bus = (try? await client.busArrivals(stopCode: code)) ?? []
             }
         case .fgcStation:
-            fgc = ExploreArrivals.nextArrivals(
+            fgc = await ExploreArrivals.nextArrivals(
                 for: [place],
                 client: client,
-                fgcState: fgc,
+                fgcState: FGCNetworkState.shared,
                 busLines: busStore.lines
             )[place.id] ?? []
         }
@@ -221,8 +221,8 @@ private struct NearbyLineRowView: View {
 
     private var accessibilityText: String {
         var parts = ["Línia \(row.lineLabel)"]
-        if let destination = row.firstDestination, let time = row.firstTime, !destination.isEmpty, !time.isEmpty {
-            parts.append("cap a \(destination) en \(time)")
+        if !row.firstDestination.isEmpty, !row.firstTime.isEmpty {
+            parts.append("cap a \(row.firstDestination) en \(row.firstTime)")
         }
         if let destination = row.secondDestination, let time = row.secondTime, !destination.isEmpty, !time.isEmpty {
             parts.append("i cap a \(destination) en \(time)")
