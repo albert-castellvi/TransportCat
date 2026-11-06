@@ -58,7 +58,11 @@ struct FGCMapScreen: View {
     // guaranteed to compile.
     @State private var cameraPosition: MapCameraPosition = .region(MapScreen.barcelonaRegion)
 
-    init() {}
+    /// Explicit because the private stored properties make the memberwise
+    /// initializer private; RootView passes the nearby hook (spec S13).
+    init(onLocate: (() -> Void)? = nil) {
+        self.onLocate = onLocate
+    }
 
     private var state: FGCNetworkState { FGCNetworkState.shared }
 
