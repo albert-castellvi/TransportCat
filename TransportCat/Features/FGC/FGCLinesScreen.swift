@@ -1,22 +1,21 @@
 import SwiftUI
 
-/// The Línies tab of the FGC mode (spec S9): the stations of the selected
-/// line on a vertical spine in the line color, each with the trains that are
-/// stopped at it or whose first announced stop it is. Tapping a train badge
-/// opens the same train sheet the map shows, without the follow button: there
-/// is no camera to move here.
+/// Parades, FGC (spec S10, D1): the stations of the selected line on a rail in
+/// the line colour, with the trains ON the rail and their destination — no
+/// minute columns, because the FGC open feed publishes no ETAs. Tapping a
+/// train opens the same train sheet the map shows, without the follow button:
+/// there is no camera to move here.
 ///
-/// The header is the map's header — mode selector, line chips, freshness chip
-/// — and the chips write the same `fgcSelectedLine` key, so the two screens
-/// always speak about the same line.
+/// The header moved to the bottom accessory (T1): this screen keeps only the
+/// status capsule (`FreshnessChip`, styled there).
 struct FGCLinesScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("fgcSelectedLine") private var selectedLineCode = FGCLinePicker.defaultLineCode
     /// Stations of the line on screen, refreshed off the render path, exactly
-    /// like the map's dots (spec S7, S9).
+    /// like the map's dots (spec S7, S10).
     @State private var shownStations: [FGCStation] = []
-    /// Train whose sheet is open (spec S9). Snapshot copy; the sheet reads the
-    /// live values from the shared state by id.
+    /// Train whose sheet is open. Snapshot copy; the sheet reads the live
+    /// values from the shared state by id.
     @State private var selectedTrain: FGCTrain?
 
     init() {}
@@ -34,18 +33,21 @@ struct FGCLinesScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                header
+                statusCapsule
                 content
             }
+            // The bottom accessory (T1) carries the mode menu and the line
+            // chip; the screen keeps no title bar of its own (spec S5).
+            // The icon's network behind the top, fading out (spec S11).
+            .networkHeaderBackground(opacity: 0.45)
+            .navigationBarHidden(true)
             .sensoryFeedback(.selection, trigger: selectedLineCode)
-            .navigationTitle("Línies")
-            .navigationBarTitleDisplayMode(.inline)
             .onAppear { refreshStations() }
             .onChange(of: selectedLineCode) { _, _ in refreshStations() }
             .onChange(of: state.lineLayers.count) { _, _ in refreshStations() }
         }
-        // Same sheet as the map (spec S8), presented by the stack itself. No
-        // follow button: this screen has no camera (spec S9).
+        // Same sheet as the map, presented by the stack itself. No follow
+        // button: this screen has no camera.
         .sheet(item: $selectedTrain) { train in
             FGCTrainSheet(
                 trainID: train.id,
@@ -56,23 +58,11 @@ struct FGCLinesScreen: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            FGCLinePicker(layers: state.lineLayers, selectedLineCode: $selectedLineCode)
-            chipsRow
-        }
-    }
-
-    /// Freshness of the 30 s FGC poll, arriving with its first answer, exactly
-    /// as on the map (spec S9, S10).
+    /// The status capsule, top-left (spec S2): the existing `FreshnessChip`
+    /// explicit-values initializer, restyled by T1 — this screen only calls it.
     @ViewBuilder
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
+    private var statusCapsule: some View {
+        Group {
             if hasLiveSignal {
                 FreshnessChip(
                     updatedAt: state.arrivalsUpdatedAt,
@@ -83,8 +73,8 @@ struct FGCLinesScreen: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
         .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLiveSignal)
     }
 
@@ -114,7 +104,7 @@ struct FGCLinesScreen: View {
     }
 
     /// Stations in `codigo-estaciones.ordre` order with the trains at each one
-    /// (spec S9). Trains are indexed once per render, not searched per row.
+    /// (spec S10). Trains are indexed once per render, not searched per row.
     private func stationsList(layer: MapLineLayer) -> some View {
         let plan = Self.trainsByStation(in: state.trains, lineCode: layer.code)
         return ScrollView {
@@ -133,13 +123,12 @@ struct FGCLinesScreen: View {
                         isFirst: index == 0,
                         isLast: index == shownStations.count - 1,
                         lineColorHex: layer.colorHex,
-                        lineTextColorHex: layer.textColorHex,
                         trains: plan[station.code] ?? [],
                         onTapTrain: { train in selectedTrain = train }
                     )
                 }
             }
-            .padding(.top, 16)
+            .padding(.top, 8)
             .padding(.bottom, 16)
         }
     }
@@ -148,7 +137,7 @@ struct FGCLinesScreen: View {
         shownStations = FGCLineStations.stations(for: shownLayer, in: state.stations)
     }
 
-    /// Live trains of one line, keyed by the station code they show at (S9):
+    /// Live trains of one line, keyed by the station code they show at (S10):
     /// every train whose resolved base line is the line on screen, keyed to
     /// its stop when it is `estacionat_a` there, else to its first announced
     /// stop. Codes the station list does not contain are simply never read.
@@ -173,7 +162,8 @@ struct FGCLinesScreen: View {
     }
 }
 
-/// One train on one station row, with the wording the badge shows (spec S9).
+/// One train on one station row, with the wording the marker card shows
+/// (spec S10, D1: no minutes — the destination is all the feed gives).
 fileprivate struct FGCDisplayedTrain: Identifiable {
     let train: FGCTrain
     /// Destination name, falling back to the raw `desti` code.
@@ -184,11 +174,9 @@ fileprivate struct FGCDisplayedTrain: Identifiable {
 
     var id: String { train.id }
 
-    /// Badge text: "→ <destí>" approaching, "<destí>" stopped.
-    var label: String { stopped ? destination : "→ \(destination)" }
-
-    /// Catalan VoiceOver wording of the badge: the run state, the destination
-    /// and the occupancy summary when FGC publishes one (spec S18).
+    /// Catalan VoiceOver wording of the marker: the run state and the
+    /// destination, plus the occupancy summary when FGC publishes one
+    /// (spec S18, preserved).
     var accessibilityLabel: String {
         let base = stopped
             ? "Tren \(train.lineCode) aturat, cap a \(destination)"
@@ -198,88 +186,115 @@ fileprivate struct FGCDisplayedTrain: Identifiable {
     }
 }
 
-/// One station row of the FGC lines list (spec S9): the spine segment in the
-/// line color with its dot, the station name and the trains at it.
+/// One station row of the FGC timeline (spec S10): the rail in the line
+/// colour with its hollow dot, the station name, and the trains at it drawn
+/// ON the rail with the S6 marker plus their destination as a small label.
 private struct FGCLinesRow: View {
     let station: FGCStation
     let isFirst: Bool
     let isLast: Bool
     let lineColorHex: String
-    let lineTextColorHex: String
     let trains: [FGCDisplayedTrain]
     let onTapTrain: (FGCTrain) -> Void
 
-    /// Width of the marker column and of the spine, as on the bus diagram.
-    private static let spineWidth: CGFloat = 4
-    private static let markerSize: CGFloat = 12
-    private static let rowMinHeight: CGFloat = 52
+    /// Width of the marker column and of the rail, as on the other timelines.
+    private static let railWidth: CGFloat = 5
+    private static let markerColumnLeading: CGFloat = 20
+    private static let markerColumnWidth: CGFloat = 18
+    private static let markerSize: CGFloat = 16
+    private static let rowMinHeight: CGFloat = 56
+
+    static var spineCenterX: CGFloat { Self.markerColumnLeading + Self.markerColumnWidth / 2 }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            spine
+        HStack(alignment: .center, spacing: 0) {
+            rail
             VStack(alignment: .leading, spacing: 4) {
                 Text(station.name)
                     .font(.subheadline.weight(.semibold))
                     .multilineTextAlignment(.leading)
                     .accessibilityLabel("Estació \(station.name)")
                 if !trains.isEmpty {
-                    badgesRow
+                    trainLabels
                 }
             }
+            .padding(.leading, 14)
             Spacer(minLength: 16)
         }
-        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
         .frame(minHeight: Self.rowMinHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topLeading) { trainMarkers }
         .accessibilityElement(children: .contain)
     }
-
-    /// The vertical segment with the station's dot on it. The segment is
-    /// clipped at the dot on the first and last row so the spine starts and
-    /// ends with the station, as in the diagrams of the other modes.
-    private var spine: some View {
+    /// The vertical rail with the station's hollow dot on it. The rail is
+    /// clipped at the dot on the first and last row so it starts and ends
+    /// with a station, as on the other timelines.
+    private var rail: some View {
         VStack(spacing: 0) {
             segment(visible: !isFirst)
             Circle()
-                .fill(Color(hex: lineColorHex))
+                .fill(Color.white)
+                .frame(width: Self.markerSize * 0.6, height: Self.markerSize * 0.6)
+                .overlay(Circle().stroke(Color(hex: lineColorHex), lineWidth: 3))
                 .frame(width: Self.markerSize, height: Self.markerSize)
-                .overlay(Circle().stroke(.white, lineWidth: 1.5))
             segment(visible: !isLast)
         }
+        .frame(width: Self.markerColumnWidth)
+        .padding(.leading, Self.markerColumnLeading)
     }
 
-    /// The half of the spine above or below the dot.
+    /// The half of the rail above or below the dot.
     private func segment(visible: Bool) -> some View {
         Rectangle()
             .fill(visible ? Color(hex: lineColorHex) : Color.clear)
-            .frame(width: Self.spineWidth)
+            .frame(width: Self.railWidth)
             .frame(maxHeight: .infinity)
     }
 
-    /// One small badge per train, filled with the line colors, tappable to
-    /// open the train sheet (spec S9).
-    private var badgesRow: some View {
+    /// The destinations of the trains at this station, next to the name
+    /// (D1: no minute columns). The markers themselves are drawn on the rail.
+    private var trainLabels: some View {
         HStack(spacing: 6) {
             ForEach(trains) { displayed in
                 Button {
                     onTapTrain(displayed.train)
                 } label: {
-                    Text(displayed.label)
-                        .font(.caption2.bold())
-                        .foregroundStyle(Color(hex: lineTextColorHex))
+                    Text(displayed.destination)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(
-                            Capsule().fill(
-                                Color(hex: lineColorHex)
-                                    .opacity(displayed.stopped ? 1 : 0.75)
-                            )
-                        )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(displayed.accessibilityLabel)
             }
         }
+    }
+
+    /// One S6 vehicle marker on the rail per train at this station, tappable
+    /// to open the train sheet. Drawn at the dot's height: the overlay's
+    /// frame is the whole row, so the vertical position is the row's center
+    /// measured from the top, where the rail dot sits.
+    private var trainMarkers: some View {
+        HStack(spacing: 2) {
+            ForEach(trains) { displayed in
+                Button {
+                    onTapTrain(displayed.train)
+                } label: {
+                    VehicleMarkerView(
+                        colorHex: lineColorHex,
+                        glyph: .train,
+                        headingDegrees: nil,
+                        isEstimated: false,
+                        isSelected: false,
+                        size: 22
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(displayed.accessibilityLabel)
+            }
+        }
+        .padding(.leading, Self.spineCenterX - 11)
+        .frame(height: Self.rowMinHeight, alignment: .center)
     }
 }

@@ -12,9 +12,11 @@ import SwiftUI
 /// `FGCNetworkState` poller that `RootView` runs for this mode too. Bus
 /// vehicles are never drawn, to protect the TMB quota (spec S8).
 ///
-/// A vehicle tap hands the rider to the operator's own map with its follow
-/// sheet through `AppRouter.open(.vehicle(...))` (S10); an incident marker
-/// opens the shared `IncidentSheet` (S7).
+/// A vehicle tap opens the glass card above the accessory in place (spec
+/// S6): the destination, the next stop with its countdown when the feed
+/// carries one, and whether the position is live or estimated. An incident
+/// badge opens its own card with the grouped alerts and a jump to Avisos
+/// (spec S7, D6).
 @MainActor
 struct GlobalMapScreen: View {
     /// Whether the global mode is the one on screen (spec S13). `RootView` keeps
@@ -23,6 +25,9 @@ struct GlobalMapScreen: View {
     /// poller only runs while Tot is visible, and coming back resumes on
     /// `GlobalNetworkState`, which keeps the line states it already built.
     let isActive: Bool
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @EnvironmentObject private var app: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -36,7 +41,15 @@ struct GlobalMapScreen: View {
     /// `MapLineLayer.id`, which is unique across operators ("metro:1",
     /// "bus:212", "S1").
     @State private var lineCoordinates: [String: [[CLLocationCoordinate2D]]] = [:]
-    @State private var selectedIncident: GlobalIncidentStation?
+    /// The vehicle whose glass card is open (spec S6), together with the
+    /// operator section the tap came from, which decides the card rows.
+    @State private var selectedVehicle: GlobalSelectedVehicle?
+    /// The incident badge whose glass card is open (spec S7, D6).
+    @State private var selectedBadge: GlobalIncidentBadge?
+    /// Grouped incident badges (spec S7, D6), derived off the 10 Hz render
+    /// path: refreshed only when the incidents, the alerts or the metro
+    /// topology change, never per vehicle tick.
+    @State private var incidentBadges: [GlobalIncidentBadge] = []
     /// Camera bearing, so the train pictograms keep facing along the track
     /// whatever the rider does with the map (as on every other map here).
     /// Written only when the heading moves a visible amount (one degree,
@@ -85,15 +98,23 @@ struct GlobalMapScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLayers)
             }
-            // Toggling an operator is a selection, so it clicks (polish pass).
-            .sensoryFeedback(.selection, trigger: operatorsRaw)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
+            // Spec S1: no header — the mode selector and the operator chips
+            // move to the bottom accessory, the map fills the screen under
+            // the status bar, and the v2 chrome lives in overlays.
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
             // The one global poller, alive only while this mode is the one on
             // screen (specs S8, S13): the task is keyed on `isActive`, so
             // leaving Tot cancels the poll and its 10 Hz ticker, and coming
@@ -106,6 +127,7 @@ struct GlobalMapScreen: View {
             .onAppear {
                 refreshFGCStations()
                 refreshLineCoordinates()
+                refreshIncidentBadges()
                 updateFrameContext(level: zoomLevel, latitudeSpan: latitudeSpan)
             }
             .onChange(of: isActive) { _, active in
@@ -131,86 +153,118 @@ struct GlobalMapScreen: View {
             // The layers themselves, not their count: the coordinates of every
             // polyline are derived on the change and then read by the render
             // path (spec S8).
-            .onChange(of: state.metroLineLayers) { _, _ in refreshLineCoordinates() }
+            .onChange(of: state.metroLineLayers) { _, _ in
+                refreshLineCoordinates()
+                // The line states behind a fresh topology also carry the
+                // station order the badge placement reads (spec S7, D6).
+                refreshIncidentBadges()
+            }
             .onChange(of: state.busLineLayers) { _, _ in refreshLineCoordinates() }
             .onChange(of: fgc.lineLayers) { _, _ in refreshLineCoordinates() }
             // The alerts poll runs app-wide; every new feed refreshes the
             // station incidents without waiting for the next metro pass.
             .onChange(of: app.alertsUpdatedAt) { _, _ in state.refreshIncidents() }
+            // The incidents the poller re-published feed the badge grouping.
+            .onChange(of: state.incidentStations) { _, _ in refreshIncidentBadges() }
         }
-        .sheet(item: $selectedIncident) { incident in
-            IncidentSheet(alerts: incident.alerts, title: "Incidències · \(incident.name)")
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            operatorChips
-            chipsRow
+        // Spec S1: the map screens show no navigation bar.
+        .toolbar(.hidden, for: .navigationBar)
+        // Spec S6, S7: the selected vehicle's or incident badge's glass card,
+        // above the bottom accessory (the safe-area alignment keeps it clear
+        // of it).
+        .overlay(alignment: .bottom) {
+            selectionCard
+                .padding(.bottom, 8)
+                .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedVehicle)
+                .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedBadge)
         }
     }
 
-    /// Metro / Bus / FGC toggle chips (spec S8), in the `ModeSelector` capsule
-    /// style: selected chips are white with black text, hidden operators are
-    /// dimmed so the rider always sees all three filters.
-    private var operatorChips: some View {
-        HStack(spacing: 8) {
-            ForEach(GlobalOperator.allCases, id: \.self) { operatorKind in
-                let isSelected = selectedOperators.contains(operatorKind)
-                Button {
-                    var selection = selectedOperators
-                    if isSelected {
-                        selection.remove(operatorKind)
-                    } else {
-                        selection.insert(operatorKind)
-                    }
-                    withAnimation(AppMotion.smooth(duration: 0.2, reduceMotion: reduceMotion)) {
-                        operatorsRaw = GlobalOperatorSelection.encode(selection)
-                    }
-                } label: {
-                    Text(operatorKind.label)
-                        .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
-                        .foregroundStyle(isSelected ? Color.black : Color.white)
-                        .padding(.horizontal, 14)
-                        .frame(height: 30)
-                        .background(Capsule().fill(isSelected ? Color.white : Color(white: 0.17)))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(operatorKind.label)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
+    // MARK: - The v2 chrome (spec S1)
 
-    /// Freshness of the 30 s metro pass (FGC keeps its own chip on its own
-    /// screen). Arrives with the first answer, like every other map here.
+    /// The status capsule over the map (spec S2): freshness of the 30 s metro
+    /// pass and connectivity in one glass capsule, like every map here (FGC
+    /// keeps its own chip on its own screen). It joins the chrome when the
+    /// first answer arrives, exactly the moment the old chip row appeared.
     @ViewBuilder
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
-            if state.updatedAt != nil || state.lastPollFailed {
-                FreshnessChip(
-                    updatedAt: state.updatedAt,
-                    lastAttemptFailed: state.lastPollFailed,
-                    feedEmpty: false
-                )
-                .transition(AppMotion.chipTransition)
+    private var statusCapsule: some View {
+        if state.updatedAt != nil || state.lastPollFailed || !isOnline {
+            FreshnessChip(
+                updatedAt: state.updatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: false
+            )
+            .transition(AppMotion.chipTransition)
+        }
+    }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request, and an authorized one gets the camera centered on
+    /// their last fix — the system `MapUserLocationButton` behavior. An
+    /// undecided or unknown span falls back to the street scale the metro map
+    /// centers places at (spec S11). While the nearby sheet is open (spec
+    /// S13) the button is filled with the accent color and a white glyph, on
+    /// every map.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            if AppRouter.shared.isNearbyPresented {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.accentColor))
+                    .shadow(color: Color.black.opacity(0.35), radius: 8, y: 3)
+            } else {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .glassEffect(in: Circle())
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
     }
+
+    private func locate() {
+        guard LocationService.shared.authorization != .notDetermined else {
+            LocationService.shared.requestWhenInUse()
+            return
+        }
+        guard showsUserLocation, let point = LocationService.shared.location else {
+            return
+        }
+        // The zoom-band span is kept current only at band changes on purpose
+        // (a write per camera change would re-diff the whole map), so the
+        // centering keeps the last known band and never zooms in beyond the
+        // street scale.
+        let span = max(latitudeSpan, Self.locateSpanFloor)
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span)
+                )
+            )
+        }
+        onLocate?()
+    }
+
+    /// Span floor of a user centering, the same street scale the metro map
+    /// centers a focused place at (spec S11).
+    private static let locateSpanFloor = 0.02
 
     // MARK: - Map
 
@@ -262,11 +316,9 @@ struct GlobalMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if showsUserLocation {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         // The zoom ladder and the marker counter-rotation both need the live
         // camera, but neither may rewrite state on every callback (spec S8):
         // the band goes through `GlobalZoom`'s hysteresis and is stored only
@@ -346,21 +398,23 @@ struct GlobalMapScreen: View {
         }
     }
 
-    /// Incident markers are not tied to the station band (spec S9): they are
+    /// Incident badges are not tied to the station band (spec S9): they are
     /// the one thing the overview zoom must show, so the lines-only first
     /// paint already carries them — and they stay on every closer band
-    /// exactly as before. Depends only on the incident list.
+    /// exactly as before. Depends only on the badge list derived off the
+    /// render path, one per affected line, grouped on shared stations (D6).
     @MapContentBuilder
     private var incidentMarkersContent: some MapContent {
-        ForEach(state.incidentStations) { incident in
-            Annotation("", coordinate: CLLocationCoordinate2D(latitude: incident.position.latitude, longitude: incident.position.longitude)) {
+        ForEach(incidentBadges) { badge in
+            Annotation("", coordinate: CLLocationCoordinate2D(latitude: badge.position.latitude, longitude: badge.position.longitude)) {
                 Button {
-                    selectedIncident = incident
+                    selectedVehicle = nil
+                    selectedBadge = badge
                 } label: {
-                    IncidentMarker()
+                    IncidentBadge(text: badge.badgeText)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Incidència a \(incident.name)")
+                .accessibilityLabel(globalBadgeAccessibilityLabel(badge))
             }
         }
     }
@@ -442,53 +496,45 @@ struct GlobalMapScreen: View {
         }
     }
 
-    /// One live train: tappable, and the tap hands the rider to the
-    /// operator's map with the vehicle focus (spec S8, S10).
+    /// One live train: tappable, and the tap opens the glass card in place
+    /// (spec S6), so the card shows the route data this screen can resolve
+    /// without handing the rider to another map.
     private func vehicleAnnotation(_ vehicle: MapVehicle, operator mode: String) -> some MapContent {
         Annotation("", coordinate: CLLocationCoordinate2D(latitude: vehicle.position.latitude, longitude: vehicle.position.longitude)) {
             Button {
-                AppRouter.shared.open(.vehicle(
-                    operator: mode,
-                    lineCode: vehicle.lineCode,
-                    vehicleID: vehicle.id
-                ))
+                selectedBadge = nil
+                selectedVehicle = GlobalSelectedVehicle(vehicle: vehicle, operatorCode: mode)
             } label: {
-                vehicleMarker(vehicle)
+                GlobalVehicleMarker(
+                    vehicle: vehicle,
+                    lineName: Self.vehicleLineName(of: vehicle, operator: mode),
+                    cameraHeading: cameraHeading,
+                    isEstimated: mode == AppModeCode.metro && isMetroVehicleEstimated(vehicle),
+                    isSelected: selectedVehicle?.vehicle.id == vehicle.id
+                )
             }
             .buttonStyle(.plain)
-            // The reused pictogram markers say "Bus"; a train has to say
-            // "Tren" to VoiceOver, as on the FGC map (spec S8).
+            // A train has to say "Tren" and its line to VoiceOver, as on
+            // every map here (spec S8).
             .accessibilityLabel(vehicleAccessibilityLabel(vehicle, mode: mode))
         }
     }
 
-    /// Metro trains use the pre-rendered line pictograms, FGC trains reuse the
-    /// bus marker exactly like the FGC map does, so the two rail networks
-    /// never paint the same vehicle differently from their own screens.
-    @ViewBuilder
-    private func vehicleMarker(_ vehicle: MapVehicle) -> some View {
-        let rotation = vehicle.heading - 90 - cameraHeading
-        if let line = MetroLine.line(forCode: vehicle.lineCode) {
-            TrainPictogram(
-                imageName: "train-\(line.assetKey)",
-                destination: vehicle.label,
-                rotation: rotation
-            )
-        } else if let layer = shownFGCLayers.first(where: { $0.code == vehicle.lineCode }) {
-            BusMarker(
-                line: Self.busLine(for: layer),
-                destination: vehicle.label,
-                rotation: rotation,
-                showLabel: true,
-                showName: true,
-                opacity: 1
-            )
-        } else {
-            Circle()
-                .fill(Color(hex: vehicle.colorHex))
-                .frame(width: 12, height: 12)
-                .overlay(Circle().stroke(.white, lineWidth: 1.5))
-        }
+    /// The code the marker glyph shows (spec S6, mockup `V3Markers`): there
+    /// are no icons in Tot, so the line display name rides inside the circle
+    /// ("L1", "S2"). Metro codes become their display name; FGC codes are
+    /// already display codes ("S1").
+    private static func vehicleLineName(of vehicle: MapVehicle, operator mode: String) -> String {
+        guard mode == AppModeCode.metro else { return vehicle.lineCode }
+        return MetroLine.line(forCode: vehicle.lineCode)?.displayName ?? vehicle.lineCode
+    }
+
+    /// Whether a metro train's marker ring is dashed (spec S6): the flag
+    /// lives on the line state — its theoretical fleet only runs when the
+    /// whole line's feed is empty — and `MapVehicle` does not carry it, so
+    /// the line flag is the per-vehicle one.
+    private func isMetroVehicleEstimated(_ vehicle: MapVehicle) -> Bool {
+        state.lineStates[vehicle.lineCode]?.isTheoretical ?? false
     }
 
     /// Marker VoiceOver text: "Tren" plus line and destination, and — for FGC
@@ -506,6 +552,148 @@ struct GlobalMapScreen: View {
         }
         return label
     }
+
+    // MARK: - Incident badges (spec S7, D6)
+
+    /// Re-derives the grouped incident badges from the shared incident
+    /// stations. Never called from the render path: the incidents change when
+    /// the alerts or the poll pass refresh, and the topology change provides
+    /// the station order — every trigger is a throttled, human-scale event.
+    /// A selection whose badge vanished quietly closes its card.
+    private func refreshIncidentBadges() {
+        incidentBadges = GlobalIncidentBadges.badges(from: state.incidentStations) { lineCode, stationCode in
+            state.lineStates[lineCode]?.stations.first { $0.code == stationCode }?.orderInLine
+        }
+        if let badge = selectedBadge, !incidentBadges.contains(badge) {
+            selectedBadge = nil
+        }
+    }
+
+    /// VoiceOver text of an incident badge (mockup `V3Tot`): the affected
+    /// lines by display name, with the tap hint when the badge groups
+    /// several of them.
+    private func globalBadgeAccessibilityLabel(_ badge: GlobalIncidentBadge) -> String {
+        switch badge.lineNames.count {
+        case 1:
+            return "Servei afectat a la \(badge.lineNames[0])"
+        case 2:
+            return "Servei afectat a la \(badge.lineNames[0]) i la \(badge.lineNames[1]). Toca per veure-les"
+        case let count:
+            return "Servei afectat a \(count) línies"
+        }
+    }
+
+    // MARK: - The glass cards (spec S6, S7)
+
+    /// The card of the moment: a vehicle's, or an incident badge's — a tap of
+    /// one closes the other, so only one is ever open.
+    @ViewBuilder
+    private var selectionCard: some View {
+        if let selected = selectedVehicle {
+            vehicleCard(selected)
+        } else if let badge = selectedBadge {
+            incidentBadgeCard(badge)
+        }
+    }
+
+    /// The selected vehicle's card (spec S6): the line badge, the
+    /// destination, the rows the operator's state can resolve, and where the
+    /// position comes from.
+    private func vehicleCard(_ selected: GlobalSelectedVehicle) -> some View {
+        MapGlassCard(
+            badgeText: Self.vehicleLineName(of: selected.vehicle, operator: selected.operatorCode),
+            badgeColorHex: selected.vehicle.colorHex,
+            title: "Cap a \(selected.vehicle.label)",
+            onClose: { selectedVehicle = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                if selected.operatorCode == AppModeCode.metro {
+                    GlobalVehicleCardRows.Metro(
+                        lineCode: selected.vehicle.lineCode,
+                        vehicleID: selected.vehicle.id,
+                        isEstimated: isMetroVehicleEstimated(selected.vehicle)
+                    )
+                } else {
+                    GlobalVehicleCardRows.FGC(vehicleID: selected.vehicle.id)
+                }
+                // What a tap used to do before the card (spec S8, S10): hand
+                // the rider to the operator's map with the vehicle focused.
+                Button {
+                    AppRouter.shared.open(.vehicle(
+                        operator: selected.operatorCode,
+                        lineCode: selected.vehicle.lineCode,
+                        vehicleID: selected.vehicle.id
+                    ))
+                } label: {
+                    Label("Veure a la línia", systemImage: "arrow.up.right.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    /// The open badge's card (spec S7, D6): every service alert behind the
+    /// badge with its time, and the jump to the alerts tab.
+    private func incidentBadgeCard(_ badge: GlobalIncidentBadge) -> some View {
+        MapGlassCard(
+            badgeText: badge.badgeText,
+            badgeColorHex: "FF9F0A",
+            title: badge.stationName,
+            onClose: { selectedBadge = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(badge.alerts) { alert in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(AlertText.effect(for: alert) ?? "Incidència")
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let time = Self.alertTimeText(alert) {
+                            Text(time)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Button {
+                    selectedBadge = nil
+                    AppRouter.shared.selectedTab = .alerts
+                } label: {
+                    Label("Veure a Avisos", systemImage: "exclamationmark.bubble")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(hex: "FF9F0A"))
+            }
+        }
+    }
+
+    /// Begin, end or the range between them, whichever the feed provides —
+    /// the same wording the incident sheet shows (spec S7).
+    private static func alertTimeText(_ alert: ServiceAlert) -> String? {
+        switch (alert.beginDate, alert.endDate) {
+        case let (begin?, end?):
+            return "\(Self.alertDay(begin)) – \(Self.alertDay(end))"
+        case let (begin?, nil):
+            return Self.alertDay(begin)
+        case let (nil, end?):
+            return Self.alertDay(end)
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    private static func alertDay(_ date: Date) -> String {
+        alertDayFormatter.string(from: date)
+    }
+
+    private static let alertDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
+    }()
 
     // MARK: - Visibility filters
 
@@ -596,25 +784,6 @@ struct GlobalMapScreen: View {
         let authorization = LocationService.shared.authorization
         return authorization == .authorizedWhenInUse || authorization == .authorizedAlways
     }
-
-    /// `BusMarker` draws from a `BusLine`; the global map reuses that view for
-    /// FGC trains with the layer's own colors, exactly as the FGC map does.
-    /// Only the fields the marker reads are filled.
-    private static func busLine(for layer: MapLineLayer) -> BusLine {
-        BusLine(
-            code: 0,
-            name: layer.code,
-            description: layer.code,
-            origin: "",
-            destination: "",
-            colorHex: layer.colorHex,
-            textColorHex: layer.textColorHex,
-            familyCode: 0,
-            familyName: "FGC",
-            familyOrder: 0,
-            order: 0
-        )
-    }
 }
 
 /// Station dot on the global map: the same 10 pt ring the FGC and bus maps
@@ -637,60 +806,133 @@ private struct StationDot: View, Equatable {
     }
 }
 
-/// Red warning marker on a station with an active incident (spec S8, S9).
-/// `Equatable` like every marker label here, so the incident section re-diffs
-/// without rebuilding the markers.
-private struct IncidentMarker: View, Equatable {
-    var body: some View {
-        Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(.red)
-            .padding(5)
-            .background(.thinMaterial, in: Circle())
-    }
-}
-
-/// Metro train pictogram for the global map, drawn like the metro map's own
-/// marker (the 72:32 art at 42 pt) with its destination label below it.
-/// `Equatable` so SwiftUI skips the whole marker when neither the art, the
-/// destination nor the rotation changed; when only the rotation does (a train
-/// gliding along its track), the label below is its own `Equatable` view and
-/// skips its body — the `.thinMaterial` capsule is not rebuilt on every
-/// 10 Hz tick, which keeps the identical look at a fraction of the cost.
-private struct TrainPictogram: View, Equatable {
-    let imageName: String
-    let destination: String
-    let rotation: Double
+/// One live train on the global map (spec S6, mockup `V3Markers`): the
+/// unified marker — a solid circle in the line color with the line code in
+/// place of a pictogram, the heading wedge and the dashed estimate ring for
+/// metro timetable positions — plus the selected vehicle's destination chip
+/// below. `Equatable` so a 10 Hz glide tick that changed nothing visible
+/// skips the body.
+private struct GlobalVehicleMarker: View, Equatable {
+    let vehicle: MapVehicle
+    /// "L1", "L9N" or an FGC code ("S1"): the glyph of the unified marker
+    /// in Tot is the line code, never a pictogram (spec S6).
+    let lineName: String
+    let cameraHeading: Double
+    let isEstimated: Bool
+    let isSelected: Bool
 
     var body: some View {
-        // MapKit centers an annotation on its coordinate, so only the image
-        // rotates and the label stays upright in an overlay on the unrotated
-        // frame — the same geometry `MapScreen`'s marker uses.
-        Image(imageName)
-            .resizable()
-            .frame(width: 42, height: 18.67)
-            .rotationEffect(.degrees(rotation))
-            .overlay(alignment: .bottom) {
-                TrainDestinationLabel(destination: destination)
+        VehicleMarkerView(
+            colorHex: vehicle.colorHex,
+            glyph: .code(lineName),
+            headingDegrees: vehicle.heading - cameraHeading,
+            isEstimated: isEstimated,
+            isSelected: isSelected,
+            size: 28
+        )
+        .overlay(alignment: .bottom) {
+            if isSelected {
+                Text(vehicle.label)
+                    .font(.caption2.bold())
+                    .lineLimit(1)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color(hex: "2C2E34").opacity(0.85)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1))
+                    .fixedSize()
+                    .offset(y: 24)
             }
+        }
     }
 }
 
-/// Destination capsule under a train pictogram: the text plus its
-/// `.thinMaterial` background, exactly as `MapScreen`'s marker draws it.
-/// `Equatable` on purpose — the destination rarely changes, so a 10 Hz
-/// position tick skips this body entirely and the material capsule is reused
-/// instead of being recomputed.
-private struct TrainDestinationLabel: View, Equatable {
-    let destination: String
+/// The vehicle a glass card belongs to (spec S6): the live map value plus the
+/// operator section the tap came from, which decides what rows the card can
+/// resolve. `Equatable` because the card overlay animates on it.
+private struct GlobalSelectedVehicle: Equatable {
+    let vehicle: MapVehicle
+    /// "metro" or "fgc" — `AppModeCode` values.
+    let operatorCode: String
+}
 
-    var body: some View {
-        Text(destination)
-            .font(.caption2.bold())
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(.thinMaterial, in: Capsule())
-            .fixedSize()
-            .offset(y: 20)
+/// The selected vehicle's glass card rows, read live from the shared states
+/// by the train id so the card tracks the poll like the sheets do (spec S6).
+private enum GlobalVehicleCardRows {
+    /// Metro rows (spec S6): the next station with its countdown when the
+    /// train is still in the feed, then where the position comes from — the
+    /// same copies the metro train sheet shows.
+    struct Metro: View {
+        let lineCode: String
+        let vehicleID: String
+        let isEstimated: Bool
+
+        private var lineState: LineState? {
+            GlobalNetworkState.shared.lineStates[lineCode]
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                if let lineState,
+                   let position = lineState.vehiclePosition(id: vehicleID),
+                   let station = lineState.station(forCode: position.nextStationCode) {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(Color(hex: lineState.line.colorHex))
+                            .frame(width: 8, height: 8)
+                        Text(station.name)
+                            .font(.subheadline)
+                        Spacer(minLength: 8)
+                        Text(Arrival.countdownText(seconds: position.secondsToArrival))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(
+                        "Pròxima estació \(station.name), arriba en \(Arrival.countdownText(seconds: position.secondsToArrival))"
+                    )
+                }
+                VehiclePositionSource(
+                    isEstimated: isEstimated,
+                    estimatedText: "Posició estimada a partir de l'horari"
+                )
+            }
+        }
+    }
+
+    /// FGC rows (spec S6, D1: no minutes — the feed publishes neither):
+    /// the stop the train serves next and its punctuality, then where the
+    /// position comes from. FGC positions are GPS live data, never estimated.
+    struct FGC: View {
+        let vehicleID: String
+
+        private var state: FGCNetworkState { FGCNetworkState.shared }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                if let train = state.trains.first(where: { $0.id == vehicleID }) {
+                    if let stopCode = train.stoppedAtStopCode {
+                        Label("Aturat a \(stationName(for: stopCode))", systemImage: "pause.circle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else if let stopCode = train.nextStopCodes.first {
+                        Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(train.isOnTime ? "Puntual" : "Amb retard")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                }
+                VehiclePositionSource(isEstimated: false, estimatedText: "")
+            }
+        }
+
+        /// Station name of a stop code, falling back to the code when the
+        /// catalog does not know it, exactly as the train sheet does.
+        private func stationName(for code: String) -> String {
+            state.stations.first { $0.code == code }?.name ?? code
+        }
     }
 }

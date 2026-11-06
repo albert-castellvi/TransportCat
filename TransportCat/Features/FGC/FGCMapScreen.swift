@@ -15,6 +15,9 @@ import SwiftUI
 /// the router's line, place and vehicle focuses.
 @MainActor
 struct FGCMapScreen: View {
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The line chips write this key and both FGC screens read it, so the map
     /// and the lines list always show the same line (spec S7, S9).
@@ -27,9 +30,15 @@ struct FGCMapScreen: View {
     /// instead of on every 10 Hz redraw (spec S8). Keyed by layer code, which
     /// is unique inside the FGC network.
     @State private var lineCoordinates: [String: [[CLLocationCoordinate2D]]] = [:]
-    /// The train whose sheet is open (spec S8). A snapshot copy: the sheet
-    /// reads the live train from the shared state by id.
+    /// The train whose glass card is open (spec S6): tapping a vehicle marks
+    /// it with the halo plus its destination label and opens the card above
+    /// the accessory. The card reads the live train from the shared state by
+    /// id.
     @State private var selectedVehicle: MapVehicle?
+    /// The train whose full sheet is open (spec S8): a vehicle focus opens it
+    /// directly, with the follow toggle inside. A snapshot copy: the sheet
+    /// reads the live train from the shared state by id.
+    @State private var sheetVehicle: MapVehicle?
     /// Train the camera is following, or nil (spec S8).
     @State private var followingVehicleID: String?
     /// Router focus intents waiting for their data (spec S11): the station to
@@ -44,9 +53,6 @@ struct FGCMapScreen: View {
     /// rotate against it so they keep facing along the track whatever the
     /// rider does with the map, exactly like the bus markers (spec S7).
     @State private var cameraHeading: Double = 0
-    /// Latitude span on screen, which decides whether the train labels are
-    /// drawn at all, and part of the pan-detection tolerance.
-    @State private var latitudeSpan: Double = MapScreen.barcelonaRegion.span.latitudeDelta
     /// Span the camera follows with: kept current by every camera change so
     /// re-centering never zooms (spec S8).
     @State private var cameraSpan = MapScreen.barcelonaRegion.span
@@ -55,7 +61,11 @@ struct FGCMapScreen: View {
     // guaranteed to compile.
     @State private var cameraPosition: MapCameraPosition = .region(MapScreen.barcelonaRegion)
 
-    init() {}
+    /// Explicit because the private stored properties make the memberwise
+    /// initializer private; RootView passes the nearby hook (spec S13).
+    init(onLocate: (() -> Void)? = nil) {
+        self.onLocate = onLocate
+    }
 
     private var state: FGCNetworkState { FGCNetworkState.shared }
 
@@ -70,6 +80,19 @@ struct FGCMapScreen: View {
         location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
     }
 
+    /// Whether the location permission has not been decided yet: the location
+    /// button then asks for it instead of centering (spec S11, S3).
+    private var isLocationNotDetermined: Bool {
+        location.authorization == .notDetermined
+    }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// first poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
     /// The line actually on screen: the stored code when it is selectable,
     /// otherwise the first selectable line.
     private var shownLineCode: String {
@@ -82,17 +105,35 @@ struct FGCMapScreen: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     // The placeholder and the map swap with a short fade when
                     // the topology first arrives (polish pass).
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: shownLayer != nil)
             }
+            // Spec S1: no header — the mode selector and the line chips move
+            // to the bottom accessory, the map fills the screen under the
+            // status bar, and the v2 chrome lives in overlays.
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
+            // Spec S6: the selected vehicle's glass card, above the bottom
+            // accessory (the safe-area alignment keeps it clear of it).
+            .overlay(alignment: .bottom) {
+                vehicleCard
+                    .padding(.bottom, 8)
+                    .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedVehicle?.id)
+            }
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLiveSignal)
             // Changing the FGC line is a selection, so it clicks, like the bus.
             .sensoryFeedback(.selection, trigger: selectedLineCode)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 refreshMapContent()
                 fitCamera()
@@ -110,6 +151,7 @@ struct FGCMapScreen: View {
                 // its sheet (spec S11).
                 if pendingVehicleFocusID == nil {
                     selectedVehicle = nil
+                    sheetVehicle = nil
                     followingVehicleID = nil
                     fitCamera()
                 }
@@ -133,10 +175,12 @@ struct FGCMapScreen: View {
                 resolvePendingVehicleFocus()
             }
         }
+        // Spec S1: the map screens show no navigation bar.
+        .toolbar(.hidden, for: .navigationBar)
         // The train sheet is presented by the stack itself and declares its
         // detents here, as the metro and bus station sheets learned to do.
         // Closing the sheet stops the follow (spec S8).
-        .sheet(item: $selectedVehicle, onDismiss: { followingVehicleID = nil }) { vehicle in
+        .sheet(item: $sheetVehicle, onDismiss: { followingVehicleID = nil }) { vehicle in
             FGCTrainSheet(
                 trainID: vehicle.id,
                 allowFollow: true,
@@ -147,44 +191,112 @@ struct FGCMapScreen: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - The v2 chrome (spec S1)
 
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            FGCLinePicker(layers: state.lineLayers, selectedLineCode: $selectedLineCode)
-            chipsRow
+    /// The selected vehicle's glass card (spec S6, mockup `V3Markers`): the
+    /// line badge, the destination, the stop the train serves next (D1: no
+    /// minutes — the FGC feed publishes neither) and where the position comes
+    /// from. Closing it keeps the map as it was; nothing else changes.
+    @ViewBuilder
+    private var vehicleCard: some View {
+        if let vehicle = selectedVehicle, let layer = shownLayer {
+            MapGlassCard(
+                badgeText: layer.code,
+                badgeColorHex: layer.colorHex,
+                title: "Cap a \(vehicle.label)",
+                onClose: { selectedVehicle = nil }
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    FGCVehicleCardRows(vehicleID: vehicle.id)
+                    // The existing train sheet: occupancy, stops and
+                    // "follow" stay reachable from a plain tap.
+                    Button {
+                        sheetVehicle = vehicle
+                    } label: {
+                        Label("Més detalls", systemImage: "info.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .transition(.opacity)
         }
     }
 
-    /// Freshness of the 30 s FGC poll (spec S7). It joins the header when the
-    /// first poll has an answer — good or bad — and fades out the placeholder
-    /// row the way the bus chip arrives with its line state. No incidents
-    /// chip: FGC publishes no line-disruption feed (spec S10).
+    /// The status capsule over the map (spec S2): freshness of the 30 s FGC
+    /// poll and connectivity in one glass capsule, like every map here. It
+    /// joins the chrome when the first poll has an answer — good or bad —
+    /// exactly the moment the old chip row appeared.
     @ViewBuilder
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
-            if hasLiveSignal {
-                FreshnessChip(
-                    updatedAt: state.arrivalsUpdatedAt,
-                    lastAttemptFailed: state.lastPollFailed,
-                    feedEmpty: false
-                )
-                .transition(AppMotion.chipTransition)
-            }
+    private var statusCapsule: some View {
+        if hasLiveSignal || !isOnline {
+            FreshnessChip(
+                updatedAt: state.arrivalsUpdatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: false
+            )
+            .transition(AppMotion.chipTransition)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 16)
-        .padding(.bottom, 8)
-        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: hasLiveSignal)
     }
 
     /// Whether the live feed has said anything yet: a successful poll or a
-    /// failed one. Before that the chip would only read "Sense dades".
+    /// failed one. Before that the capsule would only read "Sense dades"
+    /// online, while offline the saved-data wording is already the answer.
     private var hasLiveSignal: Bool {
         state.arrivalsUpdatedAt != nil || state.lastPollFailed
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request the map used to offer in its own button, an
+    /// authorized one gets the camera centered on their last fix at the zoom
+    /// already on screen — the system `MapUserLocationButton` behavior.
+    /// While the nearby sheet is open (spec S13) the button is filled with
+    /// the accent color and a white glyph, on every map.
+    /// `onLocate` is the T5 hook for the nearby sheet.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            if router.isNearbyPresented {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.accentColor))
+                    .shadow(color: Color.black.opacity(0.35), radius: 8, y: 3)
+            } else {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .glassEffect(in: Circle())
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
+    }
+
+    private func locate() {
+        if isLocationNotDetermined {
+            location.requestWhenInUse()
+            return
+        }
+        guard isLocationAuthorized else { return }
+        location.start()
+        guard let point = location.location else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: cameraSpan
+                )
+            )
+        }
+        onLocate?()
     }
 
     // MARK: - Map
@@ -249,44 +361,36 @@ struct FGCMapScreen: View {
                 }
             }
             ForEach(state.vehicles.filter { $0.lineCode == layer.code }) { vehicle in
-                // Empty title: the destination is already on the marker.
+                // Empty title: the marker's VoiceOver label says the destination.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: vehicle.position.latitude, longitude: vehicle.position.longitude)) {
                     Button {
                         selectedVehicle = vehicle
                     } label: {
-                        BusMarker(
-                            line: Self.busLine(for: layer),
-                            destination: vehicle.label,
-                            rotation: vehicle.heading - 90 - cameraHeading,
-                            showLabel: latitudeSpan < Self.labelSpanThreshold,
-                            showName: true,
-                            opacity: 1
+                        FGCVehicleMarker(
+                            vehicle: vehicle,
+                            cameraHeading: cameraHeading,
+                            isSelected: selectedVehicle?.id == vehicle.id
                         )
                     }
                     .buttonStyle(.plain)
-                    // The reused bus marker says "Bus"; a train has to say
-                    // "Tren" to VoiceOver (spec S7), plus the occupancy summary
-                    // when FGC publishes one (spec S18).
+                    // A train has to say "Tren" to VoiceOver (spec S7), plus
+                    // the occupancy summary when FGC publishes one (spec S18).
                     .accessibilityLabel(trainAccessibilityLabel(vehicle, layerCode: layer.code))
                 }
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if isLocationAuthorized {
-                MapUserLocationButton()
-            }
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         .onMapCameraChange(frequency: .onEnd) { context in
             cameraHeading = context.camera.heading
-            latitudeSpan = context.region.span.latitudeDelta
             cameraSpan = context.region.span
         }
         // Pan detection for the follow (spec S8): a change whose center is not
         // near the point we last commanded is the rider moving the map, so the
         // camera releases the train. Zoom keeps the follow.
         .onMapCameraChange(frequency: .continuous) { context in
-            latitudeSpan = context.region.span.latitudeDelta
             cameraSpan = context.region.span
             guard followingVehicleID != nil, let anchor = followAnchor else { return }
             let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
@@ -313,24 +417,6 @@ struct FGCMapScreen: View {
                 .background(.thinMaterial, in: Capsule())
                 .padding(12)
                 .allowsHitTesting(false)
-        }
-        .overlay(alignment: .topTrailing) {
-            // S11: before a decision the map offers a button that asks for
-            // when-in-use permission; after one it never appears again.
-            if location.authorization == .notDetermined {
-                Button {
-                    location.requestWhenInUse()
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .padding(10)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Activa la ubicació")
-                .padding(.trailing, 16)
-                .padding(.top, 8)
-            }
         }
         .animation(AppMotion.smooth(duration: 0.35, reduceMotion: reduceMotion), value: state.lineLayers.count)
     }
@@ -445,7 +531,7 @@ struct FGCMapScreen: View {
         guard let vehicleID = pendingVehicleFocusID,
               let vehicle = state.vehicles.first(where: { $0.id == vehicleID }) else { return }
         pendingVehicleFocusID = nil
-        selectedVehicle = vehicle
+        sheetVehicle = vehicle
         followingVehicleID = vehicle.id
         centerCamera(on: vehicle.position)
     }
@@ -480,25 +566,6 @@ struct FGCMapScreen: View {
         return label
     }
 
-    /// `BusMarker` draws from a `BusLine`; the FGC map reuses that view with
-    /// the layer's own code and colors, so the two live maps paint vehicles
-    /// identically (spec S7). Only the fields the marker reads are filled.
-    private static func busLine(for layer: MapLineLayer) -> BusLine {
-        BusLine(
-            code: 0,
-            name: layer.code,
-            description: layer.code,
-            origin: "",
-            destination: "",
-            colorHex: layer.colorHex,
-            textColorHex: layer.textColorHex,
-            familyCode: 0,
-            familyName: "FGC",
-            familyOrder: 0,
-            order: 0
-        )
-    }
-
     /// Smallest span kept per axis, so a short line whose points sit close
     /// together does not zoom the map to street level.
     private static let minSpanDegrees = 0.01
@@ -530,10 +597,6 @@ struct FGCMapScreen: View {
         )
     }
 
-    /// Below this visible latitude span the destination labels are drawn;
-    /// above it they overlap each other, as on the bus and metro maps (S7).
-    private static let labelSpanThreshold = 0.05
-
     /// Span a focus centers with: close enough for the station or the train
     /// sheet to be about something on screen (spec S11). The same zoom the bus
     /// map uses for its stop and vehicle focuses.
@@ -544,15 +607,95 @@ struct FGCMapScreen: View {
     private static let followPanToleranceDegrees = 0.002
 }
 
-/// Station dot on the FGC map: a small circle in the line color with a white
-/// stroke, the same shape the bus map uses for its stops (spec S7).
+/// Station dot on the FGC map: a hollow circle with the white center and the
+/// line-colored ring, the unified station look of spec S6 (the vehicles are
+/// solid, the stations are hollow).
 private struct FGCStationDot: View {
     let colorHex: String
 
     var body: some View {
         Circle()
-            .fill(Color(hex: colorHex))
-            .frame(width: 10, height: 10)
-            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+            .fill(.white)
+            .frame(width: 11, height: 11)
+            .overlay(Circle().stroke(Color(hex: colorHex), lineWidth: 3))
+    }
+}
+
+/// One FGC train marker on the map (spec S6, mockup `V3Markers`): the
+/// unified marker in the line color with the train glyph and the heading
+/// wedge — never a line label, which only the selected vehicle shows as its
+/// destination chip below. `Equatable` so a 10 Hz glide tick that changed
+/// nothing visible skips the body.
+private struct FGCVehicleMarker: View, Equatable {
+    let vehicle: MapVehicle
+    let cameraHeading: Double
+    let isSelected: Bool
+
+    var body: some View {
+        VehicleMarkerView(
+            colorHex: vehicle.colorHex,
+            glyph: .train,
+            headingDegrees: vehicle.heading - cameraHeading,
+            isEstimated: false,
+            isSelected: isSelected,
+            size: 28
+        )
+        .overlay(alignment: .bottom) {
+            if isSelected {
+                Text(vehicle.label)
+                    .font(.caption2.bold())
+                    .lineLimit(1)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color(hex: "2C2E34").opacity(0.85)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.16), lineWidth: 1))
+                    .fixedSize()
+                    .offset(y: 24)
+            }
+        }
+    }
+}
+
+/// Rows of the selected train's glass card, read live from the shared state
+/// by the train id (spec S6): the stop the train serves next and its
+/// punctuality, then where the position comes from.
+private struct FGCVehicleCardRows: View {
+    let vehicleID: String
+
+    private var state: FGCNetworkState { FGCNetworkState.shared }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let train = state.trains.first(where: { $0.id == vehicleID }) {
+                stopRow(train)
+                Text(train.isOnTime ? "Puntual" : "Amb retard")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+            }
+            // FGC positions are GPS live data (spec S3): never an estimate.
+            VehiclePositionSource(isEstimated: false, estimatedText: "")
+        }
+    }
+
+    /// The station the train is stopped at, or its next announced stop: the
+    /// same rule the train sheet's "Aturat a" applies (spec S8).
+    @ViewBuilder
+    private func stopRow(_ train: FGCTrain) -> some View {
+        if let stopCode = train.stoppedAtStopCode {
+            Label("Aturat a \(stationName(for: stopCode))", systemImage: "pause.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        } else if let stopCode = train.nextStopCodes.first {
+            Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Station name of a stop code, falling back to the code when the catalog
+    /// does not know it, exactly as the train sheet does.
+    private func stationName(for code: String) -> String {
+        state.stations.first { $0.code == code }?.name ?? code
     }
 }

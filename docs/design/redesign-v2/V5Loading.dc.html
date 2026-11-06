@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Carregant la xarxa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+@keyframes tc-draw{0%{stroke-dashoffset:1;opacity:1}45%{stroke-dashoffset:0;opacity:1}85%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes tc-pop{0%,42%{opacity:0;transform:scale(0.3)}55%{opacity:1;transform:scale(1)}85%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.tc-line{stroke-dasharray:1;stroke-dashoffset:1;animation:tc-draw 3.2s cubic-bezier(.65,0,.35,1) infinite}
+.tc-stop{transform-box:fill-box;transform-origin:center;animation:tc-pop 3.2s ease-out infinite}
+@media (prefers-reduced-motion: reduce){.tc-line{animation:none;stroke-dashoffset:0}.tc-stop{animation:none}}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #0f1012; color: #ffffff">
+
+<svg width="270" height="208" viewBox="0 0 390 300" role="img" aria-label="La xarxa es dibuixa mentre carrega" style="position: absolute; top: 236px; left: 60px">
+<g fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+<path class="tc-line" pathLength="1" d="M20 260 L290 -10" stroke="#E3242B"></path>
+<path class="tc-line" pathLength="1" d="M20 150 H60 L210 0" stroke="#1E6FD9" style="animation-delay: 0.12s"></path>
+<path class="tc-line" pathLength="1" d="M70 20 V100 L150 180 H270" stroke="#2EAA4A" style="animation-delay: 0.24s"></path>
+<path class="tc-line" pathLength="1" d="M150 10 V40 L370 260" stroke="#9B2C8F" style="animation-delay: 0.36s"></path>
+<path class="tc-line" pathLength="1" d="M300 40 L330 70 V170 L360 200 H375" stroke="#F5A623" style="animation-delay: 0.48s"></path>
+</g>
+<g fill="#ffffff" stroke="#0f1012" stroke-width="4.5">
+<circle class="tc-stop" cx="160" cy="50" r="11" style="animation-delay: 0.5s"></circle>
+<circle class="tc-stop" cx="195" cy="85" r="11" style="animation-delay: 0.58s"></circle>
+<circle class="tc-stop" cx="90" cy="120" r="11" style="animation-delay: 0.66s"></circle>
+<circle class="tc-stop" cx="125" cy="155" r="11" style="animation-delay: 0.74s"></circle>
+</g>
+</svg>
+
+<div role="status" style="position: absolute; top: 476px; left: 24px; right: 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+<p style="margin: 0; font-size: 20px; font-weight: 700">Carregant la xarxa…</p>
+<p style="margin: 0; font-size: 14px; font-weight: 500; color: rgba(235,235,245,0.75)">Metro · Bus · FGC</p>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-label="Mode: Metro. Canviar de mode" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 700; color: #ffffff; background: rgba(255,255,255,0.13)">
+Metro
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+<button type="button" aria-label="Línia L2. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; cursor: pointer; text-align: left; font-family: inherit; font-size: 15px; font-weight: 600; color: #ffffff; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 16px; background: #9B2C8F; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">L2</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Paral·lel – Badalona</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #409CFF; background: rgba(255,255,255,0.14)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5v14"></path><circle cx="7" cy="5" r="2.2" fill="currentColor"></circle><circle cx="7" cy="12" r="2.2" fill="currentColor"></circle><circle cx="7" cy="19" r="2.2" fill="currentColor"></circle><path d="M12 5h8M12 12h6M12 19h8"></path></svg>
+Parades
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+</button>
+</nav>
+<button type="button" aria-label="Cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

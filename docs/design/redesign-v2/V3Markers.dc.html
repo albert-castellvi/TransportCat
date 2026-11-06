@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Sistema de marcadors</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 900px; height: 844px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 24px; font-family: Inter, system-ui, sans-serif; background: #121316; color: #ffffff">
+<header style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 30px; font-weight: 700">Sistema de marcadors</h1>
+<p style="margin: 0; font-size: 15px; font-weight: 500; color: rgba(235,235,245,0.75)">Una sola família per a metro, FGC i bus: el vehicle és sòlid, l’estació és buida, la incidència canvia el traç, no el color.</p>
+</header>
+
+<section aria-labelledby="h-veh" style="display: flex; flex-direction: column; gap: 10px">
+<h2 id="h-veh" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(235,235,245,0.75)">Vehicles</h2>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{vehicles}}" as="v" hint-placeholder-count="7">
+<figure style="margin: 0; height: 168px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<div style="position: relative; width: 96px; height: 84px; display: flex; align-items: center; justify-content: center">
+<sc-if value="{{v.halo}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; width: 52px; height: 52px; border-radius: 26px; background: rgba(64,156,255,0.30); border: 2px solid #409CFF"></div>
+</sc-if>
+<sc-if value="{{v.stack}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 38px; top: 20px; width: 30px; height: 30px; border-radius: 15px; background: {{v.color}}; border: 2px solid #ffffff; opacity: 0.55"></div>
+</sc-if>
+<svg width="44" height="44" viewBox="0 0 44 44" style="position: relative; opacity: {{v.opacity}}" aria-hidden="true">
+<g opacity="{{v.headingOp}}"><g transform="rotate({{v.bearing}} 22 22)"><path d="M22 2.5 L28 10.5 L16 10.5 Z" fill="{{v.color}}" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"></path></g></g>
+<circle cx="22" cy="22" r="13" fill="{{v.color}}" stroke="#ffffff" stroke-width="2" stroke-dasharray="{{v.dash}}"></circle>
+<g opacity="{{v.trainOp}}" fill="none" stroke="{{v.ink}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="16.5" y="14.5" width="11" height="12" rx="3"></rect><path d="M16.5 20H27.5M18.5 29l1.5-2.5M25.5 29 24 26.5"></path></g>
+<g opacity="{{v.busOp}}" fill="none" stroke="{{v.ink}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="14.5" width="12" height="12" rx="2.5"></rect><path d="M16 20H28M18.5 26.5v2.5M25.5 26.5v2.5"></path></g>
+<text opacity="{{v.textOp}}" x="22" y="26.5" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700" fill="{{v.ink}}">{{v.text}}</text>
+</svg>
+<sc-if value="{{v.label}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; bottom: -2px; padding: 2px 8px; border-radius: 9px; font-size: 10px; font-weight: 600; white-space: nowrap; background: rgba(44,46,52,0.85); border: 1px solid rgba(255,255,255,0.16)">{{v.labelText}}</div>
+</sc-if>
+</div>
+<figcaption style="display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center">
+<span style="font-size: 13px; font-weight: 700">{{v.name}}</span>
+<span style="font-size: 11px; font-weight: 500; line-height: 1.3; color: rgba(235,235,245,0.75)">{{v.note}}</span>
+</figcaption>
+</figure>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<section aria-labelledby="h-sta" style="display: flex; flex-direction: column; gap: 10px">
+<h2 id="h-sta" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(235,235,245,0.75)">Estacions</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true"><path d="M0 35H120" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round"></path><circle cx="60" cy="35" r="5.5" fill="#ffffff" stroke="#9B2C8F" stroke-width="3"></circle></svg>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Parada</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">Buida, sobre el traç</span></figcaption>
+</figure>
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true"><path d="M0 29H120" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round"></path><path d="M0 41H120" stroke="#FFC300" stroke-width="5" stroke-linecap="round"></path><rect x="50" y="22" width="20" height="26" rx="10" fill="#ffffff" stroke="#1c1e22" stroke-width="2.5"></rect></svg>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Correspondència</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">Càpsula blanca</span></figcaption>
+</figure>
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true"><path d="M0 35H60" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round"></path><circle cx="60" cy="35" r="6" fill="#ffffff" stroke="#9B2C8F" stroke-width="3"></circle><g transform="translate(76 25)"><rect width="22" height="20" rx="6" fill="#3A3D44" stroke="#ffffff" stroke-width="1.5"></rect><path d="M7 15V8l4-3 4 3v7" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Instal·lació</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">Ascensor o escala: a l’estació, no a la línia</span></figcaption>
+</figure>
+</div>
+</section>
+
+<section aria-labelledby="h-inc" style="display: flex; flex-direction: column; gap: 10px">
+<h2 id="h-inc" style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(235,235,245,0.75)">Incidències de servei</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<svg width="120" height="70" viewBox="0 0 120 70" aria-hidden="true"><path d="M0 35H30" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round"></path><path d="M30 35H90" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round" stroke-dasharray="0.1 9" opacity="0.9"></path><path d="M90 35H120" stroke="#9B2C8F" stroke-width="5" stroke-linecap="round"></path></svg>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Tram afectat</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">Puntejat al color de la línia</span></figcaption>
+</figure>
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<div style="height: 70px; display: flex; align-items: center">
+<span style="height: 30px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 5px; border-radius: 15px; background: #FF9F0A; color: #1c1c1e; font-size: 12px; font-weight: 700; border: 2px solid #ffffff">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#1c1c1e"></path><path d="M12 10v4M12 17v.5" stroke="#FF9F0A" stroke-width="2.4" stroke-linecap="round"></path></svg>
+L2
+</span>
+</div>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Una insígnia per tram</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">Al mig del tram, amb el codi</span></figcaption>
+</figure>
+<figure style="margin: 0; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; background: #1c1e22">
+<div style="height: 70px; display: flex; align-items: center">
+<span style="height: 30px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 5px; border-radius: 15px; background: #FF9F0A; color: #1c1c1e; font-size: 12px; font-weight: 700; border: 2px solid #ffffff">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#1c1c1e"></path><path d="M12 10v4M12 17v.5" stroke="#FF9F0A" stroke-width="2.4" stroke-linecap="round"></path></svg>
+3 línies
+</span>
+</div>
+<figcaption style="text-align: center"><span style="display: block; font-size: 13px; font-weight: 700">Agrupades</span><span style="font-size: 11px; color: rgba(235,235,245,0.75)">A Tot, quan se solapen</span></figcaption>
+</figure>
+</div>
+</section>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const base = { halo: false, stack: false, opacity: 1, heading: true, bearing: 45, dash: 'none', isTrain: true, isBus: false, isText: false, text: '', label: false, labelText: '' };
+    const vehicles = [
+      { ...base, name: 'Metro', note: 'Pictograma dret, la falca marca el sentit', color: '#9B2C8F', ink: '#ffffff' },
+      { ...base, name: 'FGC', note: 'Mateix marcador, color de la línia', color: '#84BD00', ink: '#10220a', bearing: 160 },
+      { ...base, name: 'Bus', note: 'Pictograma de bus', color: '#6AB023', ink: '#0b2a00', isTrain: false, isBus: true, bearing: 300 },
+      { ...base, name: 'A Tot', note: 'El codi en lloc del pictograma', color: '#E3242B', ink: '#ffffff', isTrain: false, isText: true, text: 'L1', bearing: 90 },
+      { ...base, name: 'Estimada', note: 'Vora puntejada: horari o iBus, no GPS', color: '#6AB023', ink: '#0b2a00', isTrain: false, isBus: true, dash: '3 2.6', opacity: 0.85, bearing: 300 },
+      { ...base, name: 'Seleccionat', note: 'Halo i destinació; la resta, sense etiqueta', color: '#9B2C8F', ink: '#ffffff', halo: true, label: true, labelText: 'Paral·lel' },
+      { ...base, name: 'Agrupats', note: 'Trens apilats: un sol marcador amb el nombre', color: '#9B2C8F', ink: '#ffffff', isTrain: false, isText: true, text: '4', heading: false, stack: true }
+    ].map((v) => ({
+      ...v,
+      headingOp: v.heading ? '1' : '0',
+      trainOp: v.isTrain ? '1' : '0',
+      busOp: v.isBus ? '1' : '0',
+      textOp: v.isText ? '1' : '0'
+    }));
+    return { vehicles };
+  }
+}
+</script>
+</body>
+</html>

@@ -16,41 +16,31 @@ enum AppMotion {
     }
 }
 
-/// Loading state of the two map screens: three placeholder lines that pulse
-/// gently while the line loads, above the same "Carregant…" the maps showed.
+/// Loading state of the map screens (spec S11): the icon's network draws its
+/// lines in and pops its interchange rings, above "Carregant la xarxa…" and
+/// "Metro · Bus · FGC" per the `V5Loading` mockup. The animation is internal
+/// to `NetworkArt(.drawing)`, which turns static under Reduce Motion.
 struct MapLoadingPlaceholder: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Drives the opacity pulse: flipped once on appear, then eased back and
-    /// forth forever by the repeat animation below.
-    @State private var isPulsing = false
-
     var body: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 10) {
-                placeholderLine(width: 150)
-                placeholderLine(width: 100)
-                placeholderLine(width: 130)
-            }
-            // Pure shapes, no text to redact: the pulse is what says "loading",
-            // so VoiceOver never has to read the decoration.
-            .accessibilityHidden(true)
-            .opacity(reduceMotion ? 0.7 : (isPulsing ? 1 : 0.45))
+        VStack(spacing: 22) {
+            // Pure decoration: the loop is what says "loading", so VoiceOver
+            // never reads the art.
+            NetworkArt(.drawing)
+                .frame(width: 270, height: 208)
+                .accessibilityHidden(true)
 
-            ProgressView("Carregant…")
+            // role "status" of the mockup: the rider hears the state, and the
+            // two lines are read as one element.
+            VStack(spacing: 6) {
+                Text("Carregant la xarxa…")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
+                Text("Metro · Bus · FGC")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
-                isPulsing = true
-            }
-        }
-    }
-
-    /// One rounded bar of the placeholder group.
-    private func placeholderLine(width: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: 8)
-            .fill(Color.secondary.opacity(0.25))
-            .frame(width: width, height: 10)
     }
 }

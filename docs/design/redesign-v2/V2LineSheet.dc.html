@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Mapa v2 — selector de línia</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: {{c.land}}; color: {{c.text}}">
+
+<svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+<defs>
+<pattern id="grid3" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<path d="M0 0H22M0 0V22" fill="none" stroke="{{c.street}}" stroke-width="1.2"></path>
+</pattern>
+</defs>
+<rect width="390" height="844" fill="{{c.land}}"></rect>
+<rect width="390" height="844" fill="url(#grid3)"></rect>
+<path d="M40 160 L390 70" stroke="{{c.avenue}}" stroke-width="5" fill="none"></path>
+<path d="M20 620 L120 560 L215 475 L260 400 L330 300 L390 250" fill="none" stroke="#E3242B" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"></path>
+<g stroke="#ffffff" stroke-width="1.5" fill="#E3242B"><circle cx="295" cy="350" r="5"></circle><circle cx="330" cy="300" r="5"></circle><circle cx="365" cy="271" r="5"></circle></g>
+</svg>
+<div style="position: absolute; inset: 0; background: {{c.scrim}}"></div>
+
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 13px; font-weight: 600; background: {{c.glass}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span>En directe</span>
+<span style="font-weight: 500; color: {{c.sub}}">fa 8 s</span>
+</div>
+
+<section aria-label="Tria la línia de metro" style="position: absolute; left: 8px; right: 8px; bottom: 8px; top: 230px; box-sizing: border-box; padding: 8px 16px 16px; border-radius: 38px; display: flex; flex-direction: column; gap: 6px; background: {{c.sheet}}; border: 1px solid {{c.glassEdge}}; box-shadow: {{c.glassShadow}}; backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%)">
+<div style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: {{c.grabber}}"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0 4px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">Línia de metro</h2>
+<button type="button" aria-label="Tancar" style="width: 44px; height: 44px; border-radius: 22px; border: 0; padding: 0; display: flex; align-items: center; justify-content: center; font-family: inherit; cursor: pointer; color: {{c.text}}; background: {{c.inner}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+</button>
+</div>
+
+<div style="height: 44px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 22px; background: {{c.inner}}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{c.sub}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<label for="lineSearch" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">Cerca una línia o estació</label>
+<input id="lineSearch" type="search" placeholder="Línia o estació" style="flex: 1 1 auto; min-width: 0; height: 40px; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 16px; color: {{c.text}}">
+</div>
+
+<h3 style="margin: 10px 4px 2px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: {{c.sub}}">Preferides</h3>
+<div style="display: flex; gap: 8px; flex: none">
+<sc-for list="{{favorites}}" as="f" hint-placeholder-count="2">
+<button type="button" aria-pressed="{{f.selected}}" style="flex: 1 1 0; min-width: 0; height: 64px; padding: 0 12px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 20px; text-align: left; font-family: inherit; cursor: pointer; color: {{c.text}}; background: {{f.bg}}; box-shadow: {{f.ring}}">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: {{f.color}}; color: {{f.ink}}">{{f.code}}</span>
+<span style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{f.short}}</span>
+<span style="font-size: 12px; font-weight: 500; color: {{f.noteColor}}">{{f.note}}</span>
+</span>
+</button>
+</sc-for>
+</div>
+
+<h3 style="margin: 10px 4px 2px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: {{c.sub}}">Totes les línies</h3>
+<div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="5">
+<button type="button" style="height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 8px; border: 0; border-radius: 16px; text-align: left; font-family: inherit; cursor: pointer; color: {{c.text}}; background: transparent">
+<span style="flex: none; height: 30px; min-width: 40px; padding: 0 6px; box-sizing: border-box; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: {{l.color}}; color: {{l.ink}}">{{l.code}}</span>
+<span style="flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{l.name}}</span>
+<span style="flex: none; font-size: 12px; font-weight: 500; color: {{c.sub}}">{{l.trains}}</span>
+</button>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'dark') !== 'light';
+    const c = dark ? {
+      land: '#1c1e22', street: '#26292e', avenue: '#30343a',
+      glass: 'rgba(44,46,52,0.55)', sheet: 'rgba(34,36,42,0.80)', glassEdge: 'rgba(255,255,255,0.16)',
+      glassShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45)',
+      text: '#ffffff', sub: 'rgba(235,235,245,0.75)', inner: 'rgba(255,255,255,0.10)',
+      scrim: 'rgba(0,0,0,0.30)', grabber: 'rgba(255,255,255,0.35)', accent: '#409CFF',
+      favBg: 'rgba(255,255,255,0.08)', favSel: 'rgba(255,255,255,0.16)'
+    } : {
+      land: '#f3f1ec', street: '#e4e0d8', avenue: '#ffffff',
+      glass: 'rgba(255,255,255,0.62)', sheet: 'rgba(255,255,255,0.85)', glassEdge: 'rgba(255,255,255,0.85)',
+      glassShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 30px rgba(0,0,0,0.14)',
+      text: '#111114', sub: 'rgba(60,60,67,0.85)', inner: 'rgba(0,0,0,0.06)',
+      scrim: 'rgba(0,0,0,0.12)', grabber: 'rgba(60,60,67,0.30)', accent: '#0066D6',
+      favBg: 'rgba(0,0,0,0.04)', favSel: 'rgba(0,0,0,0.08)'
+    };
+    const favorites = [
+      { code: 'L1', short: 'Bellvitge – Fondo', note: '1 avís', color: '#E3242B', ink: '#ffffff', selected: true, warn: true },
+      { code: 'L5', short: 'Cornellà – Vall d’Hebron', note: 'Servei normal', color: '#0077C8', ink: '#ffffff', selected: false, warn: false }
+    ].map((f) => ({
+      ...f,
+      bg: f.selected ? c.favSel : c.favBg,
+      ring: f.selected ? '0 0 0 2px ' + c.accent : 'none',
+      noteColor: f.warn ? (dark ? '#FFB340' : '#A34A00') : c.sub
+    }));
+    const lines = [
+      ['L2', 'Paral·lel – Badalona Pompeu Fabra', '#9B2C8F', '#ffffff', '14 trens'],
+      ['L3', 'Zona Universitària – Trinitat Nova', '#3AA935', '#111114', '19 trens'],
+      ['L4', 'Trinitat Nova – La Pau', '#FFC300', '#111114', '15 trens'],
+      ['L9S', 'Aeroport T1 – Zona Universitària', '#F38B00', '#111114', '6 trens'],
+      ['L10S', 'ZAL | Riu Vell – Collblanc', '#00A6D6', '#111114', '5 trens']
+    ].map(([code, name, color, ink, trains]) => ({ code, name, color, ink, trains }));
+    return { c, favorites, lines };
+  }
+}
+</script>
+</body>
+</html>

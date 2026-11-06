@@ -2,8 +2,8 @@ import SwiftUI
 
 extension IncidentKind {
     /// Asset catalog name of the icon that identifies an incident kind in the
-    /// Xarxa diagram and in the station detail (S4, S7). Shared by both views
-    /// so the icon of a kind never differs between them.
+    /// Parades timeline and in the station detail (S4, S7). Shared by both
+    /// views so the icon of a kind never differs between them.
     var incidentIconAssetName: String {
         switch self {
         case .escalator: return "icon-escalator"
@@ -15,15 +15,21 @@ extension IncidentKind {
     }
 }
 
-/// Vertical schematic of one line (like andana's interactive diagram):
-/// stations as rows on a colored spine, live trains drawn on that spine at
-/// their continuous position, station incidents inside the row, and the next
-/// arrivals per station as pills.
+/// Parades, metro (spec S8, mockup `V4Metro`): one row per station on a rail
+/// in the line colour — dotted on affected runs — with the two tabular time
+/// columns per direction, metro interchange badges, "Ets aquí" on the nearest
+/// station, facility alerts inline in grey, the live trains drawn on the rail,
+/// and ONE service card per affected run at the top.
+///
+/// Mode, line and direction selection moved to the bottom accessory (T1): this
+/// screen carries no top header any more — only the status capsule
+/// (`FreshnessChip`, styled there) and the sticky termini header of the
+/// timeline.
 @MainActor
 struct DiagramScreen: View {
     @EnvironmentObject private var app: AppModel
     /// The same persisted selection as the metro map, so the map and the
-    /// diagram always show the same line (spec S11).
+    /// timeline always show the same line (spec S4).
     @AppStorage("metroSelectedLine") private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
@@ -35,17 +41,23 @@ struct DiagramScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ModeSelector()
-                    .padding(.horizontal, 16)
-                LinePicker(selectedLineCode: $selectedLineCode)
-                chipsRow
+                statusCapsule
                 content
             }
-            .navigationTitle("Xarxa")
-            .navigationBarTitleDisplayMode(.inline)
+            // The bottom accessory (T1) names the mode; the screen keeps no
+            // title bar of its own any more (spec S5).
+            // The icon's network behind the top, fading out before the rows
+            // (spec S11, mockup `V5Metro`).
+            .networkHeaderBackground(opacity: 0.45)
+            .navigationBarHidden(true)
             // Same rule as MapScreen: the loader task lives on the always-
             // visible container, not on the view that requires loaded data.
             .task(id: selectedLineCode) {
+                // The interchange badges read the places catalog (fix F1); a
+                // disk read, no request, when nothing has loaded it yet.
+                if PlaceCatalogStore.shared.places.isEmpty {
+                    PlaceCatalogStore.shared.loadFromCache()
+                }
                 guard let client = app.client else { return }
                 let state = LineState(line: selectedLine, client: client)
                 self.lineState = state
@@ -53,7 +65,7 @@ struct DiagramScreen: View {
             }
         }
         // Same as MapScreen: the sheet comes from the stack itself and its
-        // detents are declared here, not inside the presented view (spec S9).
+        // detents are declared here, not inside the presented view.
         .sheet(item: $selectedStation) { station in
             StationDetailView(station: station, line: selectedLine)
                 .presentationDetents([.medium, .large])
@@ -61,20 +73,18 @@ struct DiagramScreen: View {
         }
     }
 
-    /// Freshness of the line data and count of its incidents (spec S7).
-    private var chipsRow: some View {
-        HStack(spacing: 8) {
+    /// The status capsule, top-left over the content (spec S2): the existing
+    /// `FreshnessChip` initializer, restyled by T1 — this screen only calls it.
+    @ViewBuilder
+    private var statusCapsule: some View {
+        Group {
             if let state = lineState {
                 FreshnessChip(lineState: state)
             }
-            IncidentsChip(
-                lineCode: selectedLineCode,
-                lineDisplayName: selectedLine.displayName
-            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     @ViewBuilder
@@ -82,49 +92,62 @@ struct DiagramScreen: View {
         if let message = app.missingCredentialsMessage {
             ConfigurationNotice(message: message)
         } else if let state = lineState {
-            diagram(state: state)
+            timeline(state: state)
         } else {
             ProgressView("Carregant…")
         }
     }
 
     @ViewBuilder
-    private func diagram(state: LineState) -> some View {
+    private func timeline(state: LineState) -> some View {
         let incidents = IncidentIndex.incidents(
             for: app.alerts,
             stations: state.stations,
             lineCode: selectedLine.code
         )
-        // One clock per render for the regularity tags: the whole column is
-        // rebuilt on every poll, so the tags recompute with it and never per
-        // row (S7).
-        let now = Date()
-        let rows = Self.rowPlan(
+        let affectedCodes = Set(incidents.keys.filter { !(incidents[$0] ?? []).isEmpty })
+        let termini = ParadesTimeline.metroTerminiNames(in: state.stations)
+        let cards = Self.serviceCards(
+            alerts: app.alerts,
+            cardAlertIDs: ParadesTimeline.serviceCardAlertIDs(
+                stations: state.stations,
+                incidents: incidents
+            )
+        )
+        let stationRows = Self.rowPlan(
             stations: state.stations,
             incidents: incidents,
             state: state,
-            now: now
+            places: PlaceCatalogStore.shared.places
         )
-        let incidentCount = incidents.values.reduce(0) { $0 + $1.count }
+        let nearest = ParadesTimeline.nearestStation(
+            stations: state.stations,
+            userLocation: LocationService.shared.location
+        )
         ScrollView {
             VStack(spacing: 0) {
-                if incidentCount > 0 {
-                    IncidentSummaryBanner(
-                        incidentCount: incidentCount,
-                        lineName: selectedLine.displayName
-                    )
-                    .padding(16)
+                ForEach(cards) { card in
+                    ServiceCard(alert: card)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
                 }
                 if state.isFeedEmpty {
                     // No arrivals feed for this line: say so above the rows
-                    // instead of leaving a spine with no trains (spec S8).
+                    // instead of leaving a rail with no trains (spec S8).
                     NoRealtimeDataCard(theoretical: state.isTheoretical)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
+                        .padding(.top, 8)
                 }
-                rowsColumn(state: state, rows: rows)
-                    .padding(.top, incidentCount > 0 ? 0 : 16)
-                    .padding(.bottom, 16)
+                TerminiHeader(termini: termini, lineColorHex: selectedLine.colorHex)
+                    .padding(.top, cards.isEmpty && state.isFeedEmpty ? 8 : 12)
+                rowsColumn(
+                    state: state,
+                    rows: stationRows,
+                    affectedCodes: affectedCodes,
+                    nearest: nearest
+                )
+                .padding(.top, 4)
+                .padding(.bottom, 16)
             }
         }
         .refreshable {
@@ -134,13 +157,30 @@ struct DiagramScreen: View {
 
     /// The station rows plus the trains, sharing one frame: the overlay is
     /// attached to the rows themselves, so its origin is the top of the first
-    /// row and a train can never drift away from the rows it is drawn over
-    /// (S6).
-    private func rowsColumn(state: LineState, rows: [DiagramRowPlan]) -> some View {
+    /// row and a train can never drift away from the rows it is drawn over.
+    private func rowsColumn(
+        state: LineState,
+        rows: [ParadesStationRow],
+        affectedCodes: Set<Int>,
+        nearest: (station: Station, distanceMeters: Double)?
+    ) -> some View {
         VStack(spacing: 0) {
             ForEach(rows) { row in
-                DiagramRow(row: row, line: selectedLine)
-                    .onTapGesture { selectedStation = row.station }
+                ParadesMetroRow(
+                    row: row,
+                    line: selectedLine,
+                    interchangeCodes: row.interchangeCodes,
+                    isNearest: nearest?.station.code == row.station.code,
+                    hereText: nearest?.station.code == row.station.code
+                        ? ParadesTimeline.hereText(distanceMeters: nearest!.distanceMeters)
+                        : nil,
+                    edgeAffected: ParadesTimeline.isEdgeAffected(
+                        fromStationCode: row.station.code,
+                        nextStationCode: row.nextStationCode,
+                        affectedCodes: affectedCodes
+                    )
+                )
+                .onTapGesture { selectedStation = row.station }
             }
         }
         .overlay(alignment: .topLeading) {
@@ -149,226 +189,290 @@ struct DiagramScreen: View {
         }
     }
 
-    /// One entry per station, in line order, with the incidents and arrivals
-    /// it shows. The overlay reads the same plan the rows are drawn from, so
-    /// both agree on every row's height.
+    /// The alert behind each service card id, resolved once so the cards and
+    /// the dotted rail read the same feed (S8: one source).
+    private static func serviceCards(
+        alerts: [ServiceAlert],
+        cardAlertIDs: [String]
+    ) -> [ServiceAlert] {
+        let byID = Dictionary(alerts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return cardAlertIDs.compactMap { byID[$0] }
+    }
+
+    /// One entry per station, in line order, with the incidents, the
+    /// interchange badges and the direction columns it shows. The overlay
+    /// reads the same plan the rows are drawn from, so both agree on every
+    /// row's height.
     private static func rowPlan(
         stations: [Station],
         incidents: [Int: [StationIncident]],
         state: LineState,
-        now: Date
-    ) -> [DiagramRowPlan] {
+        places: [Place]
+    ) -> [ParadesStationRow] {
         stations.enumerated().map { index, station in
-            DiagramRowPlan(
+            ParadesStationRow(
                 index: index,
                 station: station,
-                isFirst: index == 0,
-                isLast: index == stations.count - 1,
+                nextStationCode: index + 1 < stations.count ? stations[index + 1].code : nil,
                 incidents: incidents[station.code] ?? [],
-                arrivals: state.arrivalsByStop[station.code] ?? [],
-                regularity: regularityTag(for: station, state: state, now: now)
+                columnVia1: ParadesTimeline.metroColumn(
+                    arrivals: state.arrivalsByStop[station.code] ?? [],
+                    via: 1
+                ),
+                columnVia2: ParadesTimeline.metroColumn(
+                    arrivals: state.arrivalsByStop[station.code] ?? [],
+                    via: 2
+                ),
+                // The same rule the metro map draws its interchange capsules
+                // with (one rule for both screens).
+                interchangeCodes: StationInterchange.metroLineDisplayNames(
+                    for: station,
+                    places: places,
+                    lineCode: state.line.code
+                )
             )
         }
     }
-
-    /// The worse regularity of the two directions of a station, as the tag the
-    /// row shows: a service gap outranks bunching, and anything else shows
-    /// nothing (spec S7).
-    private static func regularityTag(for station: Station, state: LineState, now: Date) -> DiagramRegularityTag? {
-        // Two live arrivals are the minimum for any verdict, so a station the
-        // feed does not even report twice is skipped instead of being asked.
-        let live = (state.arrivalsByStop[station.code] ?? []).filter { $0.seconds != nil }
-        guard live.count >= 2 else { return nil }
-        var bunched = false
-        for via in [1, 2] {
-            guard let report = state.regularity(stationCode: station.code, via: via, now: now) else { continue }
-            switch report.status {
-            case .gap:
-                guard let longestGap = report.longestGap else { continue }
-                return .gap(minutes: Int((longestGap / 60).rounded()))
-            case .bunched:
-                bunched = true
-            case .regular, .unknown:
-                break
-            }
-        }
-        return bunched ? .bunched : nil
-    }
 }
 
-/// Regularity problem of one station row, computed once per render (spec S7).
-/// The orange tag sits under the station name; nothing is drawn for a regular
-/// or unknown station.
-private enum DiagramRegularityTag {
-    /// No train for roughly that long in one of the directions.
-    case gap(minutes: Int)
-    /// Two trains arrived close together after a gap.
-    case bunched
-
-    /// Catalan wording of the tag, metro lines (S7).
-    var text: String {
-        switch self {
-        case .gap(let minutes): return "Buit de \(minutes) min"
-        case .bunched: return "Trens pegats"
-        }
-    }
-}
-
-/// Everything one diagram row shows, and the height it occupies (S4). A row
-/// with incidents is one `incidentLineHeight` taller per incident, and the
-/// train overlay uses the same numbers to place the markers.
-private struct DiagramRowPlan: Identifiable {
+/// One station row of the metro timeline (spec S8, mockup `V4Metro`).
+private struct ParadesStationRow: Identifiable {
     /// The row's position in the line: the identity the rows are rendered by.
     /// A station code is not unique enough to key on (a line can list the same
     /// station twice), the index always is.
     let index: Int
     let station: Station
-    let isFirst: Bool
-    let isLast: Bool
+    /// Station code of the next row, or nil on the last one: the rail's
+    /// dotted-edge rule needs both ends of the edge.
+    let nextStationCode: Int?
+    /// Facility and service incidents of the station, in alert order.
     let incidents: [StationIncident]
-    let arrivals: [Arrival]
-    /// Regularity tag of the station, nil when there is nothing to report.
-    let regularity: DiagramRegularityTag?
+    /// The two tabular time columns: via 1 (down, toward the last station)
+    /// and via 2 (up, toward the first), as the old pills chose them.
+    let columnVia1: ParadesTimeText
+    let columnVia2: ParadesTimeText
+    /// Metro–metro interchange badges (D4), display names in line order.
+    let interchangeCodes: [String]
 
     var id: Int { index }
 
-    /// A tag that replaces the accessible line costs the row nothing; one under
-    /// a station without it is a 14 pt line of its own, and the train overlay
-    /// reads the same number (S7).
-    var height: CGFloat {
-        var height = DiagramRow.baseHeight + DiagramRow.incidentLineHeight * CGFloat(incidents.count)
-        if regularity != nil, !takesAccessibleLine {
-            height += DiagramRow.regularityLineHeight
-        }
-        return height
-    }
-
-    /// True when the tag can sit on the line the "Accessible" label already
-    /// occupies, instead of adding one.
-    var takesAccessibleLine: Bool { station.accessible == true }
+    var height: CGFloat { ParadesMetroRow.baseHeight }
 }
 
-/// One station row of the diagram.
-private struct DiagramRow: View {
-    let row: DiagramRowPlan
-    let line: MetroLine
+/// The sticky direction header (spec S8): each terminus named once, over its
+/// own time column, on a glass strip.
+private struct TerminiHeader: View {
+    /// First and last station name, nil while the line has no stations.
+    let termini: (first: String, last: String)?
+    let lineColorHex: String
 
-    /// Height of a row without incidents; its center is where the station
-    /// marker sits, so a train at a station is drawn on that marker (S6).
-    static let baseHeight: CGFloat = 56
-    static let incidentLineHeight: CGFloat = 18
-    /// Height of the regularity tag line when the row adds one (S7).
-    static let regularityLineHeight: CGFloat = 14
+    var body: some View {
+        HStack {
+            Spacer(minLength: 8)
+            if let termini {
+                // The last station (via 1, the down direction) sits over the
+                // first time column, the first station over the second.
+                Text("↓ \(termini.last)")
+                Text("↑ \(termini.first)")
+            }
+        }
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.trailing, 12)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
+        .overlay(alignment: .leading) {
+            Circle()
+                .fill(Color(hex: lineColorHex))
+                .frame(width: 8, height: 8)
+                .padding(.leading, 16)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            termini.map { "Cap a \($0.last) i cap a \($0.first)" } ?? "Direccions de la línia"
+        )
+    }
+}
+
+/// One station row of the metro timeline: station marker on the rail, name
+/// with its interchange badges and inline facility alerts, and the two
+/// right-aligned tabular time columns.
+private struct ParadesMetroRow: View {
+    let row: ParadesStationRow
+    let line: MetroLine
+    let interchangeCodes: [String]
+    /// Whether "Ets aquí · <distance>" is drawn on this row.
+    let isNearest: Bool
+    let hereText: String?
+    /// Whether the rail edge leaving this station is dotted (affected run).
+    let edgeAffected: Bool
+
+    static let baseHeight: CGFloat = 64
     static let horizontalPadding: CGFloat = 16
-    static let markerSize: CGFloat = 24
-    static let spineWidth: CGFloat = 5
-    static let incidentBarWidth: CGFloat = 4
+    static let markerSize: CGFloat = 26
+    static let railWidth: CGFloat = 5
 
     static var markerCenterY: CGFloat { baseHeight / 2 }
-    static var spineCenterX: CGFloat { horizontalPadding + markerSize / 2 }
-    static var textLeading: CGFloat { horizontalPadding + markerSize + 12 }
+    static var railCenterX: CGFloat { horizontalPadding + markerSize / 2 }
 
     private var incidents: [StationIncident] { row.incidents }
-    private var height: CGFloat { row.height }
+    /// Facility alerts inline in grey (spec S7, S8); service alerts are told
+    /// by the top cards and the dotted rail instead.
+    private var facilityIncidents: [StationIncident] {
+        incidents.filter { ParadesTimeline.isFacilityIncident($0) }
+    }
     private var lineColor: Color { Color(hex: line.colorHex) }
-    private var incidentColor: Color { Color(hex: "F59E0B") }
 
     var body: some View {
         content
-            .padding(.leading, Self.textLeading)
+            .padding(.leading, Self.horizontalPadding + Self.markerSize + 12)
             .padding(.trailing, Self.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: height)
-            .background(rowBackground)
-            .overlay(alignment: .topLeading) { spineColumn }
+            .frame(height: row.height)
+            .background(isNearest ? Color(hex: "409CFF").opacity(0.12) : Color.clear)
+            .overlay(alignment: .topLeading) { railColumn }
             .contentShape(Rectangle())
     }
 
-    /// Name and accessibility on the marker line, incident lines under it.
     private var content: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.station.name)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    if let regularity = row.regularity, row.takesAccessibleLine {
-                        // On the line of the accessible label, so it keeps that
-                        // label's intrinsic width and the pills stay right.
-                        regularityLine(regularity)
-                    } else if row.station.accessible == true {
-                        Label("Accessible", image: "icon-accessible")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.station.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                if !interchangeCodes.isEmpty {
+                    badgesRow
                 }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    if let forward = soonestArrival(via: 1) {
-                        arrivalPill(forward)
-                    }
-                    if let backward = soonestArrival(via: 2) {
-                        arrivalPill(backward)
-                    }
+                if let hereText {
+                    hereLabel(text: hereText)
+                }
+                ForEach(facilityIncidents) { incident in
+                    facilityLine(incident)
                 }
             }
-            .frame(height: Self.baseHeight)
-            // Station without the accessible line: the tag gets its own line,
-            // which `DiagramRowPlan.height` already counted (S7).
-            if let regularity = row.regularity, !row.takesAccessibleLine {
-                regularityLine(regularity)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(height: Self.regularityLineHeight)
-            }
-            ForEach(incidents) { incident in
-                incidentLine(incident)
+            Spacer(minLength: 8)
+            timeColumn(row.columnVia1, width: 76)
+            timeColumn(row.columnVia2, width: 84)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    /// Metro–metro interchange capsules (D4): white capsule, dark ink, the
+    /// line's own colour only naming it. Plain shapes over the mockup's look.
+    private var badgesRow: some View {
+        HStack(spacing: 6) {
+            ForEach(interchangeCodes, id: \.self) { code in
+                Text(code)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(hex: "1C1C1E"))
+                    .padding(.horizontal, 5)
+                    .frame(minWidth: 24, minHeight: 18)
+                    .background(Capsule().fill(.white))
+                    .accessibilityLabel("Correspondència amb \(code)")
             }
         }
     }
 
-    /// Orange wash and the leading bar of a row that has incidents (S4).
-    @ViewBuilder
-    private var rowBackground: some View {
-        if incidents.isEmpty {
-            Color.clear
-        } else {
-            ZStack(alignment: .leading) {
-                incidentColor.opacity(0.14)
-                Rectangle()
-                    .fill(incidentColor)
-                    .frame(width: Self.incidentBarWidth)
-            }
+    /// "Ets aquí · 250 m" on the row nearest to the rider (spec S8).
+    private func hereLabel(text: String) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(Color(hex: "409CFF"))
+                .frame(width: 8, height: 8)
+                .shadow(color: Color(hex: "409CFF").opacity(0.3), radius: 3)
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color(hex: "409CFF"))
         }
     }
 
-    /// The spine through the whole row and the line-colored station marker
-    /// centered on it (S5). The spine is continuous across rows of different
-    /// heights because every segment ends at a row edge, where the neighbour's
-    /// own segment starts: inside a row the visible line runs from the marker
-    /// center (first row) or the row top, down to the marker center (last row)
-    /// or the row bottom.
-    private var spineColumn: some View {
-        let lineTop = row.isFirst ? Self.markerCenterY : CGFloat(0)
-        let lineBottom = row.isLast ? Self.markerCenterY : height
+    /// A facility alert inline in grey with its existing icon (spec S8).
+    private func facilityLine(_ incident: StationIncident) -> some View {
+        HStack(spacing: 5) {
+            Image(incident.kind.incidentIconAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 12, height: 12)
+                .foregroundStyle(.secondary)
+            Text(incident.title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    /// One tabular time column: "ara" in green, "—" and countdowns in the
+    /// row's default colour (spec S8, mockup colors).
+    private func timeColumn(_ text: ParadesTimeText, width: CGFloat) -> some View {
+        Text(text.text)
+            .font(.callout.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(text.isImminent ? Color(hex: "30D158") : Color.primary)
+            .frame(width: width, alignment: .trailing)
+            .accessibilityLabel(text.text)
+    }
+
+    private var accessibilityText: String {
+        var parts: [String] = [row.station.name]
+        if let hereText {
+            parts.append(hereText)
+        }
+        for direction in [row.columnVia1, row.columnVia2] {
+            switch direction {
+            case .now: parts.append("ara")
+            case .minutes(let text): parts.append("en \(text)")
+            case .none: break
+            }
+        }
+        if !facilityIncidents.isEmpty {
+            parts.append(facilityIncidents.map(\.title).joined(separator: ", "))
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    // MARK: - Rail
+
+    /// The rail through the whole row and the hollow station marker centered
+    /// on it. The rail is continuous across rows because every segment ends at
+    /// a row edge, where the neighbour's own segment starts; the edge leaving
+    /// this station is dotted when the run is affected (spec S8).
+    private var railColumn: some View {
+        let lineTop = CGFloat(0)
+        let lineBottom = row.height
         return ZStack(alignment: .top) {
             Color.clear
-                .frame(width: Self.markerSize, height: height)
-            Rectangle()
-                .fill(lineColor)
-                .frame(width: Self.spineWidth, height: max(lineBottom - lineTop, 0))
-                .offset(y: lineTop)
+                .frame(width: Self.markerSize, height: row.height)
+            // The edge below the marker: solid, or dotted on an affected run.
+            if edgeAffected {
+                DottedRail()
+                    .stroke(lineColor, style: StrokeStyle(lineWidth: Self.railWidth, lineCap: .round, dash: [0.1, 8]))
+                    .frame(width: Self.railWidth, height: max(lineBottom - Self.markerCenterY, 0))
+                    .offset(y: Self.markerCenterY)
+            } else {
+                Rectangle()
+                    .fill(lineColor)
+                    .frame(width: Self.railWidth, height: max(lineBottom - Self.markerCenterY, 0))
+                    .offset(y: Self.markerCenterY)
+            }
             marker
                 .padding(.top, Self.markerCenterY - Self.markerSize / 2)
         }
-        .frame(width: Self.markerSize, height: height, alignment: .top)
+        .frame(width: Self.markerSize, height: row.height, alignment: .top)
         .padding(.leading, Self.horizontalPadding)
     }
 
-    /// `terminal-<line>` at the two end stations, `station-<line>` elsewhere.
+    /// Hollow station dot (S6): white fill, line-coloured ring; the two ends
+    /// of the line are indistinguishable here because the termini header names
+    /// them once at the top.
     private var marker: some View {
-        Image((row.isFirst || row.isLast) ? "terminal-\(line.assetKey)" : "station-\(line.assetKey)")
-            .resizable()
-            .scaledToFit()
+        Circle()
+            .fill(Color.white)
+            .frame(width: Self.markerSize * 0.6, height: Self.markerSize * 0.6)
+            .overlay(
+                Circle().stroke(lineColor, lineWidth: 3)
+            )
             .frame(width: Self.markerSize, height: Self.markerSize)
             .overlay(alignment: .topTrailing) {
                 if !incidents.isEmpty {
@@ -382,130 +486,120 @@ private struct DiagramRow: View {
             .resizable()
             .scaledToFit()
             .frame(width: 14, height: 14)
-            .foregroundStyle(incidentColor)
+            .foregroundStyle(Color(hex: "F59E0B"))
             .padding(2)
             .background(Circle().fill(.white))
             .offset(x: 3, y: 3)
     }
+}
 
-    /// The orange regularity tag: a small alert glyph and its wording (S7).
-    /// Not width-filling: the caller decides where the line sits.
-    private func regularityLine(_ regularity: DiagramRegularityTag) -> some View {
-        HStack(spacing: 4) {
-            Image("icon-alert")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 10, height: 10)
-            Text(regularity.text)
-                .lineLimit(1)
-        }
-        .font(.caption2.bold())
-        .foregroundStyle(incidentColor)
-    }
-
-    private func incidentLine(_ incident: StationIncident) -> some View {
-        HStack(spacing: 4) {
-            Image(incident.kind.incidentIconAssetName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 12, height: 12)
-                .foregroundStyle(incidentColor)
-            Text(incident.title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(incidentColor)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: Self.incidentLineHeight)
-    }
-
-    /// The soonest arrival of one direction (`via` 1 toward the last station,
-    /// 2 toward the first). Arrivals without a via are not shown here (S5).
-    private func soonestArrival(via: Int) -> Arrival? {
-        row.arrivals
-            .filter { $0.via == via && $0.seconds != nil }
-            .min(by: { ($0.seconds ?? .max) < ($1.seconds ?? .max) })
-    }
-
-    private func arrivalPill(_ arrival: Arrival) -> some View {
-        Text(pillText(arrival))
-            .font(.caption2.bold())
-            // Solid line colour with text chosen from its luminance: a tinted
-            // capsule made the line-coloured text unreadable for L1, L2 and L5
-            // in dark mode (spec S6).
-            .foregroundStyle(HexLuminance.isLight(line.colorHex) ? Color.black : Color.white)
-            .lineLimit(1)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(lineColor))
-    }
-
-    private func pillText(_ arrival: Arrival) -> String {
-        let countdown = Arrival.countdownText(seconds: arrival.seconds ?? 0)
-        let destination = arrival.destination.trimmingCharacters(in: .whitespaces)
-        return destination.isEmpty ? countdown : "\(destination) \(countdown)"
+/// The dotted stroke of one affected edge: a vertical line whose dash pattern
+/// renders as dots (`0.1 9` with round caps, the mockup's own values).
+private struct DottedRail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        return path
     }
 }
 
-/// Summary of how many incidents the line has, above the rows (S4).
-private struct IncidentSummaryBanner: View {
-    let incidentCount: Int
-    let lineName: String
+/// ONE service card per affected run at the top of the timeline (spec S8):
+/// amber, the alert title and its start time.
+private struct ServiceCard: View, Identifiable {
+    let alert: ServiceAlert
+
+    var id: String { alert.id }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             Image("icon-alert")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text(incidentCount == 1
-                ? "1 incidència a \(lineName)"
-                : "\(incidentCount) incidències a \(lineName)")
-                .font(.footnote.weight(.semibold))
+                .frame(width: 22, height: 22)
+                .foregroundStyle(Color(hex: "FF9F0A"))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(alertTitle)
+                    .font(.subheadline.weight(.bold))
+                    .lineLimit(1)
+                Text(alertTime)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
             Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
         }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color(hex: "F59E0B"), in: RoundedRectangle(cornerRadius: 10))
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(hex: "FF9F0A").opacity(0.14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .strokeBorder(Color(hex: "FF9F0A").opacity(0.45), lineWidth: 1)
+                )
+        )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(incidentCount == 1
-            ? "1 incidència a \(lineName)"
-            : "\(incidentCount) incidències a \(lineName)")
+        .accessibilityLabel("\(alertTitle). \(alertTime)")
+    }
+
+    /// Title of the card: the kind wording the station rows use, or the plain
+    /// text's first sentence for the line-wide effects.
+    private var alertTitle: String {
+        let text = alert.text?.replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
+        if let text, !text.isEmpty {
+            let sentence = text.split(separator: ".", maxSplits: 1).first.map(String.init) ?? text
+            return sentence.count > 80 ? String(sentence.prefix(80)) + "…" : sentence
+        }
+        return "Servei afectat"
+    }
+
+    /// "des de les 10:42" from the alert's begin date, or nothing usable.
+    private var alertTime: String {
+        guard let begin = alert.beginDate else { return "Ara mateix" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return "des de les \(formatter.string(from: begin))"
     }
 }
 
-/// A train placed in the diagram: its y already comes from the rows' heights.
+/// A train placed in the timeline: its y already comes from the rows' heights.
 private struct DiagramTrain: Identifiable {
     let id: String
-    let assetKey: String
-    let forward: Bool
+    let colorHex: String
+    let heading: Double
+    let isEstimated: Bool
     let y: CGFloat
 }
 
-/// Draws the live trains on the spine of the diagram (S6). It shares the rows'
-/// coordinate space through the overlay it is attached to: every y is measured
-/// from the top of the first row, so rows and trains cannot drift apart.
+/// Draws the live trains ON the rail with the S6 vehicle marker (spec S8). It
+/// shares the rows' coordinate space through the overlay it is attached to:
+/// every y is measured from the top of the first row, so rows and trains
+/// cannot drift apart.
 @MainActor
 private struct TrainOverlay: View {
     let state: LineState
     let line: MetroLine
-    let rows: [DiagramRowPlan]
+    let rows: [ParadesStationRow]
 
     var body: some View {
         let trains = trainPlacements()
         // A ZStack so each `.position` is measured from the top-leading corner
         // of the rows' frame, the one coordinate space the overlay shares with
-        // them (S6).
+        // them.
         ZStack(alignment: .topLeading) {
             ForEach(trains) { train in
-                Image("train-\(train.assetKey)")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 42, height: 18.67)
-                    .rotationEffect(.degrees(train.forward ? 90 : -90))
-                    .position(x: DiagramRow.spineCenterX, y: train.y)
-                    .accessibilityHidden(true)
+                VehicleMarkerView(
+                    colorHex: train.colorHex,
+                    glyph: .train,
+                    headingDegrees: train.heading,
+                    isEstimated: train.isEstimated,
+                    isSelected: false,
+                    size: 30
+                )
+                .position(x: ParadesMetroRow.railCenterX, y: train.y)
             }
         }
     }
@@ -532,12 +626,13 @@ private struct TrainOverlay: View {
             let lower = Int(index)
             let fraction = index - Double(lower)
             let y = tops[lower] + CGFloat(fraction) * rows[lower].height
-                + DiagramRow.baseHeight / 2
+                + ParadesMetroRow.baseHeight / 2
             let trainLine = MetroLine.line(forCode: position.lineCode) ?? line
             return DiagramTrain(
                 id: position.id,
-                assetKey: trainLine.assetKey,
-                forward: position.forward,
+                colorHex: trainLine.colorHex,
+                heading: position.heading,
+                isEstimated: position.isTheoretical,
                 y: y
             )
         }

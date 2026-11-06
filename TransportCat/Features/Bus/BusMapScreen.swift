@@ -4,20 +4,17 @@ import SwiftUI
 import UIKit
 
 /// Live map of one bus line (spec S3): the route of both directions in the
-/// line color, the stops of the direction on screen as dots, and the buses
-/// placed from the arrivals the poll collected (spec S4).
+/// line color, the stops of the direction on screen as hollow dots, and the
+/// buses placed from the arrivals the poll collected (spec S4, unified
+/// markers of spec S6).
 ///
-/// Stops with an incident active right now carry a red warning marker that
-/// opens `IncidentSheet` (spec S9), tapping a bus opens `BusVehicleSheet` with
-/// the follow mechanics of the FGC map (spec S10), and the rider's own dot
-/// plus the router's focus intents belong to spec S11.
+/// Affected runs draw dotted in the line's own colour with ONE amber badge per
+/// run, and facility alerts show a small grey icon next to the stop (spec S7);
+/// tapping a bus selects its glass card, and the bus sheet with the follow
+/// mechanics stays for the router's focus intents (spec S10, S11).
 ///
-/// The buses are the `bus-<colorHex>` pictograms of the asset catalog, rotated
-/// to their heading, with the line name in an upright chip (spec S2).
-///
-/// It mirrors `MapScreen` on purpose — same header shape, same chips, same
-/// camera bookkeeping — so switching mode with the selector at the top changes
-/// the data and never the layout.
+/// It mirrors `MapScreen` on purpose — same chrome, same camera bookkeeping —
+/// so switching mode changes the data and never the layout.
 @MainActor
 struct BusMapScreen: View {
     /// Whether bus is the mode on screen (spec S13). `RootView` keeps all four
@@ -26,6 +23,9 @@ struct BusMapScreen: View {
     /// off-screen mode does neither, and coming back resumes on the retained
     /// `BusLineState` without fetching its topology again.
     let isActive: Bool
+    /// Hook for the nearby sheet (spec S13, T5): called after the location
+    /// button centers the camera on the rider. Defaults to nothing.
+    var onLocate: (() -> Void)? = nil
     @EnvironmentObject private var app: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Catalog and picker state, shared with the bus Línies screen so both
@@ -39,14 +39,21 @@ struct BusMapScreen: View {
     /// (spec S8). Re-derived from the topology, the direction chip and the
     /// alerts feed, never while `body` runs.
     @State private var mapOverlay = BusMapOverlay()
-    /// `ID_SENTIT` of the direction the `Anada`/`Tornada` chip selects: full
-    /// opacity for its route and its buses, dimmed for the other one (spec S3).
-    @State private var selectedDirectionID = 1
-    @State private var showLinePicker = false
+    /// `ID_SENTIT` of the direction on screen, shared with the bottom
+    /// accessory through `BusDirectionSelection`'s storage key (spec S4): the
+    /// accessory's swap button writes it, and this screen resolves it against
+    /// the line's directions the same way. Full opacity for its route and its
+    /// stops, dimmed for the other one (spec S3).
+    @AppStorage(BusDirectionSelection.storageKey) private var storedDirectionID = 1
     /// Stop whose sheet is open (spec S6).
     @State private var selectedStop: BusStop?
-    /// Stop whose incident sheet is open (spec S9).
-    @State private var incidentStop: BusStop?
+    /// Vehicle the rider selected by tapping its marker (spec S6): tapping
+    /// again, closing the card or changing the line deselects it. A user
+    /// action, so it may re-diff; nothing on the 10 Hz position path touches
+    /// it.
+    @State private var selectedVehicleID: String?
+    /// Alert id whose service card is open through its run's badge (spec S7).
+    @State private var selectedIncidentAlertID: String?
     /// Bus whose sheet is open (spec S10). A snapshot copy: the sheet reads
     /// the live position from the line's state by id.
     @State private var selectedBus: BusPosition?
@@ -64,12 +71,8 @@ struct BusMapScreen: View {
     /// vehicle id that is not in the feed yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
-    /// Camera bearing in degrees clockwise from north: the bus markers rotate
-    /// against it so they keep facing along the route whatever the user does
-    /// with the map, exactly like the metro train markers.
-    @State private var cameraHeading: Double = 0
-    /// Latitude span on screen, which decides whether stop dots and bus
-    /// labels are drawn at all (spec S3).
+    /// Latitude span on screen, which decides whether the stop dots of the
+    /// direction on screen are drawn at all (spec S3).
     @State private var latitudeSpan: Double = BusMapScreen.initialRegion.span.latitudeDelta
     // Named type instead of `Self` on purpose: a stored-property initializer has
     // no instance context, so the spelled-out type name is the form that is
@@ -87,19 +90,55 @@ struct BusMapScreen: View {
         location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
     }
 
+    /// Whether the location permission has not been decided yet: the location
+    /// button then asks for it instead of centering (spec S11, S3).
+    private var isLocationNotDetermined: Bool {
+        location.authorization == .notDetermined
+    }
+
+    /// Whether the device currently has a network path (spec S2): when it
+    /// does not, the status capsule shows the offline wording even before the
+    /// first poll answers.
+    private var isOnline: Bool {
+        ConnectivityMonitor.shared.isOnline
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
+            ZStack {
                 mapArea
                     // The placeholder and the map swap with a short fade when
                     // the line's state first arrives (polish pass).
                     .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             }
+            // Spec S1: no header — the mode selector, the line button, the
+            // direction picker and the counts move to the bottom accessory,
+            // the map fills the screen under the status bar, and the v2
+            // chrome lives in overlays (spec S1).
+            .overlay(alignment: .topLeading) {
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .topTrailing) {
+                locationButton
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+            }
+            .overlay(alignment: .top) {
+                if let state = lineState, state.hasNoBuses {
+                    // Below the capsule instead of colliding with it (spec S1).
+                    NoBusesCard()
+                        .padding(.horizontal, 16)
+                        .padding(.top, 52)
+                        .transition(AppMotion.chipTransition)
+                }
+            }
+            // The capsule joins the chrome the moment the line's state exists:
+            // fade and shrink it in instead of a pop (polish pass).
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
             // Changing the bus line is a selection, so it clicks (polish pass).
             .sensoryFeedback(.selection, trigger: store.selectedLine?.code)
-            .navigationTitle("Mapa")
-            .navigationBarTitleDisplayMode(.inline)
             // Both loader tasks live on the always-visible container: the map
             // only renders once a line is selected and its state exists, so a
             // task attached there would never start.
@@ -149,11 +188,27 @@ struct BusMapScreen: View {
                 resolvePendingFocuses()
             }
             .onChange(of: store.selectedLine?.code) { _, _ in
-                // A new line is a new subject: drop the old bus and its
-                // follow, exactly as the FGC map does for its train.
+                // A new line is a new subject: drop the old bus, its follow,
+                // the vehicle selection and any incident card (S10, S6, S7).
                 selectedBus = nil
                 followingVehicleID = nil
+                selectedVehicleID = nil
+                selectedIncidentAlertID = nil
                 resolvePendingFocuses()
+            }
+            // The selected subject's glass card sits above the tab bar and the
+            // accessory, inside the safe area (spec S6, S7, mockup `V3Bus`).
+            // One card at a time: the incident badge and the vehicle marker
+            // deselect each other.
+            .overlay(alignment: .bottom) {
+                if let alertID = selectedIncidentAlertID,
+                   let alert = app.busAlerts.first(where: { $0.id == alertID }),
+                   let state = lineState {
+                    incidentCard(for: alert, line: state.line)
+                } else if let vehicleID = selectedVehicleID, let state = lineState,
+                          let position = state.positions.first(where: { $0.id == vehicleID }) {
+                    vehicleCard(for: position, state: state, line: state.line)
+                }
             }
             .onChange(of: lineState?.directions.map(\.id)) { _, _ in
                 // Topology of the (new) line arrived: place focuses waiting
@@ -163,21 +218,18 @@ struct BusMapScreen: View {
                 refreshMapOverlay()
                 resolvePendingFocuses()
             }
-            // The direction chip changes which route is drawn at full colour
-            // and whose stops carry the incident markers, so the overlay is
-            // re-derived on the change (spec S8).
-            .onChange(of: selectedDirectionID) { _, _ in
+            // The (shared) direction changes which route is drawn at full
+            // colour and whose stops carry the incident markers, so the
+            // overlay is re-derived on the change (spec S8, S4).
+            .onChange(of: storedDirectionID) { _, _ in
                 refreshMapOverlay()
             }
             // A new bus alerts feed re-derives the incident stops (spec S8).
             .onChange(of: app.busAlertsUpdatedAt) { _, _ in
                 refreshMapOverlay()
             }
-            .sheet(isPresented: $showLinePicker) {
-                BusLinePickerSheet(store: store) { line in
-                    store.selectedLineCode = line.code
-                }
-            }
+            // Spec S1: the map screens show no navigation bar.
+            .toolbar(.hidden, for: .navigationBar)
         }
         // Declared on the stack itself, like the metro station sheet: presented
         // from a view nested in the stack its first rows end up under the
@@ -208,79 +260,81 @@ struct BusMapScreen: View {
                     .presentationDragIndicator(.visible)
             }
         }
-        // The alerts behind one stop's warning marker (spec S9).
-        // `IncidentSheet` declares its own detents.
-        .sheet(item: $incidentStop) { stop in
-            if let line = store.selectedLine {
-                IncidentSheet(
-                    alerts: incidentAlerts(for: stop, line: line),
-                    title: "\(line.name) · \(stop.name)"
+    }
+
+    // MARK: - The v2 chrome (spec S1)
+
+    /// The status capsule over the map (spec S2): freshness of the bus poll
+    /// and connectivity in one glass capsule. Online it waits for the line's
+    /// state, as the old chip row did; offline it is always there, because the
+    /// saved-data wording is what the map needs before the first poll answers.
+    @ViewBuilder
+    private var statusCapsule: some View {
+        if let state = lineState {
+            FreshnessChip(
+                updatedAt: state.arrivalsUpdatedAt,
+                lastAttemptFailed: state.lastPollFailed,
+                feedEmpty: state.hasNoBuses
+            )
+            .transition(AppMotion.chipTransition)
+        } else if !isOnline {
+            FreshnessChip(updatedAt: nil, lastAttemptFailed: false, feedEmpty: false)
+                .transition(AppMotion.chipTransition)
+        }
+    }
+
+    /// 44 pt glass location button, top-right of the map (spec S3, mockup
+    /// `V2Main`). It keeps today's behavior: an undecided rider gets the
+    /// permission request the map used to offer in its own button, an
+    /// authorized one gets the camera centered on their last fix at the zoom
+    /// already on screen — the system `MapUserLocationButton` behavior.
+    /// `onLocate` is the T5 hook for the nearby sheet, and while the sheet is
+    /// open (spec S13) the button draws filled: accent background, white glyph.
+    private var locationButton: some View {
+        Button {
+            locate()
+        } label: {
+            Image(systemName: "location.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(router.isNearbyPresented ? Color.white : Color.accentColor)
+                .frame(width: 44, height: 44)
+                .background {
+                    if router.isNearbyPresented {
+                        Circle().fill(Color.accentColor)
+                    }
+                }
+                .glassEffect(in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("La meva ubicació")
+    }
+
+    private func locate() {
+        if isLocationNotDetermined {
+            location.requestWhenInUse()
+            return
+        }
+        guard isLocationAuthorized else { return }
+        location.start()
+        guard let point = location.location else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: point.latitude,
+                        longitude: point.longitude
+                    ),
+                    span: cameraSpan
                 )
-            }
+            )
         }
+        onLocate?()
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            BusLineButton(line: store.selectedLine) {
-                showLinePicker = true
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            directionControl
-            chipsRow
-        }
-    }
-
-    /// "Anada · <destí>" / "Tornada · <destí>" (spec S3). Hidden while the
-    /// stops of the line have not arrived, when there is nothing to choose.
-    @ViewBuilder
-    private var directionControl: some View {
-        if let state = lineState, !state.directions.isEmpty {
-            Picker("Direcció", selection: $selectedDirectionID) {
-                ForEach(state.directions) { direction in
-                    Text("\(direction.name) · \(direction.destinationName)")
-                        .tag(direction.id)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-        }
-    }
-
-    /// Freshness of the bus poll and count of the line's incidents (spec S3,
-    /// S5, S7).
-    @ViewBuilder
-    private var chipsRow: some View {
-        if let line = store.selectedLine {
-            HStack(spacing: 8) {
-                if let state = lineState {
-                    FreshnessChip(
-                        updatedAt: state.arrivalsUpdatedAt,
-                        lastAttemptFailed: state.lastPollFailed,
-                        feedEmpty: state.hasNoBuses
-                    )
-                    .transition(AppMotion.chipTransition)
-                }
-                IncidentsChip(busLineCode: String(line.code), lineDisplayName: line.name)
-                    .transition(AppMotion.chipTransition)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 16)
-            .padding(.bottom, 8)
-            // The freshness chip joins the row the moment the line's state
-            // exists: fade and shrink it in instead of a pop (polish pass).
-            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: lineState != nil)
-            // Same for the incidents chip when the bus alerts feed first answers.
-            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: app.busAlertsUpdatedAt)
-        }
+    /// The direction the shared storage resolves to, against the line's
+    /// directions: nil until the topology has arrived (spec S4).
+    private func resolvedDirectionID(in state: BusLineState) -> Int? {
+        BusDirectionSelection.resolve(stored: storedDirectionID, available: state.directions.map(\.id))
     }
 
     // MARK: - Map
@@ -309,7 +363,7 @@ struct BusMapScreen: View {
 
     @ViewBuilder
     private func lineMap(state: BusLineState, line: BusLine) -> some View {
-        // The routes and the incident stops come from `mapOverlay`, derived
+        // The routes and the incident runs come from `mapOverlay`, derived
         // when the topology, the direction chip or the alerts changed
         // (spec S8): neither the grouping of the incidents nor the
         // `GeoPoint` → `CLLocationCoordinate2D` mapping of a route happens on
@@ -326,9 +380,10 @@ struct BusMapScreen: View {
                 // color because a map overlay has no view opacity to set.
                 let coordinates = mapOverlay.routeCoordinates[direction.id] ?? []
                 if coordinates.count >= 2 {
+                    let shown = resolvedDirectionID(in: state)
                     MapPolyline(coordinates: coordinates)
                         .stroke(
-                            Color(hex: line.colorHex).opacity(direction.id == selectedDirectionID ? 1 : 0.4),
+                            Color(hex: line.colorHex).opacity(direction.id == shown ? 1 : 0.4),
                             style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
                         )
                 }
@@ -340,67 +395,76 @@ struct BusMapScreen: View {
                         Button {
                             selectedStop = stop
                         } label: {
-                            StopDot(colorHex: line.colorHex)
+                            HollowStopDot(colorHex: line.colorHex)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Parada \(stop.name)")
                     }
                 }
             }
-            ForEach(mapOverlay.incidentStops) { stop in
-                // Red warning marker on every stop with an incident right now
-                // (spec S9). Not zoom-gated: an incident is worth seeing from
-                // the whole-line view down.
-                Annotation("", coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude)) {
+            // Each run of consecutively affected stops overlays the shown
+            // direction's route with a dotted line in the line's own colour —
+            // never red, the colour stays the line's (spec S7, mockup
+            // `V3Markers`). Not zoom-gated: an incident is worth seeing from
+            // the whole-line view down.
+            ForEach(mapOverlay.incidentRuns) { incidentRun in
+                if incidentRun.coordinates.count >= 2 {
+                    MapPolyline(coordinates: incidentRun.coordinates)
+                        .stroke(
+                            Color(hex: line.colorHex).opacity(0.9),
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round, dash: [0.1, 9])
+                        )
+                }
+            }
+            // ONE amber badge per affected run, at the run's middle stop (spec
+            // S7, mockup `V3Bus`).
+            ForEach(mapOverlay.incidentBadges) { badge in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: badge.latitude, longitude: badge.longitude)) {
                     Button {
-                        incidentStop = stop
+                        // The badge and the vehicle card clear each other: one
+                        // glass card at a time (spec S6, S7).
+                        selectedVehicleID = nil
+                        selectedIncidentAlertID = badge.alertID
                     } label: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.red)
+                        IncidentBadge(text: badge.text)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Incidència a la parada \(stop.name)")
+                    .accessibilityLabel("Servei afectat a la línia \(badge.text)")
+                }
+            }
+            // Small grey icon next to every stop with a facility alert out of
+            // service, slightly offset so the stop dot stays visible (spec S7).
+            ForEach(mapOverlay.facilityStops) { mark in
+                Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
+                    FacilityStationIcon(kind: mark.kind)
+                        .offset(x: 12, y: -12)
+                        .accessibilityLabel("Incidència d'instal·lació a la parada amb codi \(mark.stationCode)")
                 }
             }
             ForEach(state.positions) { position in
-                // Empty title: the destination is already on the marker.
+                // Empty title: the marker speaks for itself and the selected
+                // vehicle's glass card carries the destination (spec S6). D5:
+                // every bus position is arrival-based, so the marker keeps a
+                // solid ring and the card says where the estimate comes from.
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: position.train.position.latitude, longitude: position.train.position.longitude)) {
-                    // Tapping a bus opens its sheet with the follow button
-                    // (spec S10), like the FGC map does for its trains.
                     Button {
-                        selectedBus = position
+                        // Tapping selects the vehicle and closes any incident
+                        // card; tapping again deselects (spec S6). The bus
+                        // sheet stays for `AppRouter` `.vehicle` focuses.
+                        selectedIncidentAlertID = nil
+                        selectedVehicleID = selectedVehicleID == position.id ? nil : position.id
                     } label: {
-                        BusMarker(
-                            line: line,
-                            destination: position.train.destination,
-                            rotation: position.train.heading - 90 - cameraHeading,
-                            // Only the direction on screen carries the
-                            // destination label: the dimmed bus of the other
-                            // direction keeps its pictogram (0.55) and loses
-                            // the chip, so it no longer reads as a ghost copy
-                            // of a selected one (map-perf S14c).
-                            showLabel: latitudeSpan < Self.labelSpanThreshold
-                                && position.directionID == selectedDirectionID,
-                            showName: position.directionID == selectedDirectionID,
-                            opacity: position.directionID == selectedDirectionID ? 1 : 0.55
-                        )
+                        vehicleMarker(for: position, line: line)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Bus de la línia \(line.name) cap a \(position.train.destination)")
                 }
             }
         }
         .mapStyle(.standard(elevation: .flat))
-        .mapControls {
-            if isLocationAuthorized {
-                MapUserLocationButton()
-            }
-        }
-        .onMapCameraChange(frequency: .onEnd) { context in
-            cameraHeading = context.camera.heading
-            latitudeSpan = context.region.span.latitudeDelta
-            cameraSpan = context.region.span
-        }
+        // Spec S1: the map fills the screen under the status bar; the chrome
+        // overlays above keep their safe-area insets.
+        .ignoresSafeArea(.container, edges: .top)
         // Pan detection for the follow (spec S10), the FGC map's rule: a
         // change whose center is not near the point we last commanded is the
         // rider moving the map, so the camera releases the bus. Zoom keeps it.
@@ -438,24 +502,14 @@ struct BusMapScreen: View {
                     .padding(16)
             }
         }
-        .overlay(alignment: .top) {
-            // A line with no bus in the feed reads as a broken map, so the
-            // reason is stated in a strip that does not cover the route (S9).
-            if state.hasNoBuses {
-                NoBusesCard()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-            }
-        }
         .overlay(alignment: .bottom) {
             if state.totalStopCount > 0 {
                 sourceStrip(state: state)
             }
         }
         .onChange(of: state.directions.map(\.id)) { _, ids in
-            if !ids.contains(selectedDirectionID) {
-                selectedDirectionID = ids.first ?? 1
-            }
+            // The shared storage resolves against the new directions (spec
+            // S4), so the clamp the old local `@State` needed is gone.
             // Fitted whenever the directions first become non-empty, which
             // covers both the first load and a change of line — but never
             // over a focus intent, whose centering would be erased (S11).
@@ -469,24 +523,6 @@ struct BusMapScreen: View {
             refreshMapOverlay()
             if !state.directions.isEmpty, pendingPlaceFocus == nil, pendingVehicleFocusID == nil {
                 fitCamera(to: state)
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            // S11: before a decision the map offers a button that asks for
-            // when-in-use permission; after one it never appears again.
-            if location.authorization == .notDetermined {
-                Button {
-                    location.requestWhenInUse()
-                } label: {
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .padding(10)
-                        .background(.thinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Activa la ubicació")
-                .padding(.trailing, 16)
-                .padding(.top, 8)
             }
         }
         // No content-keyed `.animation` on the direction set: it animated the
@@ -516,11 +552,159 @@ struct BusMapScreen: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The direction the chips select, falling back to the first one of the
-    /// line so a line that only publishes one direction still draws its stops.
+    /// The direction the shared storage selects, falling back to the first one
+    /// of the line so a line that only publishes one direction still draws its
+    /// stops (spec S4).
     private func shownDirection(in state: BusLineState) -> BusDirection? {
-        state.directions.first { $0.id == selectedDirectionID } ?? state.directions.first
+        let resolved = resolvedDirectionID(in: state)
+        return state.directions.first { $0.id == resolved } ?? state.directions.first
     }
+
+    // MARK: - Selected subject cards (S6, S7)
+
+    /// The marker of one bus (spec S6, mockup `V3Markers`): the unified marker
+    /// in the line's colour with the heading wedge, upright and ring solid
+    /// (D5); the selected bus gets the halo plus a small glass label with its
+    /// destination under the marker. The overlay adds nothing to the layout
+    /// frame, so MapKit keeps centering the annotation on the coordinate.
+    private func vehicleMarker(for position: BusPosition, line: BusLine) -> some View {
+        VehicleMarkerView(
+            colorHex: line.colorHex,
+            glyph: .bus,
+            headingDegrees: position.train.heading,
+            isEstimated: false,
+            isSelected: selectedVehicleID == position.id
+        )
+        .overlay(alignment: .bottom) {
+            if selectedVehicleID == position.id {
+                Text(position.train.destination)
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .glassEffect(in: Capsule())
+                    .fixedSize()
+                    .offset(y: 22)
+            }
+        }
+    }
+
+    /// Glass card of the selected bus (spec S6, mockup `V3Bus`): the line
+    /// badge, the head-sign destination, the next stop with its countdown
+    /// when the data exists (never a new request: the row reads the same
+    /// positions and arrivals the screen already holds), and where the
+    /// estimate comes from (D5).
+    private func vehicleCard(for position: BusPosition, state: BusLineState, line: BusLine) -> some View {
+        MapGlassCard(
+            badgeText: line.name,
+            badgeColorHex: line.colorHex,
+            title: position.train.destination.isEmpty
+                ? "Destí desconegut"
+                : "Cap a \(position.train.destination)",
+            onClose: { selectedVehicleID = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let stopName = nextStopName(for: position, in: state) {
+                    Text("Pròxima: \(stopName) · \(Arrival.countdownText(seconds: position.train.secondsToArrival))")
+                        .font(.subheadline.weight(.medium))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(
+                            "Pròxima \(stopName), arriba en \(Arrival.countdownText(seconds: position.train.secondsToArrival))"
+                        )
+                }
+                VehiclePositionSource(
+                    isEstimated: true,
+                    estimatedText: "Posició estimada a partir de les arribades (iBus)"
+                )
+                // The existing bus sheet: next stops and "follow" stay
+                // reachable from a plain tap.
+                Button {
+                    selectedBus = position
+                } label: {
+                    Label("Més detalls", systemImage: "info.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    /// Name of the stop the bus is approaching: `nextStationCode` is a bus
+    /// stop code here, resolved against the bus's own direction first, the
+    /// same rule `BusVehicleSheet` applies. Nil when neither can name it.
+    private func nextStopName(for position: BusPosition, in state: BusLineState) -> String? {
+        let code = position.train.nextStationCode
+        if let direction = state.directions.first(where: { $0.id == position.directionID }),
+           let stop = direction.stops.first(where: { $0.code == code }) {
+            return stop.name
+        }
+        if let stop = state.directions.flatMap(\.stops).first(where: { $0.code == code }) {
+            return stop.name
+        }
+        return nil
+    }
+
+    /// Glass card of a run's amber badge (spec S7): the alert's text and time
+    /// and a jump to the Avisos tab. The badge's text already carries the
+    /// line, so the card repeats it as its badge.
+    private func incidentCard(for alert: ServiceAlert, line: BusLine) -> some View {
+        MapGlassCard(
+            badgeText: line.name,
+            badgeColorHex: line.colorHex,
+            title: "Servei afectat",
+            onClose: { selectedIncidentAlertID = nil }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let text = AlertText.cleaned(alert.text) {
+                    Text(text)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let datesText = Self.incidentDatesText(for: alert) {
+                    Text(datesText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    AppRouter.shared.selectedTab = .alerts
+                    selectedIncidentAlertID = nil
+                } label: {
+                    Text("Veure a Avisos")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.white.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// Begin, end or the range between them, whichever the feed provides —
+    /// the rule the former incident sheet rendered, reworded for the map card.
+    private static func incidentDatesText(for alert: ServiceAlert) -> String? {
+        switch (alert.beginDate, alert.endDate) {
+        case let (begin?, end?):
+            return "Del \(dayText(begin)) al \(dayText(end))"
+        case let (begin?, nil):
+            return "Des del \(dayText(begin))"
+        case let (nil, end?):
+            return "Fins al \(dayText(end))"
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    private static func dayText(_ date: Date) -> String {
+        // The format the former incident sheet printed, as plain text.
+        Self.incidentDayFormatter.string(from: date)
+    }
+
+    private static let incidentDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
+    }()
 
     /// Incidents of one stop from the bus alerts feed (spec S7). Both
     /// directions are mapped to `Station` values because the same physical stop
@@ -535,42 +719,80 @@ struct BusMapScreen: View {
         )[stop.code] ?? []
     }
 
-    /// Stops of the line with an incident active right now (spec S9), from an
-    /// `IncidentIndex` pass over the same `AppModel.busAlerts` source
-    /// `BusStopSheet` reads. One marker per physical stop code: the same stop
-    /// of both directions shares it, preferring the direction on screen.
+    /// Runs of consecutively affected stops of the direction on screen, one
+    /// amber badge per run, and the stops carrying a facility icon (spec S7),
+    /// from an `IncidentIndex` pass over the same `AppModel.busAlerts` source
+    /// `BusStopSheet` reads. Only the direction on screen derives them: the
+    /// direction chip re-triggers the derivation, and the same physical stop
+    /// appears in both directions with the same code.
     ///
     /// Static and takes its inputs explicitly because the map derives it when
     /// the directions, the direction chip or the alerts change, never from the
     /// 10 Hz render path (spec S8).
-    private static func incidentStops(
-        in state: BusLineState,
-        shown: BusDirection?,
+    private static func incidentPresentation(
+        direction: BusDirection,
+        line: BusLine,
         alerts: [ServiceAlert]
-    ) -> [BusStop] {
-        guard !alerts.isEmpty else { return [] }
-        let code = String(state.line.code)
-        let allStops = state.directions.flatMap(\.stops)
-        guard !allStops.isEmpty else { return [] }
+    ) -> (
+        runs: [BusIncidentRunLayer],
+        badges: [IncidentRunBadge],
+        facilityStops: [FacilityStationMark]
+    ) {
+        guard !alerts.isEmpty else { return ([], [], []) }
+        let code = String(line.code)
+        let stops = direction.stops.map { $0.asStation(lineCode: code) }
         let incidents = IncidentIndex.incidents(
             for: alerts,
-            stations: allStops.map { $0.asStation(lineCode: code) },
+            stations: stops,
             lineCode: code
         )
-        guard !incidents.isEmpty else { return [] }
-        let ordered = (shown.map { [$0] } ?? []) + state.directions.filter { $0.id != shown?.id }
-        var seen: Set<Int> = []
-        var result: [BusStop] = []
-        for stop in ordered.flatMap(\.stops) where incidents[stop.code] != nil && !seen.contains(stop.code) {
-            seen.insert(stop.code)
-            result.append(stop)
+        var serviceIncidents: [Int: [StationIncident]] = [:]
+        var facilityStops: [FacilityStationMark] = []
+        for (stopCode, list) in incidents {
+            let facilityList = list.filter { ParadesTimeline.isFacilityIncident($0) }
+            let serviceList = list.filter { !ParadesTimeline.isFacilityIncident($0) }
+            if !facilityList.isEmpty, let stop = direction.stops.first(where: { $0.code == stopCode }) {
+                facilityStops.append(FacilityStationMark(
+                    stationCode: stopCode,
+                    kind: facilityList[0].kind,
+                    latitude: stop.latitude,
+                    longitude: stop.longitude
+                ))
+            }
+            if !serviceList.isEmpty {
+                serviceIncidents[stopCode] = serviceList
+            }
         }
-        return result
+        var runs: [BusIncidentRunLayer] = []
+        var badges: [IncidentRunBadge] = []
+        for overlay in IncidentSegments.overlays(
+            stations: stops,
+            incidents: serviceIncidents,
+            geometry: direction.route
+        ) {
+            if overlay.points.count >= 2 {
+                runs.append(BusIncidentRunLayer(
+                    run: overlay.run,
+                    coordinates: overlay.points.map { point in
+                        CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+                    }
+                ))
+            }
+            if let badge = IncidentBadgePlacement.badge(
+                for: overlay.run,
+                lineDisplayName: line.name,
+                serviceIncidents: serviceIncidents
+            ) {
+                badges.append(badge)
+            }
+        }
+        return (runs, badges, facilityStops)
     }
 
     /// Re-derives the map overlay of the line on screen: the coordinates of
-    /// both routes and the stops with an incident (spec S8). Called when the
-    /// topology, the direction chip or the alerts feed changes.
+    /// both routes, the incident runs of the direction on screen with their
+    /// badges, and the stops carrying a facility icon (spec S8). Called when
+    /// the topology, the direction chip or the alerts feed changes.
     private func refreshMapOverlay() {
         guard let state = lineState else {
             mapOverlay = BusMapOverlay()
@@ -580,13 +802,24 @@ struct BusMapScreen: View {
         for direction in state.directions {
             routes[direction.id] = Self.mapCoordinates(of: direction.route.points)
         }
-        mapOverlay = BusMapOverlay(
-            routeCoordinates: routes,
-            incidentStops: Self.incidentStops(
-                in: state,
-                shown: shownDirection(in: state),
+        var runs: [BusIncidentRunLayer] = []
+        var badges: [IncidentRunBadge] = []
+        var facilityStops: [FacilityStationMark] = []
+        if let direction = shownDirection(in: state) {
+            let presentation = Self.incidentPresentation(
+                direction: direction,
+                line: state.line,
                 alerts: app.activeBusAlerts(affecting: String(state.line.code))
             )
+            runs = presentation.runs
+            badges = presentation.badges
+            facilityStops = presentation.facilityStops
+        }
+        mapOverlay = BusMapOverlay(
+            routeCoordinates: routes,
+            incidentRuns: runs,
+            incidentBadges: badges,
+            facilityStops: facilityStops
         )
     }
 
@@ -597,17 +830,6 @@ struct BusMapScreen: View {
         points.map { point in
             CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
         }
-    }
-
-    /// The feed alerts behind one stop's warning marker: the ids `IncidentIndex`
-    /// matched for the stop (spec S9), resolved back into the `ServiceAlert`
-    /// values `IncidentSheet` lists.
-    private func incidentAlerts(for stop: BusStop, line: BusLine) -> [ServiceAlert] {
-        guard let state = lineState else { return [] }
-        let ids = Set(incidents(for: stop, in: state, line: line).map(\.alertID))
-        return app.busAlerts
-            .filter { ids.contains($0.id) }
-            .sorted { $0.id < $1.id }
     }
 
     /// The delay of each bus the sheet lists, estimated against the timetable
@@ -825,10 +1047,6 @@ struct BusMapScreen: View {
     /// drawn (spec S3).
     private static let stopSpanThreshold = 0.03
 
-    /// Below this visible latitude span the destination labels are drawn; above
-    /// it they overlap each other, as on the metro map (spec S3).
-    private static let labelSpanThreshold = 0.05
-
     /// Span a focus centers with: close enough for the stop sheet or the bus
     /// sheet to be about something on screen, under the stop-dot threshold so
     /// the neighborhood stays drawn (spec S11).
@@ -851,8 +1069,9 @@ private struct BusLoadKey: Equatable {
 }
 
 /// What the bus map draws that only depends on the line's topology, the
-/// direction chip and the alerts feed (spec S8): the polyline of each direction
-/// and the stops that carry an incident marker.
+/// direction chip and the alerts feed (spec S8): the polyline of each direction,
+/// the incident runs of the direction on screen with their badges, and the
+/// stops that carry a facility icon.
 ///
 /// The 10 Hz position tick re-evaluates `body` but never rebuilds this value,
 /// so neither the incident grouping nor the `GeoPoint` →
@@ -860,26 +1079,50 @@ private struct BusLoadKey: Equatable {
 private struct BusMapOverlay {
     /// Coordinates of each direction's route, keyed by `ID_SENTIT`.
     var routeCoordinates: [Int: [CLLocationCoordinate2D]] = [:]
-    /// Stops with an incident active right now, one entry per physical stop
-    /// code (spec S9).
-    var incidentStops: [BusStop] = []
+    /// Runs of consecutively affected stops of the direction on screen, with
+    /// the coordinates of each dotted overlay already mapped (spec S7).
+    var incidentRuns: [BusIncidentRunLayer] = []
+    /// One badge per run, at its middle stop (spec S7).
+    var incidentBadges: [IncidentRunBadge] = []
+    /// Stops with a facility alert active right now, one entry per physical
+    /// stop code (spec S7).
+    var facilityStops: [FacilityStationMark] = []
 }
 
-/// Stop dot on the bus map: a small line-colored circle with a white stroke.
-private struct StopDot: View {
+/// One run of affected stops of the bus map with the coordinates of its
+/// overlay (spec S7).
+private struct BusIncidentRunLayer: Identifiable {
+    let run: IncidentRun
+    /// Coordinates of the dotted overlay; empty when the run has nothing to
+    /// draw, which is the case the map skips.
+    let coordinates: [CLLocationCoordinate2D]
+
+    /// Identity of the run it draws, so the overlay survives a re-derivation.
+    var id: Int { run.id }
+}
+
+/// Hollow stop dot on the bus map (spec S6, mockup `V3Markers`): white with a
+/// stroke in the line colour, sitting on the route. The 44 pt frame around the
+/// dot is the touch target.
+private struct HollowStopDot: View {
     let colorHex: String
 
     var body: some View {
         Circle()
-            .fill(Color(hex: colorHex))
-            .frame(width: 10, height: 10)
-            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+            .fill(Color.white)
+            .frame(width: 14, height: 14)
+            .overlay(Circle().stroke(Color(hex: colorHex), lineWidth: 3))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
     }
 }
 
 /// Moving bus marker: the line-colored bus pictogram rotated along its
 /// heading, the line name in an upright chip above it, and the destination
 /// label below when zoomed in (spec S2, S3).
+///
+/// Kept after the S6 rework: `BusMapScreen` no longer draws it, but the FGC
+/// and Tot maps (T4b) still do; the parent removes it during cleanup (T7).
 struct BusMarker: View {
     let line: BusLine
     let destination: String

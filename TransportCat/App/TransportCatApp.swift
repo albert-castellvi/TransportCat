@@ -102,4 +102,21 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
         return true
     }
+
+    /// Hands the SwiftUI scene a delegate for the home-screen quick actions
+    /// (spec S14): the cold-launch shortcut and the one chosen while running
+    /// both arrive through `SceneDelegate`. Keeping the delegate separate
+    /// changes nothing else about the scene: SwiftUI still owns its window.
+    func application(
+        _ application: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(
+            name: nil,
+            sessionRole: connectingSceneSession.role
+        )
+        configuration.delegateClass = SceneDelegate.self
+        return configuration
+    }
 }

@@ -1,10 +1,19 @@
 import SwiftUI
 
-/// Capsule telling the rider how fresh the data on screen is (spec S7).
+/// Glass status capsule over the map and the screens, top-left in the v2
+/// chrome (redesign spec S2): how fresh the data on screen is, and — while the
+/// device has no network path — that what is drawn comes from saved data and
+/// the theoretical timetable (the wording of the offline banner this capsule
+/// absorbs).
 ///
-/// The age is read from the `TimelineView` clock below, so a chip that says
-/// "fa 12 s" keeps counting instead of freezing at the value it had when the
-/// line finished loading.
+/// The state decision lives in the pure `StatusCapsuleState` helper, tested
+/// without a UI; this view only renders it. The age is read from the
+/// `TimelineView` clock below, so a capsule that says "fa 12 s" keeps counting
+/// instead of freezing at the value it had when the line finished loading.
+///
+/// Both initializers keep their exact signatures: the metro screen passes its
+/// `LineState`, and the bus, FGC, global and Parades screens pass the values
+/// of their own poll cycle.
 struct FreshnessChip: View {
     /// Metro source, nil for the explicit bus source below. Both feed the same
     /// rendering; only where the timestamps come from differs.
@@ -34,71 +43,68 @@ struct FreshnessChip: View {
         self.feedEmpty = feedEmpty
     }
 
-    /// Dot color per freshness level (spec S7): green, amber, red, gray.
-    private static let liveColor = Color.green
-    private static let delayedColor = Color.orange
-    private static let staleColor = Color.red
-    private static let unavailableColor = Color.gray
-    /// A line drawn from the timetable rather than a live feed (spec S7): blue,
-    /// so it reads as information instead of a degraded live state.
-    private static let theoreticalColor = Color.blue
-
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            let now = context.date
             let lastUpdate = lineState?.arrivalsUpdatedAt ?? updatedAt
             let attemptFailed = lineState?.lastPollFailed ?? lastAttemptFailed
             let empty = lineState?.isFeedEmpty ?? feedEmpty
             let theoretical = lineState?.isTheoretical ?? false
-            let status = status(now: now, lastUpdate: lastUpdate, attemptFailed: attemptFailed, feedEmpty: empty, theoretical: theoretical)
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(status.color)
-                    .frame(width: 8, height: 8)
-                Text(status.text)
-                    .font(.caption2.bold())
+            let status = StatusCapsule.make(
+                isOnline: ConnectivityMonitor.shared.isOnline,
+                updatedAt: lastUpdate,
+                lastAttemptFailed: attemptFailed,
+                feedEmpty: empty,
+                theoretical: theoretical,
+                now: context.date
+            )
+            HStack(spacing: 7) {
+                statusIcon(of: status)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(status.label)
+                    .font(.caption.weight(.semibold))
+                if !status.detail.isEmpty {
+                    Text(status.detail)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.thinMaterial, in: Capsule())
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .glassEffect()
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(status.text)
+            .accessibilityLabel(a11yLabel(of: status))
         }
     }
 
-    /// Dot color and Catalan wording for the given clock and feed values.
-    ///
-    /// The level comes from `Freshness.level` exactly as the metro chip did
-    /// through `LineState.freshness`, so both sources share one rule (S2, S5).
-    private func status(now: Date, lastUpdate: Date?, attemptFailed: Bool, feedEmpty: Bool, theoretical: Bool) -> (color: Color, text: String) {
-        // Trains computed from the timetable: the age of the schedule is not a
-        // data age, so the chip says what it is and shows no countdown (S7).
-        if theoretical {
-            return (Self.theoreticalColor, "Horari teòric")
-        }
-        // A line TMB publishes no arrivals for is never "En directe", however
-        // recent the last empty answer was (spec S8).
-        if feedEmpty {
-            return (Self.unavailableColor, "Sense dades en temps real")
-        }
-        let age = age(now: now, lastUpdate: lastUpdate)
-        switch Freshness.level(lastUpdate: lastUpdate, now: now, lastAttemptFailed: attemptFailed) {
-        case .live:
-            return (Self.liveColor, "En directe · \(age)")
-        case .delayed:
-            return (Self.delayedColor, "Amb retard · \(age)")
-        case .stale:
-            return (Self.staleColor, "Dades antigues · \(age)")
-        case .unavailable:
-            // No successful poll yet: there is no age to show.
-            return (Self.unavailableColor, "Sense dades")
+    /// The status dot in its level color, or the wifi-off symbol offline.
+    @ViewBuilder
+    private func statusIcon(of status: StatusCapsuleState) -> some View {
+        switch status.icon {
+        case .wifiOff:
+            Image(systemName: "wifi.slash")
+                .foregroundStyle(Color(hex: "FF9F0A"))
+        case .dot(let kind):
+            Circle()
+                .fill(Self.dotColor(kind))
+                .frame(width: 8, height: 8)
         }
     }
 
-    /// Age of the last successful arrivals update, empty when there is none.
-    private func age(now: Date, lastUpdate: Date?) -> String {
-        guard let lastUpdate else { return "" }
-        return Freshness.ageText(since: lastUpdate, now: now)
+    /// Dot color per level, the palette the chip has always used: green,
+    /// amber, red, gray, and blue for the theoretical level.
+    private static func dotColor(_ kind: StatusDotKind) -> Color {
+        switch kind {
+        case .live: return .green
+        case .delayed: return .orange
+        case .stale: return .red
+        case .unavailable: return .gray
+        case .theoretical: return .blue
+        }
+    }
+
+    /// One combined VoiceOver label, so the parts are never read apart.
+    private func a11yLabel(of status: StatusCapsuleState) -> String {
+        status.detail.isEmpty ? status.label : "\(status.label), \(status.detail)"
     }
 }
 

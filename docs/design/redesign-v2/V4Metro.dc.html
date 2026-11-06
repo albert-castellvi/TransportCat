@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Parades — Metro L2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #0f1012; color: #ffffff">
+
+<svg width="390" height="300" viewBox="0 0 390 300" aria-hidden="true" style="position: absolute; left: 0; top: 0; opacity: {{artOp}}">
+<defs>
+<linearGradient id="fadeMg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="1"></stop><stop offset="0.45" stop-color="#ffffff" stop-opacity="0.6"></stop><stop offset="0.8" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+<mask id="fadeM"><rect width="390" height="300" fill="url(#fadeMg)"></rect></mask>
+</defs>
+<g mask="url(#fadeM)">
+<g fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+<path d="M70 -20 V100 L150 180 H270" stroke="#2EAA4A"></path>
+<path d="M-20 150 H60 L230 -20" stroke="#1E6FD9"></path>
+<path d="M-20 300 L300 -20" stroke="#E3242B"></path>
+<path d="M150 -20 V40 L410 300" stroke="#9B2C8F"></path>
+<path d="M300 40 L330 70 V170 L360 200 H410" stroke="#F5A623"></path>
+</g>
+<g fill="#ffffff"><circle cx="70" cy="40" r="3.5"></circle><circle cx="20" cy="150" r="3.5"></circle><circle cx="200" cy="10" r="3.5"></circle><circle cx="250" cy="30" r="3.5"></circle><circle cx="330" cy="120" r="3.5"></circle></g>
+<g fill="#ffffff" stroke="#1c1c1e" stroke-width="4"><circle cx="160" cy="50" r="9"></circle><circle cx="195" cy="85" r="9"></circle><circle cx="90" cy="120" r="9"></circle><circle cx="125" cy="155" r="9"></circle></g>
+<circle cx="300" cy="40" r="7" fill="#ffffff" stroke="#F5A623" stroke-width="4"></circle>
+</g>
+</svg>
+
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 13px; font-weight: 600; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span>En directe</span>
+<span style="font-weight: 500; color: rgba(235,235,245,0.75)">14 trens</span>
+</div>
+<button type="button" aria-label="Anar a la parada més propera" style="position: absolute; top: 54px; right: 16px; width: 44px; height: 44px; border-radius: 22px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #409CFF; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 11 21 3l-8 18-2-8-8-2Z"></path></svg>
+</button>
+
+<a href="#avisos" style="position: absolute; top: 108px; left: 16px; right: 16px; box-sizing: border-box; min-height: 64px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: #ffffff; border-radius: 20px; background: #261e10; border: 1px solid rgba(255,159,10,0.45)">
+<svg width="22" height="22" viewBox="0 0 24 24" style="flex: none" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#FF9F0A"></path><path d="M12 10v4M12 17v.5" stroke="#1c1c1e" stroke-width="2.2" stroke-linecap="round"></path></svg>
+<span style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px; font-weight: 700">Sense servei entre Verneda i Gorg</span>
+<span style="font-size: 13px; font-weight: 500; color: rgba(235,235,245,0.75)">Bus alternatiu · des de les 10:42</span>
+</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</a>
+
+<div aria-hidden="true" style="position: absolute; top: 186px; left: 16px; right: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end; gap: 0; border-radius: 18px; font-size: 12px; font-weight: 700; color: rgba(235,235,245,0.75); background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.12); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 84px; text-align: right">↓ Badalona</span>
+<span style="width: 76px; text-align: right">↑ Paral·lel</span>
+</div>
+
+<ol aria-label="Parades de la L2" style="position: absolute; top: 232px; left: 0; right: 0; margin: 0; padding: 0 16px; list-style: none">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<li style="position: relative; height: 64px; display: flex; align-items: center; border-radius: 16px; background: {{r.bg}}">
+<svg width="56" height="64" viewBox="0 0 56 64" aria-hidden="true" style="flex: none">
+<path d="M28 0V32" stroke="#9B2C8F" stroke-width="6" stroke-linecap="round" stroke-dasharray="{{r.dashTop}}" opacity="{{r.opTop}}"></path>
+<path d="M28 32V64" stroke="#9B2C8F" stroke-width="6" stroke-linecap="round" stroke-dasharray="{{r.dashBottom}}" opacity="{{r.opBottom}}"></path>
+<circle cx="28" cy="32" r="7" fill="#ffffff" stroke="#9B2C8F" stroke-width="3.5" opacity="{{r.stopOp}}"></circle>
+<rect x="19" y="22" width="18" height="20" rx="9" fill="#ffffff" stroke="#0f1012" stroke-width="2.5" opacity="{{r.xferOp}}"></rect>
+</svg>
+<sc-if value="{{r.hasTrain}}" hint-placeholder-val="{{ false }}">
+<svg width="30" height="30" viewBox="0 0 44 44" aria-hidden="true" style="position: absolute; left: 13px; top: -15px; z-index: 2; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6))">
+<g transform="rotate({{r.bearing}} 22 22)"><path d="M22 2.5 L28 10.5 L16 10.5 Z" fill="#9B2C8F" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"></path></g>
+<circle cx="22" cy="22" r="13" fill="#9B2C8F" stroke="#ffffff" stroke-width="2.4"></circle>
+<g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="16.5" y="14.5" width="11" height="12" rx="3"></rect><path d="M16.5 20H27.5M18.5 29l1.5-2.5M25.5 29 24 26.5"></path></g>
+</svg>
+</sc-if>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-left: 4px">
+<span style="font-size: 17px; font-weight: 600; color: {{r.nameColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+<span style="display: flex; align-items: center; gap: 6px; min-height: 18px">
+<sc-for list="{{r.xfers}}" as="x" hint-placeholder-count="1">
+<span style="height: 18px; min-width: 24px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: {{x.color}}; color: {{x.ink}}">{{x.code}}</span>
+</sc-for>
+<sc-if value="{{r.me}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #409CFF"><span style="width: 8px; height: 8px; border-radius: 4px; background: #409CFF; box-shadow: 0 0 0 3px rgba(64,156,255,0.3)"></span>Ets aquí · 250 m</span>
+</sc-if>
+<sc-if value="{{r.facility}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: rgba(235,235,245,0.75)">
+<svg width="14" height="13" viewBox="0 0 24 22" aria-hidden="true"><rect x="1" y="1" width="22" height="20" rx="6" fill="none" stroke="rgba(235,235,245,0.75)" stroke-width="1.8"></rect><path d="M8 16V9l4-3 4 3v7" fill="none" stroke="rgba(235,235,245,0.75)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+Ascensor fora de servei
+</span>
+</sc-if>
+<sc-if value="{{r.note}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12px; font-weight: 600; color: {{r.noteColor}}">{{r.noteText}}</span>
+</sc-if>
+</span>
+</div>
+<span style="flex: none; width: 72px; text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{r.downColor}}">{{r.down}}</span>
+<span style="flex: none; width: 76px; padding-right: 12px; box-sizing: border-box; text-align: right; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: {{r.upColor}}">{{r.up}}</span>
+</li>
+</sc-for>
+</ol>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: linear-gradient(to bottom, rgba(15,16,18,0), rgba(15,16,18,0.92) 45%); pointer-events: none"></div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-label="Mode: Metro. Canviar de mode" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 700; color: #ffffff; background: rgba(255,255,255,0.13)">
+Metro
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+<button type="button" aria-label="Línia L2, Paral·lel – Badalona, servei afectat. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; cursor: pointer; text-align: left; font-family: inherit; font-size: 15px; font-weight: 600; color: #ffffff; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 16px; background: #9B2C8F; color: #ffffff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">L2</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Paral·lel – Badalona</span>
+<svg width="16" height="16" viewBox="0 0 24 24" style="flex: none" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#FF9F0A"></path><path d="M12 10v4M12 17v.5" stroke="#1c1c1e" stroke-width="2.2" stroke-linecap="round"></path></svg>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #409CFF; background: rgba(255,255,255,0.14)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5v14"></path><circle cx="7" cy="5" r="2.2" fill="currentColor"></circle><circle cx="7" cy="12" r="2.2" fill="currentColor"></circle><circle cx="7" cy="19" r="2.2" fill="currentColor"></circle><path d="M12 5h8M12 12h6M12 19h8"></path></svg>
+Parades
+</button>
+<button type="button" aria-pressed="false" aria-label="Avisos, 2 nous" style="position: relative; flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+<span aria-hidden="true" style="position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #FF3B30; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center">2</span>
+</button>
+</nav>
+<button type="button" aria-label="Cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.70); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"headerArt":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sub = 'rgba(235,235,245,0.75)';
+    const time = (t) => (t === 'ara' ? '#30D158' : t === '—' ? sub : '#ffffff');
+    const L = {
+      L1: { code: 'L1', color: '#E3242B', ink: '#ffffff' },
+      L4: { code: 'L4', color: '#FFC300', ink: '#111114' }
+    };
+    const raw = [
+      { name: 'Clot', xfers: [L.L1], down: '1 min', up: '5 min' },
+      { name: 'Bac de Roda', down: '3 min', up: '3 min', train: 180 },
+      { name: 'Sant Martí', facility: true, down: '4 min', up: '1 min', train: 0 },
+      { name: 'La Pau', xfers: [L.L4], me: true, down: 'ara', up: '2 min', train: 180 },
+      { name: 'Verneda', down: '2 min', up: '6 min', note: 'Final del servei', bottom: 'dotted' },
+      { name: 'Artigues | Sant Adrià', down: '—', up: '—', top: 'dotted', bottom: 'dotted', off: true },
+      { name: 'Sant Roc', down: '—', up: '—', top: 'dotted', bottom: 'dotted', off: true }
+    ];
+    const rows = raw.map((r) => {
+      const isXfer = (r.xfers || []).length > 0;
+      return {
+        name: r.name,
+        xfers: r.xfers || [],
+        me: !!r.me,
+        facility: !!r.facility,
+        note: !!r.note || !!r.off,
+        noteText: r.off ? 'Sense servei' : r.note || '',
+        noteColor: r.off ? sub : '#FFB340',
+        nameColor: r.off ? sub : '#ffffff',
+        bg: r.me ? 'rgba(64,156,255,0.12)' : 'transparent',
+        down: r.down, up: r.up,
+        downColor: time(r.down), upColor: time(r.up),
+        dashTop: r.top === 'dotted' ? '0.1 9' : 'none',
+        dashBottom: r.bottom === 'dotted' ? '0.1 9' : 'none',
+        opTop: r.top === 'dotted' ? '0.85' : '1',
+        opBottom: r.bottom === 'dotted' ? '0.85' : '1',
+        stopOp: isXfer ? '0' : (r.off ? '0.6' : '1'),
+        xferOp: isXfer ? '1' : '0',
+        hasTrain: r.train !== undefined,
+        bearing: r.train ?? 0
+      };
+    });
+    return { rows, artOp: (this.props.headerArt ?? false) ? 0.45 : 0 };
+  }
+}
+</script>
+</body>
+</html>

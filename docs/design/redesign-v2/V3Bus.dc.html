@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<title>Bus V1, posició estimada</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #1c1e22; color: #ffffff">
+
+<svg width="390" height="844" viewBox="0 0 390 844" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+<defs>
+<pattern id="grid5" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+<path d="M0 0H22M0 0V22" fill="none" stroke="#26292e" stroke-width="1.2"></path>
+</pattern>
+</defs>
+<rect width="390" height="844" fill="#1c1e22"></rect>
+<rect width="390" height="844" fill="url(#grid5)"></rect>
+<path d="M0 300 L390 150" stroke="#30343a" stroke-width="7" fill="none"></path>
+<path d="M0 520 L390 440" stroke="#30343a" stroke-width="5" fill="none"></path>
+<ellipse cx="80" cy="420" rx="50" ry="36" fill="#1d2a21"></ellipse>
+<path d="M40 200 L95 210 L130 260 L170 300 L200 360 L230 420 L290 470 L330 520 L360 600 L330 700" fill="none" stroke="#6AB023" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+<g fill="#ffffff" stroke="#6AB023" stroke-width="2.5">
+<circle cx="40" cy="200" r="4.5"></circle><circle cx="95" cy="210" r="4.5"></circle><circle cx="150" cy="280" r="4.5"></circle><circle cx="200" cy="360" r="4.5"></circle><circle cx="230" cy="420" r="4.5"></circle><circle cx="290" cy="470" r="4.5"></circle><circle cx="345" cy="560" r="4.5"></circle>
+</g>
+</svg>
+<span style="position: absolute; left: 212px; top: 351px; font-size: 12px; font-weight: 700; text-shadow: 0 0 3px #1c1e22, 0 0 3px #1c1e22, 0 0 3px #1c1e22">Sants Estació</span>
+
+<sc-for list="{{buses}}" as="b" hint-placeholder-count="4">
+<div style="position: absolute; left: {{b.left}}px; top: {{b.top}}px; width: 44px; height: 44px; transform: scale({{b.scale}})">
+<svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" style="overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); opacity: {{b.opacity}}">
+<circle cx="22" cy="22" r="20" fill="rgba(64,156,255,0.30)" stroke="#409CFF" stroke-width="2" opacity="{{b.haloOp}}"></circle>
+<g transform="rotate({{b.bearing}} 22 22)"><path d="M22 2.5 L28 10.5 L16 10.5 Z" fill="#6AB023" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"></path></g>
+<circle cx="22" cy="22" r="13" fill="#6AB023" stroke="#ffffff" stroke-width="2" stroke-dasharray="{{b.dash}}"></circle>
+<g fill="none" stroke="#0b2a00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="14.5" width="12" height="12" rx="2.5"></rect><path d="M16 20H28M18.5 26.5v2.5M25.5 26.5v2.5"></path></g>
+</svg>
+</div>
+</sc-for>
+<div style="position: absolute; left: 150px; top: 352px; padding: 3px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; background: rgba(44,46,52,0.80); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%)">Av. Esplugues</div>
+
+<div style="position: absolute; left: 0; top: 0; width: 390px; height: 120px; background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0)); pointer-events: none"></div>
+<div role="status" style="position: absolute; top: 58px; left: 16px; height: 36px; padding: 0 12px; box-sizing: border-box; display: flex; align-items: center; gap: 7px; border-radius: 18px; font-size: 13px; font-weight: 600; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #30D158"></span>
+<span>En directe</span>
+<span style="font-weight: 500; color: rgba(235,235,245,0.75)">7 busos</span>
+</div>
+<button type="button" aria-label="La meva ubicació" style="position: absolute; top: 54px; right: 16px; width: 44px; height: 44px; border-radius: 22px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #409CFF; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 11 21 3l-8 18-2-8-8-2Z"></path></svg>
+</button>
+
+<section aria-label="Bus seleccionat" style="position: absolute; left: 16px; right: 16px; bottom: 160px; box-sizing: border-box; padding: 16px; border-radius: 28px; display: flex; flex-direction: column; gap: 8px; background: rgba(40,42,48,0.80); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%)">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: none; height: 30px; min-width: 36px; padding: 0 6px; box-sizing: border-box; border-radius: 15px; background: #6AB023; color: #0b2a00; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">V1</span>
+<h2 style="flex: 1 1 auto; margin: 0; font-size: 17px; font-weight: 700">Cap a Av. Esplugues</h2>
+<button type="button" aria-label="Tancar" style="flex: none; width: 44px; height: 44px; margin: -8px -8px -8px 0; border-radius: 22px; border: 0; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(255,255,255,0.10)">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+</button>
+</div>
+<p style="margin: 0; font-size: 15px; font-weight: 500">Pròxima parada: <strong>Sants Estació</strong> · 2 min</p>
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: rgba(235,235,245,0.75)">
+<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="rgba(235,235,245,0.75)" stroke-width="1.6" stroke-dasharray="2.4 2"></circle></svg>
+Posició estimada a partir de les arribades (iBus)
+</p>
+</section>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 96px; height: 54px; padding: 4px; box-sizing: border-box; display: flex; align-items: center; gap: 4px; border-radius: 27px; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-label="Mode: Bus. Canviar de mode" style="flex: none; height: 46px; padding: 0 10px 0 14px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 23px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 700; color: #ffffff; background: rgba(255,255,255,0.13)">
+Bus
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg>
+</button>
+<button type="button" aria-label="Línia V1, cap a Av. Esplugues. Canviar de línia" style="flex: 1 1 auto; min-width: 0; height: 46px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 8px; border: 0; border-radius: 23px; cursor: pointer; text-align: left; font-family: inherit; font-size: 15px; font-weight: 600; color: #ffffff; background: transparent">
+<span style="flex: none; height: 32px; min-width: 36px; padding: 0 8px; box-sizing: border-box; border-radius: 16px; background: #6AB023; color: #0b2a00; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">V1</span>
+<span style="flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Cap a Av. Esplugues</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+</button>
+<button type="button" aria-label="Invertir la direcció" style="flex: none; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 23px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(255,255,255,0.13)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"></path></svg>
+</button>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; bottom: 24px; display: flex; gap: 10px; align-items: center">
+<nav aria-label="Pestanyes" style="flex: 1 1 auto; height: 62px; padding: 4px; box-sizing: border-box; display: flex; gap: 2px; border-radius: 31px; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<button type="button" aria-pressed="true" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #409CFF; background: rgba(255,255,255,0.14)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14"></path></svg>
+Mapa
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="12" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><path d="M8.5 6h3a4 4 0 0 1 4 4M8.5 18h3a4 4 0 0 0 4-4"></path></svg>
+Línies
+</button>
+<button type="button" aria-pressed="false" style="flex: 1 1 0; border: 0; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; color: #ffffff; background: transparent">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"></path><path d="M12 10v4M12 17v.5"></path></svg>
+Avisos
+</button>
+</nav>
+<button type="button" aria-label="Explorar i cercar" style="flex: none; width: 62px; height: 62px; border-radius: 31px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ffffff; background: rgba(44,46,52,0.55); border: 1px solid rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 10px 30px rgba(0,0,0,0.45); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%)">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const buses = [
+      { x: 112, y: 234, bearing: 145, estimated: false, selected: false },
+      { x: 186, y: 330, bearing: 155, estimated: true, selected: true },
+      { x: 262, y: 446, bearing: 130, estimated: true, selected: false },
+      { x: 334, y: 512, bearing: 160, estimated: false, selected: false }
+    ].map((b) => ({
+      left: b.x - 22,
+      top: b.y - 22,
+      bearing: b.bearing,
+      dash: b.estimated ? '3 2.6' : 'none',
+      opacity: b.estimated ? 0.88 : 1,
+      scale: b.selected ? 1.15 : 1,
+      haloOp: b.selected ? '1' : '0'
+    }));
+    return { buses };
+  }
+}
+</script>
+</body>
+</html>
