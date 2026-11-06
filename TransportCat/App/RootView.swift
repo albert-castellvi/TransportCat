@@ -30,15 +30,31 @@ struct RootView: View {
     /// screen (spec S13).
     private var mapModes: some View {
         ZStack {
-            MapScreen(isActive: mode == .metro)
-                .modifier(RetainedMode(isActive: mode == .metro))
-            BusMapScreen(isActive: mode == .bus)
-                .modifier(RetainedMode(isActive: mode == .bus))
-            FGCMapScreen()
+            MapScreen(
+                isActive: mode == .metro,
+                onLocate: openNearby
+            )
+            .modifier(RetainedMode(isActive: mode == .metro))
+            BusMapScreen(
+                isActive: mode == .bus,
+                onLocate: openNearby
+            )
+            .modifier(RetainedMode(isActive: mode == .bus))
+            FGCMapScreen(onLocate: openNearby)
                 .modifier(RetainedMode(isActive: mode == .fgc))
-            GlobalMapScreen(isActive: mode == .global)
-                .modifier(RetainedMode(isActive: mode == .global))
+            GlobalMapScreen(
+                isActive: mode == .global,
+                onLocate: openNearby
+            )
+            .modifier(RetainedMode(isActive: mode == .global))
         }
+    }
+
+    /// The location button's extra behavior (spec S13, decision L8): after
+    /// centring on the rider, the map screens open the "A prop teu" sheet
+    /// through the router flag the sheet is bound to.
+    private func openNearby() {
+        AppRouter.shared.isNearbyPresented = true
     }
 
     var body: some View {
@@ -56,6 +72,25 @@ struct RootView: View {
                     // opacity of the layers below: no screen enters or leaves
                     // any more (spec S12).
                     .animation(AppMotion.smooth(duration: 0.25, reduceMotion: reduceMotion), value: mode)
+                    // Spec S13 (mockup `V6Nearby`): the "A prop teu" sheet,
+                    // opened by the maps' location buttons and the quick
+                    // action. Bound to the router flag, so closing the sheet
+                    // writes it back and the buttons unfill themselves. The
+                    // list is injected its `AppModel` explicitly (it reads it
+                    // through `@EnvironmentObject`).
+                    .sheet(isPresented: $router.isNearbyPresented) {
+                        NearbySheet()
+                            .environmentObject(app)
+                            // Medium leaves the map visible behind; large
+                            // gives the list the whole height (spec S13).
+                            .presentationDetents([.medium, .large])
+                    }
+                    // The sheet belongs to the map tab only: leaving the tab
+                    // dismisses it instead of floating it over another tab.
+                    .onChange(of: router.selectedTab) { _, newTab in
+                        guard newTab != .map else { return }
+                        AppRouter.shared.isNearbyPresented = false
+                    }
             }
             // Renamed from "Xarxa" when the bus mode arrived: the tab now
             // shows the lines of whichever mode is on (spec S1). The v2
