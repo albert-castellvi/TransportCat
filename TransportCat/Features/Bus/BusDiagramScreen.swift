@@ -378,7 +378,14 @@ private struct BusDiagramRow: View {
             .padding(.trailing, Self.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: height)
-            .background(isNearest ? Color(hex: "409CFF").opacity(0.12) : rowBackground)
+            .background {
+                // Branches of different view types: a builder, not a ternary.
+                if isNearest {
+                    Color(hex: "409CFF").opacity(0.12)
+                } else {
+                    rowBackground
+                }
+            }
             .overlay(alignment: .topLeading) { spineColumn }
             .contentShape(Rectangle())
     }
