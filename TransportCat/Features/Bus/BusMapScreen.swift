@@ -92,12 +92,6 @@ struct BusMapScreen: View {
         location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
     }
 
-    /// Whether the map may draw the rider's position at all. A denied or
-    /// restricted permission simply leaves the dot and the button away (S11).
-    private var isLocationAuthorized: Bool {
-        location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways
-    }
-
     /// Whether the location permission has not been decided yet: the location
     /// button then asks for it instead of centering (spec S11, S3).
     private var isLocationNotDetermined: Bool {
