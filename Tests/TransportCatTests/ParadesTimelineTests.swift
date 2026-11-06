@@ -160,10 +160,12 @@ final class ParadesTimelineTests: XCTestCase {
     /// Two stations at exactly the same distance: the lower code wins, so the
     /// pick is deterministic across re-renders.
     func testNearestStationTieBreaksOnLowerCode() {
-        // Two points equidistant north and south of the user.
+        // The same coordinates: an exact tie. Points "equidistant" north and
+        // south are not exact in floating point (41.381 - 41.380 differs from
+        // 41.380 - 41.379), so they would not exercise the tie-break.
         let stations = [
             station(20, order: 2, lat: 41.381, lon: 2.170),
-            station(10, order: 1, lat: 41.379, lon: 2.170),
+            station(10, order: 1, lat: 41.381, lon: 2.170),
         ]
         let user = GeoPoint(latitude: 41.380, longitude: 2.170)
         let pick = ParadesTimeline.nearestStation(stations: stations, userLocation: user)
