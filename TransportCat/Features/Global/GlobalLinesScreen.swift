@@ -77,6 +77,9 @@ struct GlobalLinesScreen: View {
             }
             // The bottom accessory (T1) carries the mode menu and the operator
             // toggles; the screen keeps no title bar of its own (spec S5).
+            // The icon's network behind the "Parades" title, fading out
+            // (spec S11, mockup `V5Parades`).
+            .networkHeaderBackground(opacity: 0.55)
             .navigationBarHidden(true)
             // The nearby list and the bus section need their catalogs; each
             // `load` is the store's own once-per-launch guard.

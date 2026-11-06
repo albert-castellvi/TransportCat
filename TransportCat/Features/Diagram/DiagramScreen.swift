@@ -46,10 +46,18 @@ struct DiagramScreen: View {
             }
             // The bottom accessory (T1) names the mode; the screen keeps no
             // title bar of its own any more (spec S5).
+            // The icon's network behind the top, fading out before the rows
+            // (spec S11, mockup `V5Metro`).
+            .networkHeaderBackground(opacity: 0.45)
             .navigationBarHidden(true)
             // Same rule as MapScreen: the loader task lives on the always-
             // visible container, not on the view that requires loaded data.
             .task(id: selectedLineCode) {
+                // The interchange badges read the places catalog (fix F1); a
+                // disk read, no request, when nothing has loaded it yet.
+                if PlaceCatalogStore.shared.places.isEmpty {
+                    PlaceCatalogStore.shared.loadFromCache()
+                }
                 guard let client = app.client else { return }
                 let state = LineState(line: selectedLine, client: client)
                 self.lineState = state
@@ -109,7 +117,8 @@ struct DiagramScreen: View {
         let stationRows = Self.rowPlan(
             stations: state.stations,
             incidents: incidents,
-            state: state
+            state: state,
+            places: PlaceCatalogStore.shared.places
         )
         let nearest = ParadesTimeline.nearestStation(
             stations: state.stations,
@@ -197,14 +206,10 @@ struct DiagramScreen: View {
     private static func rowPlan(
         stations: [Station],
         incidents: [Int: [StationIncident]],
-        state: LineState
+        state: LineState,
+        places: [Place]
     ) -> [ParadesStationRow] {
-        // Interchange identity needs the stations of the other lines; the
-        // global state holds one `LineState` per line already — read-only, no
-        // new request. While it has not built its states (the global map has
-        // never opened), the badges are simply absent.
-        let allStations = GlobalNetworkState.shared.lineStates.values.flatMap(\.stations)
-        return stations.enumerated().map { index, station in
+        stations.enumerated().map { index, station in
             ParadesStationRow(
                 index: index,
                 station: station,
@@ -218,10 +223,10 @@ struct DiagramScreen: View {
                     arrivals: state.arrivalsByStop[station.code] ?? [],
                     via: 2
                 ),
-                interchangeCodes: ParadesTimeline.metroInterchangeCodes(
-                    for: station,
-                    lineCode: state.line.code,
-                    allStations: allStations
+                interchangeCodes: ParadesTimeline.metroInterchangeNames(
+                    stationName: station.name,
+                    lineDisplayName: state.line.displayName,
+                    places: places
                 )
             )
         }

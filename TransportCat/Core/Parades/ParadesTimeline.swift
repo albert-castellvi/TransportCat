@@ -110,34 +110,26 @@ enum ParadesTimeline {
 
     /// Metro–metro interchange badges of one station (D4): the display names of
     /// the OTHER metro lines that serve it, in `MetroLine.allLines` order.
-    /// Interchange identity is the name match the feed itself uses
-    /// (`IncidentIndex.normalizedName` rule): two stations of a line pair that
-    /// share a name are the same physical interchange. The line on screen is
-    /// never listed against itself even when the feed repeats the name.
     ///
-    /// `allStations` is every station of every line as `MetroLine.allLines`
-    /// publishes them (the caller reads `GlobalNetworkState`-style data only if
-    /// it already has it; no new request). A station without a name match
-    /// simply yields no badges.
-    static func metroInterchangeCodes(
-        for station: Station,
-        lineCode: String,
-        allStations: [Station]
+    /// The source is the places catalog (`PlaceCatalogStore.places`), whose
+    /// metro places carry every line of the station as display names ("L1").
+    /// It is cached on disk, so the badges exist in the Metro mode without the
+    /// global state having run (fix F1). Interchange identity is the folded
+    /// name match the feed itself uses. The line on screen is never listed,
+    /// and codes that are not metro lines are skipped.
+    static func metroInterchangeNames(
+        stationName: String,
+        lineDisplayName: String,
+        places: [Place]
     ) -> [String] {
-        let needle = normalized(station.name)
+        let needle = normalized(stationName)
         guard !needle.isEmpty else { return [] }
-        var seen: Set<String> = []
-        var result: [String] = []
-        for candidate in allStations
-        where candidate.lineCode != lineCode
-            && candidate.kindNameMatches(needle)
-            && !seen.contains(candidate.lineCode) {
-            // The badge shows the display name of the line ("L1", "L9N").
-            guard let line = MetroLine.line(forCode: candidate.lineCode) else { continue }
-            seen.insert(candidate.lineCode)
-            result.append(line.displayName)
+        var served: Set<String> = []
+        for place in places where place.kind == .metroStation && normalized(place.name) == needle {
+            served.formUnion(place.lineCodes)
         }
-        return result
+        served.remove(lineDisplayName)
+        return MetroLine.allLines.map(\.displayName).filter { served.contains($0) }
     }
 
     private static func normalized(_ text: String) -> String {
@@ -223,15 +215,3 @@ enum ParadesTimeline {
     }
 }
 
-private extension Station {
-    /// Case- and diacritic-insensitive folded name, the comparison key the
-    /// interchange rule above and `IncidentIndex` share.
-    func kindNameMatches(_ needle: String) -> Bool {
-        let folded = name.folding(
-            options: [.caseInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "ca_ES")
-        )
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-        return folded == needle
-    }
-}

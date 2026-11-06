@@ -43,6 +43,8 @@ struct BusDiagramScreen: View {
             }
             // The bottom accessory (T1) carries the mode menu, the line chip
             // and the direction swap; the screen keeps no title bar (S5).
+            // The icon's network behind the top, fading out (spec S11).
+            .networkHeaderBackground(opacity: 0.45)
             .navigationBarHidden(true)
             // The catalog loads once per launch (spec S2), and both loader
             // tasks live on the always-visible container, as in MapScreen: a

@@ -178,68 +178,66 @@ final class ParadesTimelineTests: XCTestCase {
         XCTAssertEqual(ParadesTimeline.hereText(distanceMeters: 1_250), "Ets aquí · 1,3 km")
     }
 
-    // MARK: - metroInterchangeCodes (D4: metro-metro only)
+    // MARK: - metroInterchangeNames (D4: metro-metro only, from the places catalog)
 
-    private func withLineCode(_ station: Station, _ lineCode: String) -> Station {
-        Station(
-            code: station.code,
-            name: station.name,
-            orderInLine: station.orderInLine,
-            lineCode: lineCode,
-            latitude: station.latitude,
-            longitude: station.longitude,
-            id: nil,
+    private func place(
+        _ kind: PlaceKind = .metroStation,
+        code: String = "1",
+        name: String,
+        lines: [String]
+    ) -> Place {
+        Place(
+            kind: kind,
+            code: code,
+            name: name,
+            position: GeoPoint(latitude: 41.4, longitude: 2.1),
+            lineCodes: lines,
             accessible: nil
         )
     }
 
     func testInterchangeListsOtherLinesSharingTheName() {
-        let all = [
-            withLineCode(station(10, name: "La Pau", order: 1, lat: 41.4, lon: 2.1), "1"),
-            withLineCode(station(20, name: "La Pau", order: 5, lat: 41.4, lon: 2.1), "2"),
-            withLineCode(station(30, name: "La Pau", order: 3, lat: 41.4, lon: 2.1), "4"),
+        // Two catalog places with the same name: their lines add up.
+        let places = [
+            place(code: "1", name: "La Pau", lines: ["L4", "L1"]),
+            place(code: "2", name: "La Pau", lines: ["L2"]),
         ]
-        let badges = ParadesTimeline.metroInterchangeCodes(for: all[0], lineCode: "1", allStations: all)
-        // All-lines order: L2 (code "2") before L4 (code "4").
+        let badges = ParadesTimeline.metroInterchangeNames(stationName: "La Pau", lineDisplayName: "L1", places: places)
+        // `MetroLine.allLines` order: L2 before L4, whatever the catalog order.
         XCTAssertEqual(badges, ["L2", "L4"])
     }
 
     func testInterchangeIgnoresDifferentNames() {
-        let all = [
-            station(10, name: "La Pau", order: 1, lat: 41.4, lon: 2.1),
-            station(20, name: "Vermeda", order: 5, lat: 41.4, lon: 2.1),
-        ]
-        XCTAssertTrue(ParadesTimeline.metroInterchangeCodes(for: all[0], lineCode: "1", allStations: all).isEmpty)
+        let places = [place(name: "Verneda", lines: ["L1", "L2"])]
+        XCTAssertTrue(ParadesTimeline.metroInterchangeNames(stationName: "La Pau", lineDisplayName: "L1", places: places).isEmpty)
     }
 
     func testInterchangeMatchIsCaseAndAccentInsensitive() {
-        let all = [
-            withLineCode(station(10, name: "Pl. Catalunya", order: 1, lat: 41.4, lon: 2.1), "1"),
-            withLineCode(station(20, name: "PL. CATALUNYA", order: 5, lat: 41.4, lon: 2.1), "3"),
-        ]
+        let places = [place(name: "PL. CATALUNYA", lines: ["L1", "L3"])]
         XCTAssertEqual(
-            ParadesTimeline.metroInterchangeCodes(for: all[0], lineCode: "1", allStations: all),
+            ParadesTimeline.metroInterchangeNames(stationName: "Pl. Catalunya", lineDisplayName: "L1", places: places),
             ["L3"]
         )
     }
 
     func testInterchangeNeverListsItsOwnLine() {
-        let all = [
-            station(10, name: "La Pau", order: 1, lat: 41.4, lon: 2.1),
-            withLineCode(station(20, name: "La Pau", order: 5, lat: 41.4, lon: 2.1), "1"),
-        ]
-        // The candidate shares the name but its line is the row's own line.
-        XCTAssertTrue(ParadesTimeline.metroInterchangeCodes(for: all[0], lineCode: "1", allStations: all).isEmpty)
+        let places = [place(name: "La Pau", lines: ["L1"])]
+        XCTAssertTrue(ParadesTimeline.metroInterchangeNames(stationName: "La Pau", lineDisplayName: "L1", places: places).isEmpty)
     }
 
     func testInterchangeIgnoresUnknownLineCodes() {
-        // A station whose line code is not a MetroLine (a feed glitch) is
-        // skipped, never shown as an unknown badge.
-        let all = [
-            station(10, name: "La Pau", order: 1, lat: 41.4, lon: 2.1),
-            withLineCode(station(20, name: "La Pau", order: 5, lat: 41.4, lon: 2.1), "999"),
+        // A code that is not a metro line (a feed glitch) never becomes a badge.
+        let places = [place(name: "La Pau", lines: ["L1", "L99"])]
+        XCTAssertTrue(ParadesTimeline.metroInterchangeNames(stationName: "La Pau", lineDisplayName: "L1", places: places).isEmpty)
+    }
+
+    func testInterchangeIgnoresBusAndFGCPlaces() {
+        // Same name, but not metro places: D4 is metro–metro only.
+        let places = [
+            place(.busStop, code: "100", name: "La Pau", lines: ["L2"]),
+            place(.fgcStation, code: "PAU", name: "La Pau", lines: ["L4"]),
         ]
-        XCTAssertTrue(ParadesTimeline.metroInterchangeCodes(for: all[0], lineCode: "1", allStations: all).isEmpty)
+        XCTAssertTrue(ParadesTimeline.metroInterchangeNames(stationName: "La Pau", lineDisplayName: "L1", places: places).isEmpty)
     }
 
     // MARK: - facility vs service incidents

@@ -38,6 +38,8 @@ struct FGCLinesScreen: View {
             }
             // The bottom accessory (T1) carries the mode menu and the line
             // chip; the screen keeps no title bar of its own (spec S5).
+            // The icon's network behind the top, fading out (spec S11).
+            .networkHeaderBackground(opacity: 0.45)
             .navigationBarHidden(true)
             .sensoryFeedback(.selection, trigger: selectedLineCode)
             .onAppear { refreshStations() }
