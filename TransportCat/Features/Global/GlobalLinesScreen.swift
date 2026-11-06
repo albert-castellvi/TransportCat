@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The Línies tab of the global mode (spec S8): every line of every operator,
-/// grouped in three sections — Metro, FGC and the favorite Bus lines. A row
-/// is a colored badge plus the line name, and tapping it hands the rider to
-/// that operator's own map on that line through `AppRouter.open(.line(...))`
-/// (S5), exactly like the Explora results do.
+/// Parades, Tot (spec S10, mockup `V4Tot`): "A prop teu" — the nearest stops
+/// with the next arrivals per line, sorted by walking time — and "Estat de
+/// les línies", a wrap grid of line badges with an amber dot on the affected
+/// ones. Tapping a badge selects that mode and line so Parades shows its
+/// timeline.
 ///
-/// The header carries the mode selector so the rider can leave the global
-/// mode from here, as on the other Línies screens.
+/// This replaces the old "L1 · L1" list. The header moved to the bottom
+/// accessory (T1); the screen keeps only the status capsule.
 @MainActor
 struct GlobalLinesScreen: View {
     @EnvironmentObject private var app: AppModel
@@ -18,7 +18,7 @@ struct GlobalLinesScreen: View {
     private var busCatalog: BusCatalogStore { BusCatalogStore.shared }
 
     /// The FGC lines on screen: the same selection the FGC line picker
-    /// offers — at least one polyline, no `Bus…` shuttle routes (spec S8).
+    /// offers — at least one polyline, no `Bus…` shuttle routes (spec S10).
     private var shownFGCLines: [FGCLine] {
         FGCLinePicker.selectableLayers(from: fgc.lineLayers).compactMap { layer in
             fgc.lines.first { $0.code == layer.code }
@@ -32,83 +32,54 @@ struct GlobalLinesScreen: View {
         }
     }
 
-    /// Empty-state wording for the Bus section: nothing starred is one case,
-    /// starred lines the catalog has not resolved (yet) is another.
-    private var busEmptyText: String {
-        if busCatalog.favorites.isEmpty {
-            return "Encara no has marcat cap línia d'autobús. Estrella-les a la pantalla Bus."
+    /// Lines with a SERVICE alert in force right now, by (operator, code):
+    /// the one source the grid's amber dots read (spec S10). Bus alerts are
+    /// matched by the numeric `BusLine.code` string, metro and FGC by their
+    /// own codes — exactly what `AlertsScreen` counts.
+    private var affectedLineKeys: Set<String> {
+        var result: Set<String> = []
+        let now = Date()
+        for alert in app.alerts where alert.severity == .service && alert.isActive(now: now) {
+            for code in alert.lineCodes {
+                result.insert("metro:\(code)")
+            }
         }
-        return busCatalog.errorMessage ?? "Carregant la xarxa d'autobusos…"
+        for alert in app.busAlerts where alert.severity == .service && alert.isActive(now: now) {
+            for code in alert.lineCodes {
+                result.insert("bus:\(code)")
+            }
+        }
+        // FGC: the open-data feed carries no alert channel of its own (D2);
+        // the metro feed never names FGC codes, so nothing is derived here.
+        return result
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ModeSelector()
+                statusCapsule
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        sectionTitle("A prop teu")
+                        nearbySection
+                        HStack(alignment: .firstTextBaseline) {
+                            sectionTitle("Estat de les línies")
+                            Spacer()
+                            affectedCountText
+                        }
+                        .padding(.top, 8)
+                        lineStatusGrid
+                    }
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                List {
-                    Section("Metro") {
-                        ForEach(MetroLine.allLines) { line in
-                            lineRow(
-                                badge: line.displayName,
-                                colorHex: line.colorHex,
-                                textColorHex: Self.textColor(forMetroHex: line.colorHex),
-                                name: line.displayName,
-                                detail: nil,
-                                accessibilityName: "Línia \(line.displayName)"
-                            ) {
-                                AppRouter.shared.open(.line(operator: AppModeCode.metro, code: line.code))
-                            }
-                        }
-                    }
-                    Section("FGC") {
-                        if shownFGCLines.isEmpty {
-                            Text(fgc.errorMessage ?? "Carregant la xarxa FGC…")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(shownFGCLines) { line in
-                                lineRow(
-                                    badge: line.code,
-                                    colorHex: line.colorHex,
-                                    textColorHex: line.textColorHex,
-                                    name: line.code,
-                                    detail: line.name,
-                                    accessibilityName: "Línia \(line.code)"
-                                ) {
-                                    AppRouter.shared.open(.line(operator: AppModeCode.fgc, code: line.code))
-                                }
-                            }
-                        }
-                    }
-                    Section("Bus preferits") {
-                        if favoriteBusLines.isEmpty {
-                            Text(busEmptyText)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(favoriteBusLines) { line in
-                                lineRow(
-                                    badge: line.name,
-                                    colorHex: line.colorHex,
-                                    textColorHex: line.textColorHex,
-                                    name: line.name,
-                                    detail: line.description,
-                                    accessibilityName: "Línia \(line.name)"
-                                ) {
-                                    AppRouter.shared.open(.line(operator: AppModeCode.bus, code: String(line.code)))
-                                }
-                            }
-                        }
-                    }
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                 }
-                .listStyle(.insetGrouped)
             }
-            .navigationTitle("Línies")
-            .navigationBarTitleDisplayMode(.inline)
-            // The bus section needs the catalog; `load` is the store's own
-            // once-per-launch guard, so visiting global never re-requests it.
+            // The bottom accessory (T1) carries the mode menu and the operator
+            // toggles; the screen keeps no title bar of its own (spec S5).
+            .navigationBarHidden(true)
+            // The nearby list and the bus section need their catalogs; each
+            // `load` is the store's own once-per-launch guard.
             .task {
                 if let client = app.client {
                     await busCatalog.load(client: client)
@@ -117,59 +88,197 @@ struct GlobalLinesScreen: View {
         }
     }
 
-    /// One tappable row: badge, name and the optional operator description.
-    private func lineRow(
-        badge: String,
+    /// The status capsule, top-left (spec S2): the existing `FreshnessChip`
+    /// explicit-values initializer, restyled by T1 — this screen only calls it.
+    @ViewBuilder
+    private var statusCapsule: some View {
+        Group {
+            if let global = globalFreshnessInputs {
+                FreshnessChip(updatedAt: global.updatedAt, lastAttemptFailed: global.lastPollFailed)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    /// Freshness inputs of the metro network behind Tot: the newest successful
+    /// poll and whether any line's last attempt failed — the same aggregate
+    /// `GlobalMapScreen` shows. Nil until the global mode has run once.
+    private var globalFreshnessInputs: (updatedAt: Date?, lastPollFailed: Bool)? {
+        let states = GlobalNetworkState.shared.lineStates
+        guard !states.isEmpty else { return nil }
+        return (
+            states.values.compactMap(\.arrivalsUpdatedAt).max(),
+            states.values.contains { $0.lastPollFailed }
+        )
+    }
+
+    /// "A prop teu" (spec S10): the reusable list, or the location-denied
+    /// explanation instead of it — never a permission prompt loop.
+    @ViewBuilder
+    private var nearbySection: some View {
+        let service = LocationService.shared
+        switch service.authorization {
+        case .denied, .restricted:
+            Text("Activa la ubicació a Configuració per veure què tens a prop.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 8)
+        default:
+            NearbyStopsList()
+        }
+    }
+
+    /// "N afectades" next to the section title.
+    private var affectedCountText: some View {
+        let count = affectedLines.count
+        return Text(count == 1 ? "1 afectada" : "\(count) afectades")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color(hex: "FFB340"))
+    }
+
+    /// The badges of the grid, in a stable order: metro lines, FGC lines,
+    /// then the favorite bus lines.
+    private var affectedLines: [String] {
+        let keys = affectedLineKeys
+        var result: [String] = []
+        for line in MetroLine.allLines where keys.contains("metro:\(line.code)") {
+            result.append("metro:\(line.code)")
+        }
+        for line in shownFGCLines where keys.contains("fgc:\(line.code)") {
+            result.append("fgc:\(line.code)")
+        }
+        for line in favoriteBusLines where keys.contains("bus:\(String(line.code))") {
+            result.append("bus:\(String(line.code))")
+        }
+        return result
+    }
+
+    /// The wrap grid of line badges (spec S10): every metro and FGC line, and
+    /// the favorite bus lines. Tapping a badge hands over through the existing
+    /// storage keys via `AppRouter.open`, so Parades shows that timeline.
+    private var lineStatusGrid: some View {
+        let keys = affectedLineKeys
+        return FlowLayoutCompat(spacing: 8) {
+            ForEach(MetroLine.allLines) { line in
+                statusBadge(
+                    label: line.displayName,
+                    colorHex: line.colorHex,
+                    textColorHex: nil,
+                    isAffected: keys.contains("metro:\(line.code)"),
+                    accessibilityName: "Línia \(line.displayName)",
+                    action: {
+                        AppRouter.shared.open(.line(operator: AppModeCode.metro, code: line.code))
+                    }
+                )
+            }
+            ForEach(shownFGCLines) { line in
+                statusBadge(
+                    label: line.code,
+                    colorHex: line.colorHex,
+                    textColorHex: line.textColorHex,
+                    isAffected: keys.contains("fgc:\(line.code)"),
+                    accessibilityName: "Línia \(line.code)",
+                    action: {
+                        AppRouter.shared.open(.line(operator: AppModeCode.fgc, code: line.code))
+                    }
+                )
+            }
+            ForEach(favoriteBusLines) { line in
+                statusBadge(
+                    label: line.name,
+                    colorHex: line.colorHex,
+                    textColorHex: line.textColorHex,
+                    isAffected: keys.contains("bus:\(String(line.code))"),
+                    accessibilityName: "Línia \(line.name)",
+                    action: {
+                        AppRouter.shared.open(.line(operator: AppModeCode.bus, code: String(line.code)))
+                    }
+                )
+            }
+        }
+    }
+
+    /// One badge of the grid with its amber dot when the line has a SERVICE
+    /// alert (spec S10), and its "afectada" accessibility wording.
+    private func statusBadge(
+        label: String,
         colorHex: String,
-        textColorHex: String,
-        name: String,
-        detail: String?,
+        textColorHex: String?,
+        isAffected: Bool,
         accessibilityName: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                LineBadge(text: badge, colorHex: colorHex, textColorHex: textColorHex)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.subheadline.weight(.semibold))
-                    if let detail {
-                        Text(detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
+            NearbyLineBadge(text: label, colorHex: colorHex, textColorHex: textColorHex)
+                .overlay(alignment: .topTrailing) {
+                    if isAffected {
+                        Circle()
+                            .fill(Color(hex: "FF9F0A"))
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Text("!")
+                                    .font(.system(size: 9, weight: .heavy))
+                                    .foregroundStyle(Color(hex: "1C1C1E"))
+                            )
+                            .offset(x: 5, y: -5)
+                            .accessibilityHidden(true)
                     }
                 }
-                Spacer(minLength: 0)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(accessibilityName)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isAffected ? "\(accessibilityName), servei afectat" : accessibilityName)
     }
 
-    /// Metro badges carry no published text color, so the choice follows the
-    /// WCAG luminance rule used by the arrival pills.
-    private static func textColor(forMetroHex hex: String) -> String {
-        HexLuminance.isLight(hex) ? "111111" : "FFFFFF"
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.bold))
+            .tracking(0.5)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 4)
     }
 }
 
-/// The colored capsule with the line code inside, shared by the three
-/// sections so a metro, FGC or bus row always reads the same way (spec S8).
-private struct LineBadge: View {
-    let text: String
-    let colorHex: String
-    let textColorHex: String
+/// A simple wrap layout for the badge grid (mockup `V4Tot`): rows of badges
+/// that break when the next one would not fit. A minimal long-standing-API
+/// flow, no iOS 26 layout protocol involved.
+private struct FlowLayoutCompat: Layout {
+    var spacing: CGFloat = 8
 
-    var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(Color(hex: textColorHex))
-            .padding(.horizontal, 8)
-            .frame(minWidth: 34, minHeight: 26)
-            .background(Capsule().fill(Color(hex: colorHex)))
-            .accessibilityHidden(true)
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: maxWidth.isFinite ? maxWidth : x, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }

@@ -1,24 +1,33 @@
 import SwiftUI
 
-/// Bus version of the Xarxa diagram (spec S8): the stops of the selected line
-/// and direction as rows on a spine in the line colour, with the soonest polled
-/// arrival at each stop, the line's incidents as orange rows, and the live buses
-/// drawn on the spine at their continuous position.
+/// Parades, bus (spec S9, mockup `V4Bus`): the stops of the selected line and
+/// direction as rows on a rail in the line colour, each with its name, its
+/// street and the next two buses of that direction; live buses drawn on the
+/// rail as S6 markers (solid ring, D5); incidents as orange rows.
 ///
-/// The metro diagram keeps its row, banner and train types `private` to its own
-/// file, and bus lines differ in two concrete ways (no pre-rendered
-/// `station-`/`terminal-` markers, arrivals per direction), so this file carries
-/// its own `Bus`-prefixed copies of that geometry instead of reopening it.
+/// One direction at a time (spec S9): the choice is resolved from the shared
+/// storage key through `BusDirectionSelection.resolve` — the helper T1 lands
+/// in parallel — so the accessory's swap button and this screen always show
+/// the same direction. The screen carries no top header any more: the status
+/// capsule (`FreshnessChip`, styled by T1) and the direction strip are all.
+///
+/// The metro timeline keeps its row and card types `private` to its own file,
+/// and bus lines differ in two concrete ways (no pre-rendered
+/// `station-`/`terminal-` markers, arrivals per direction), so this file
+/// carries its own `Bus`-prefixed copies of that geometry instead of reopening
+/// it.
 struct BusDiagramScreen: View {
     @EnvironmentObject private var app: AppModel
-    /// Catalog and picker state, shared with the bus map so both screens always
-    /// show the same line (spec S2).
+    /// Catalog and selection state, shared with the bus map so both screens
+    /// always show the same line (spec S2). The key `busSelectedLine` is
+    /// owned by `BusCatalogStore` and is never renamed (S15).
     @State private var store = BusCatalogStore.shared
     /// Polling state of the line on screen; recreated whenever the selected bus
     /// line changes.
     @State private var lineState: BusLineState?
-    /// `BusDirection.id` of the direction shown: 1 Anada, 2 Tornada (spec S8).
-    @State private var selectedDirectionID = 1
+    /// Stored direction choice under the SAME key the T1 accessory writes
+    /// (`BusDirectionSelection.storageKey`): 1 Anada, 2 Tornada.
+    @AppStorage(BusDirectionSelection.storageKey) private var storedDirectionID = 1
     @State private var showLinePicker = false
     /// Stop whose sheet is open. `BusStop` is `Identifiable` with a key that
     /// includes the direction, so `sheet(item:)` can use it directly.
@@ -29,21 +38,22 @@ struct BusDiagramScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                header
+                statusCapsule
                 content
             }
-            .navigationTitle("Línies")
-            .navigationBarTitleDisplayMode(.inline)
-            // The catalog loads once per launch (spec S2), and both loader tasks
-            // live on the always-visible container, as in MapScreen: a task on
-            // the rows would never start while the line is still unknown.
+            // The bottom accessory (T1) carries the mode menu, the line chip
+            // and the direction swap; the screen keeps no title bar (S5).
+            .navigationBarHidden(true)
+            // The catalog loads once per launch (spec S2), and both loader
+            // tasks live on the always-visible container, as in MapScreen: a
+            // task on the rows would never start while the line is unknown.
             .task {
                 guard let client = app.client else { return }
                 await store.load(client: client)
             }
-            // Keyed on the resolved line, not the stored code: `selectedLineCode`
-            // is restored from UserDefaults before the catalog loads, so the task
-            // would exit through the guard and never re-run when the line arrives.
+            // Keyed on the resolved line, not the stored code: the stored code
+            // is restored from UserDefaults before the catalog loads, so the
+            // task would exit through the guard and never re-run.
             .task(id: store.selectedLine?.code) {
                 guard let client = app.client, let line = store.selectedLine else { return }
                 let state = BusLineState(line: line, client: client)
@@ -55,15 +65,19 @@ struct BusDiagramScreen: View {
                     store.selectedLineCode = line.code
                 }
             }
-            // Keep the chosen direction valid when the screen switches to a line
-            // that does not publish it, so the segments always show a selection.
+            // Keep the chosen direction valid when the screen switches to a
+            // line that does not publish it, so the timeline always shows a
+            // real selection (the same rule the old `Picker` followed).
             .onChange(of: lineState?.directions.map(\.id)) { _, ids in
-                guard let ids, !ids.contains(selectedDirectionID) else { return }
-                selectedDirectionID = ids.first ?? 1
+                guard let ids else { return }
+                if let resolved = BusDirectionSelection.resolve(stored: storedDirectionID, available: ids),
+                   resolved != storedDirectionID {
+                    storedDirectionID = resolved
+                }
             }
         }
         // The stop sheet comes from the stack itself and declares its detents
-        // here, not inside the presented view (spec S9), as MapScreen does.
+        // here, not inside the presented view, as MapScreen does.
         .sheet(item: $selectedStop) { stop in
             if let state = lineState {
                 BusStopSheet(
@@ -78,62 +92,21 @@ struct BusDiagramScreen: View {
         }
     }
 
-    // MARK: - Header
-
-    /// Mode selector, line selector, direction segments, chips (spec S1, S2, S8).
-    /// Same rows, paddings and order as `BusMapScreen`, so the two bus screens
-    /// read as one tab.
-    private var header: some View {
-        VStack(spacing: 0) {
-            ModeSelector()
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-            BusLineButton(line: store.selectedLine) {
-                showLinePicker = true
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            directionControl
-            chipsRow
-        }
-    }
-
-    /// "Anada · <destination>" / "Tornada · <destination>" (spec S8). Hidden
-    /// while the stops of the line have not arrived, when there is nothing to
-    /// choose.
+    /// The status capsule, top-left (spec S2): the existing `FreshnessChip`
+    /// explicit-values initializer, restyled by T1 — this screen only calls it.
     @ViewBuilder
-    private var directionControl: some View {
-        if let state = lineState, !state.directions.isEmpty {
-            Picker("Direcció", selection: $selectedDirectionID) {
-                ForEach(state.directions) { direction in
-                    Text("\(direction.name) · \(direction.destinationName)")
-                        .tag(direction.id)
-                }
+    private var statusCapsule: some View {
+        Group {
+            if let state = lineState {
+                FreshnessChip(
+                    updatedAt: state.arrivalsUpdatedAt,
+                    lastAttemptFailed: state.lastPollFailed
+                )
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
         }
-    }
-
-    /// Freshness of the bus poll and count of the line's incidents (spec S3, S7).
-    @ViewBuilder
-    private var chipsRow: some View {
-        if let line = store.selectedLine {
-            HStack(spacing: 8) {
-                if let state = lineState {
-                    FreshnessChip(
-                        updatedAt: state.arrivalsUpdatedAt,
-                        lastAttemptFailed: state.lastPollFailed
-                    )
-                }
-                IncidentsChip(busLineCode: String(line.code), lineDisplayName: line.name)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 16)
-            .padding(.bottom, 8)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     // MARK: - Content
@@ -143,10 +116,10 @@ struct BusDiagramScreen: View {
         if let message = app.missingCredentialsMessage {
             ConfigurationNotice(message: message)
         } else if let state = lineState {
-            diagram(state: state)
+            timeline(state: state)
         } else if let message = store.errorMessage {
-            // The catalog sheet reached from the line selector offers the
-            // retry; here the reason is only stated.
+            // The catalog sheet reached from the accessory's line chip offers
+            // the retry; here the reason is only stated.
             Text(message)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -160,7 +133,7 @@ struct BusDiagramScreen: View {
     }
 
     @ViewBuilder
-    private func diagram(state: BusLineState) -> some View {
+    private func timeline(state: BusLineState) -> some View {
         if let direction = selectedDirection(in: state) {
             let lineCode = String(state.line.code)
             let incidents = IncidentIndex.incidents(
@@ -172,10 +145,12 @@ struct BusDiagramScreen: View {
                 stops: direction.stops,
                 incidents: incidents,
                 state: state,
-                direction: direction,
-                now: Date()
+                direction: direction
             )
-            let incidentCount = incidents.values.reduce(0) { $0 + $1.count }
+            let nearest = ParadesTimeline.nearestStation(
+                stations: direction.stops.map { $0.asStation(lineCode: lineCode) },
+                userLocation: LocationService.shared.location
+            )
             ScrollView {
                 VStack(spacing: 0) {
                     if let error = state.errorMessage {
@@ -185,28 +160,47 @@ struct BusDiagramScreen: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
                     }
-                    if incidentCount > 0 {
-                        BusIncidentSummaryBanner(
-                            incidentCount: incidentCount,
-                            lineName: state.line.name
-                        )
-                        .padding(16)
-                    }
+                    directionStrip(direction: direction)
+                        .padding(.top, 8)
                     if state.hasNoBuses {
-                        // A line with no bus in the feed would otherwise read as
-                        // a broken list (spec S9).
+                        // A line with no bus in the feed would otherwise read
+                        // as a broken list (spec S9).
                         BusNoServiceCard()
                             .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
+                            .padding(.top, 8)
                     }
-                    rowsColumn(state: state, direction: direction, rows: rows)
-                        .padding(.top, incidentCount > 0 ? 0 : 16)
-                        .padding(.bottom, 16)
+                    rowsColumn(
+                        state: state,
+                        direction: direction,
+                        rows: rows,
+                        nearestCode: nearest?.station.code,
+                        hereText: nearest.map { ParadesTimeline.hereText(distanceMeters: $0.distanceMeters) }
+                    )
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                 }
             }
         } else {
             placeholder(state: state)
         }
+    }
+
+    /// The direction strip of the timeline (mockup `V4Bus`): where the shown
+    /// direction is heading, and the two column captions. The swap itself is
+    /// the accessory's (T1); this strip only states what is on screen.
+    private func directionStrip(direction: BusDirection) -> some View {
+        HStack {
+            Text("Cap a \(direction.destinationName)")
+            Spacer()
+            Text("Pròxims busos")
+        }
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Cap a \(direction.destinationName), pròxims busos")
     }
 
     /// Nothing to draw yet: the stops of the line have not arrived, or loading
@@ -224,23 +218,39 @@ struct BusDiagramScreen: View {
         }
     }
 
-    /// The direction on screen: the one the user picked, falling back to the
-    /// first the line publishes when that id is not in the list (a line with a
-    /// single direction, or a fresh state for another line).
+    /// The direction on screen: the stored choice resolved through the shared
+    /// helper against the directions the line publishes, falling back to the
+    /// first one when nothing matches (a line with a single direction, or a
+    /// fresh state for another line).
     private func selectedDirection(in state: BusLineState) -> BusDirection? {
-        state.directions.first { $0.id == selectedDirectionID } ?? state.directions.first
+        let available = state.directions.map(\.id)
+        if let resolved = BusDirectionSelection.resolve(stored: storedDirectionID, available: available) {
+            return state.directions.first { $0.id == resolved }
+        }
+        return state.directions.first
     }
 
     // MARK: - Rows
 
-    /// The stop rows plus the buses, sharing one frame: the overlay is attached
-    /// to the rows themselves, so its origin is the top of the first row and a
-    /// bus can never drift away from the rows it is drawn over (spec S8).
-    private func rowsColumn(state: BusLineState, direction: BusDirection, rows: [BusDiagramRowPlan]) -> some View {
+    /// The stop rows plus the buses, sharing one frame: the overlay is
+    /// attached to the rows themselves, so its origin is the top of the first
+    /// row and a bus can never drift away from the rows it is drawn over.
+    private func rowsColumn(
+        state: BusLineState,
+        direction: BusDirection,
+        rows: [BusDiagramRowPlan],
+        nearestCode: Int?,
+        hereText: String?
+    ) -> some View {
         VStack(spacing: 0) {
             ForEach(rows) { row in
-                BusDiagramRow(row: row, line: state.line)
-                    .onTapGesture { selectedStop = row.stop }
+                BusDiagramRow(
+                    row: row,
+                    line: state.line,
+                    isNearest: row.stop.code == nearestCode,
+                    hereText: row.stop.code == nearestCode ? hereText : nil
+                )
+                .onTapGesture { selectedStop = row.stop }
             }
         }
         .overlay(alignment: .topLeading) {
@@ -254,61 +264,34 @@ struct BusDiagramScreen: View {
         }
     }
 
-    /// One entry per stop of the direction, in order, with the incidents and the
-    /// soonest arrival it shows. The overlay reads the same plan the rows are
-    /// drawn from, so both agree on every row's height (spec S8).
+    /// One entry per stop of the direction, in order, with the incidents and
+    /// the next two buses it shows. The overlay reads the same plan the rows
+    /// are drawn from, so both agree on every row's height (spec S9).
     private static func rowPlan(
         stops: [BusStop],
         incidents: [Int: [StationIncident]],
         state: BusLineState,
-        direction: BusDirection,
-        now: Date
+        direction: BusDirection
     ) -> [BusDiagramRowPlan] {
-        // Regularity needs the arrivals of polled stops; the rest have nothing
-        // to assess (spec S7).
-        let polledCodes = Set(direction.polledStops.map(\.code))
-        return stops.enumerated().map { index, stop in
-            // Only polled stops have arrivals at all, and only those of the
-            // direction on screen get a pill (spec S5, S8).
-            let arrivals = (state.arrivalsByStop[stop.code] ?? []).filter { $0.directionID == direction.id }
+        stops.enumerated().map { index, stop in
+            let arrivals = (state.arrivalsByStop[stop.code] ?? [])
+                .filter { $0.directionID == direction.id }
+            let nextTwo = ParadesTimeline.busNextTwo(arrivals: arrivals, directionID: direction.id)
             return BusDiagramRowPlan(
                 index: index,
                 stop: stop,
                 isFirst: index == 0,
                 isLast: index == stops.count - 1,
                 incidents: incidents[stop.code] ?? [],
-                arrival: arrivals.min(by: { $0.seconds < $1.seconds }),
-                // Two arrivals of the direction are the minimum for a verdict,
-                // so a stop with less is not asked at all (S3, S7).
-                regularity: polledCodes.contains(stop.code) && arrivals.count >= 2
-                    ? regularityTag(stopCode: stop.code, directionID: direction.id, state: state, now: now)
-                    : nil
+                next: nextTwo.next,
+                after: nextTwo.after
             )
         }
     }
 
-    /// The orange tag of a bus stop row: a service gap outranks bunching, and a
-    /// regular or unknown report shows nothing (spec S7).
-    private static func regularityTag(
-        stopCode: Int,
-        directionID: Int,
-        state: BusLineState,
-        now: Date
-    ) -> BusDiagramRegularityTag? {
-        guard let report = state.regularity(stopCode: stopCode, directionID: directionID, now: now) else { return nil }
-        switch report.status {
-        case .gap:
-            guard let longestGap = report.longestGap else { return nil }
-            return .gap(minutes: Int((longestGap / 60).rounded()))
-        case .bunched:
-            return .bunched
-        case .regular, .unknown:
-            return nil
-        }
-    }
-
-    /// Incidents of one stop on the line, for its sheet (spec S7). Computed the
-    /// way the station detail does it, from the alerts already in the model.
+    /// Incidents of one stop on the line, for its sheet (spec S7). Computed
+    /// the way the station detail does it, from the alerts already in the
+    /// model.
     private func incidents(for stop: BusStop, line: BusLine) -> [StationIncident] {
         let lineCode = String(line.code)
         return IncidentIndex.incidents(
@@ -319,8 +302,8 @@ struct BusDiagramScreen: View {
     }
 
     /// The delay of each bus the sheet lists, estimated against the timetable
-    /// (spec S7): the ids this stop's arrivals already name, read from the last
-    /// poll, so the sheet never triggers a request of its own.
+    /// (spec S7): the ids this stop's arrivals already name, read from the
+    /// last poll, so the sheet never triggers a request of its own.
     private func delays(for stop: BusStop, in state: BusLineState) -> [Int: DelayEstimate] {
         var estimates: [Int: DelayEstimate] = [:]
         for arrival in state.arrivalsByStop[stop.code] ?? [] {
@@ -331,81 +314,58 @@ struct BusDiagramScreen: View {
     }
 }
 
-/// Regularity problem of one bus stop row, computed once per render (spec S7).
-private enum BusDiagramRegularityTag {
-    /// No bus of this direction for roughly that long.
-    case gap(minutes: Int)
-    /// Two buses arrived close together after a gap.
-    case bunched
-
-    /// Catalan wording of the tag, bus lines (S7).
-    var text: String {
-        switch self {
-        case .gap(let minutes): return "Buit de \(minutes) min"
-        case .bunched: return "Busos pegats"
-        }
-    }
-}
-
-/// Everything one bus diagram row shows, and the height it occupies. A row with
-/// incidents is one `incidentLineHeight` taller per incident, and the bus
-/// overlay uses the same numbers to place the bus markers (spec S8).
+/// Everything one bus timeline row shows, and the height it occupies. A row
+/// with incidents is one `incidentLineHeight` taller per incident, and the bus
+/// overlay uses the same numbers to place the bus markers (spec S9).
 private struct BusDiagramRowPlan: Identifiable {
-    /// Position in the direction: the identity the rows are rendered by. A stop
-    /// code repeats between the two directions, the index of one direction
-    /// always is unique.
+    /// Position in the direction: the identity the rows are rendered by. A
+    /// stop code repeats between the two directions, the index of one
+    /// direction always is unique.
     let index: Int
     let stop: BusStop
     let isFirst: Bool
     let isLast: Bool
     let incidents: [StationIncident]
-    /// Soonest bus of this direction at this stop; nil when the stop was not
-    /// polled or no bus is announced (spec S5).
-    let arrival: BusArrival?
-    /// Regularity tag of the stop, nil when there is nothing to report.
-    let regularity: BusDiagramRegularityTag?
+    /// Next bus of this direction at this stop; nil when the stop was not
+    /// polled or no bus is announced (spec S9).
+    let next: BusArrival?
+    /// Second bus, drawn smaller under the first; nil with one arrival.
+    let after: BusArrival?
 
     var id: Int { index }
 
-    /// A row that shows the tag is one 14 pt line taller, and the bus overlay
-    /// reads the same number, so the spine stays continuous (spec S7). The
-    /// address line is kept: unlike the metro rows, the bus rows have no
-    /// decorative line the tag could take over.
     var height: CGFloat {
-        var height = BusDiagramRow.baseHeight + BusDiagramRow.incidentLineHeight * CGFloat(incidents.count)
-        if regularity != nil {
-            height += BusDiagramRow.regularityLineHeight
-        }
-        return height
+        BusDiagramRow.baseHeight + BusDiagramRow.incidentLineHeight * CGFloat(incidents.count)
     }
 }
 
-/// One stop row of the bus diagram.
+/// One stop row of the bus timeline (spec S9, mockup `V4Bus`): the stop
+/// marker on the rail, the name with its street, and the next two buses.
 private struct BusDiagramRow: View {
     let row: BusDiagramRowPlan
     let line: BusLine
+    /// Whether "Ets aquí · <distance>" is drawn on this row.
+    let isNearest: Bool
+    let hereText: String?
 
     /// Height of a row without incidents; its center is where the stop marker
-    /// sits, so a bus at a stop is drawn on that marker (spec S8).
-    static let baseHeight: CGFloat = 56
+    /// sits, so a bus at a stop is drawn on that marker (spec S9).
+    static let baseHeight: CGFloat = 66
     static let incidentLineHeight: CGFloat = 18
-    /// Height of the regularity tag line when the row shows one (spec S7).
-    static let regularityLineHeight: CGFloat = 14
     static let horizontalPadding: CGFloat = 16
     static let spineWidth: CGFloat = 5
     static let incidentBarWidth: CGFloat = 4
-    /// Marker column: the metro diagram centers its 24 pt asset on x = 16 + 12 =
-    /// 28, and bus lines publish no such asset, so the dots are drawn with the
-    /// same spine center.
-    static let spineCenterX: CGFloat = 28
-    static let markerColumnLeading: CGFloat = 18
-    static let markerColumnWidth: CGFloat = 20
+    /// Marker column: the metro timeline centers its 26 pt marker on
+    /// x = 16 + 13 = 29; the drawn bus dots share the same spine center.
+    static let markerColumnLeading: CGFloat = 20
+    static let markerColumnWidth: CGFloat = 18
     static let markerSize: CGFloat = 16
     static let terminalMarkerSize: CGFloat = 20
     static let markerStrokeWidth: CGFloat = 3
-    static let textLeading: CGFloat = 50
+    static let textLeading: CGFloat = 52
 
     static var markerCenterY: CGFloat { baseHeight / 2 }
+    static var spineCenterX: CGFloat { Self.markerColumnLeading + Self.markerColumnWidth / 2 }
 
     private var incidents: [StationIncident] { row.incidents }
     private var height: CGFloat { row.height }
@@ -418,12 +378,12 @@ private struct BusDiagramRow: View {
             .padding(.trailing, Self.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: height)
-            .background(rowBackground)
+            .background(isNearest ? Color(hex: "409CFF").opacity(0.12) : rowBackground)
             .overlay(alignment: .topLeading) { spineColumn }
             .contentShape(Rectangle())
     }
 
-    /// Stop name and address on the marker line, incident lines under it.
+    /// Stop name and street on the marker line, incident lines under it.
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
@@ -431,31 +391,86 @@ private struct BusDiagramRow: View {
                     Text(row.stop.name)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                    if !row.stop.address.isEmpty {
-                        Text(row.stop.address)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                    HStack(spacing: 8) {
+                        if let hereText {
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(Color(hex: "409CFF"))
+                                    .frame(width: 8, height: 8)
+                                Text(hereText)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Color(hex: "409CFF"))
+                            }
+                        }
+                        if !row.stop.address.isEmpty {
+                            Text(row.stop.address)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
                 Spacer(minLength: 8)
-                if let arrival = row.arrival {
-                    arrivalPill(arrival)
-                }
+                timesColumn
             }
             .frame(height: Self.baseHeight)
-            if let regularity = row.regularity {
-                regularityLine(regularity)
-                    .frame(height: Self.regularityLineHeight)
-            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
             ForEach(incidents) { incident in
                 incidentLine(incident)
             }
         }
     }
 
-    /// Orange wash and the leading bar of a row that has incidents, as in the
-    /// metro Xarxa (spec S8).
+    /// The next two buses of the direction (spec S9): "<n> min" big, second
+    /// smaller; "ara" in green; "Sense dada" when the poll saw none.
+    @ViewBuilder
+    private var timesColumn: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            if let next = row.next {
+                Text(ParadesTimeline.busTimeText(seconds: next.seconds))
+                    .font(.callout.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(
+                        next.seconds <= ParadesTimeline.imminentThresholdSeconds
+                            ? Color(hex: "30D158")
+                            : Color.primary
+                    )
+            } else {
+                Text("—")
+                    .font(.callout.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            if let after = row.after {
+                Text(ParadesTimeline.busTimeText(seconds: after.seconds))
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            } else if row.next == nil {
+                Text("Sense dada")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(minWidth: 72, alignment: .trailing)
+    }
+
+    private var accessibilityText: String {
+        var parts: [String] = [row.stop.name]
+        if let hereText { parts.append(hereText) }
+        if let next = row.next {
+            parts.append("Bus en \(ParadesTimeline.busTimeText(seconds: next.seconds))")
+        } else {
+            parts.append("Sense dada")
+        }
+        if let after = row.after {
+            parts.append("i en \(ParadesTimeline.busTimeText(seconds: after.seconds))")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// Orange wash and the leading bar of a row that has incidents.
     @ViewBuilder
     private var rowBackground: some View {
         if incidents.isEmpty {
@@ -470,11 +485,9 @@ private struct BusDiagramRow: View {
         }
     }
 
-    /// The spine through the whole row and the stop marker centered on it. The
-    /// spine is continuous across rows of different heights because every
-    /// segment ends at a row edge, where the neighbour's own segment starts:
-    /// inside a row the visible line runs from the marker center (first row) or
-    /// the row top, down to the marker center (last row) or the row bottom.
+    /// The rail through the whole row and the stop marker centered on it. The
+    /// rail is continuous across rows of different heights because every
+    /// segment ends at a row edge, where the neighbour's own segment starts.
     private var spineColumn: some View {
         let lineTop = row.isFirst ? Self.markerCenterY : CGFloat(0)
         let lineBottom = row.isLast ? Self.markerCenterY : height
@@ -522,21 +535,6 @@ private struct BusDiagramRow: View {
             .offset(x: 3, y: 3)
     }
 
-    /// The orange regularity tag: a small alert glyph and its wording (S7).
-    private func regularityLine(_ regularity: BusDiagramRegularityTag) -> some View {
-        HStack(spacing: 4) {
-            Image("icon-alert")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 10, height: 10)
-            Text(regularity.text)
-                .lineLimit(1)
-        }
-        .font(.caption2.bold())
-        .foregroundStyle(incidentColor)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private func incidentLine(_ incident: StationIncident) -> some View {
         HStack(spacing: 4) {
             Image(incident.kind.incidentIconAssetName)
@@ -551,51 +549,6 @@ private struct BusDiagramRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: Self.incidentLineHeight)
-    }
-
-    /// Countdown of the soonest bus of this direction, on a capsule filled with
-    /// the line colour. The text colour follows the fill, as the metro pills do
-    /// (spec S6, S8).
-    private func arrivalPill(_ arrival: BusArrival) -> some View {
-        Text(Arrival.countdownText(seconds: arrival.seconds))
-            .font(.caption2.bold())
-            .foregroundStyle(HexLuminance.isLight(line.colorHex) ? Color.black : Color.white)
-            .lineLimit(1)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(lineColor))
-            .accessibilityLabel("Bus \(Arrival.countdownText(seconds: arrival.seconds))")
-    }
-}
-
-/// Summary of how many incidents the direction has, above the rows (spec S8).
-private struct BusIncidentSummaryBanner: View {
-    let incidentCount: Int
-    let lineName: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image("icon-alert")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 16, height: 16)
-            Text(title)
-                .font(.footnote.weight(.semibold))
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color(hex: "F59E0B"), in: RoundedRectangle(cornerRadius: 10))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-    }
-
-    /// "1 incidència a H12" / "4 incidències a H12".
-    private var title: String {
-        incidentCount == 1
-            ? "1 incidència a \(lineName)"
-            : "\(incidentCount) incidències a \(lineName)"
     }
 }
 
@@ -625,8 +578,7 @@ private struct BusNoServiceCard: View {
     }
 }
 
-/// A bus placed in the diagram, at the y its route distance gives, turned the
-/// way it travels along the spine.
+/// A bus placed in the timeline, at the y its route distance gives.
 private struct BusDiagramPlacement: Identifiable {
     let id: String
     let y: CGFloat
@@ -634,11 +586,12 @@ private struct BusDiagramPlacement: Identifiable {
     let forward: Bool
 }
 
-/// Draws the live buses on the spine of the diagram (spec S8). It shares the
-/// rows' coordinate space through the overlay it is attached to: every y is
+/// Draws the live buses on the rail with the S6 vehicle marker (D5: solid
+/// ring, all bus positions are arrival-based estimates, which the vehicle
+/// card says — the dashed ring stays reserved for metro). It shares the rows'
+/// coordinate space through the overlay it is attached to: every y is
 /// measured from the top of the first row, so rows and buses cannot drift
-/// apart. The buses are the same pictograms the map uses, turned 90 degrees so
-/// they lie along the vertical spine (spec S2).
+/// apart.
 private struct BusTrainOverlay: View {
     let direction: BusDirection
     let line: BusLine
@@ -651,9 +604,15 @@ private struct BusTrainOverlay: View {
         // them.
         ZStack(alignment: .topLeading) {
             ForEach(placements()) { bus in
-                BusDiagramMarker(line: line, forward: bus.forward)
-                    .position(x: BusDiagramRow.spineCenterX, y: bus.y)
-                    .accessibilityHidden(true)
+                VehicleMarkerView(
+                    colorHex: line.colorHex,
+                    glyph: .bus,
+                    headingDegrees: bus.forward ? 180 : 0,
+                    isEstimated: false,
+                    isSelected: false,
+                    size: 30
+                )
+                .position(x: BusDiagramRow.spineCenterX, y: bus.y)
             }
         }
     }
@@ -672,8 +631,8 @@ private struct BusTrainOverlay: View {
         let lastIndex = rows.count - 1
         return positions.map { position in
             // The fractional stop index is clamped to the row range first: the
-            // fraction is then always inside the row it belongs to, so the last
-            // stop maps to its own marker instead of one row past it.
+            // fraction is then always inside the row it belongs to, so the
+            // last stop maps to its own marker instead of one row past it.
             let rawIndex = direction.stopIndexPosition(atRouteDistance: position.train.routeDistance)
             let index = min(max(rawIndex, 0), Double(lastIndex))
             let lower = Int(index)
@@ -686,25 +645,5 @@ private struct BusTrainOverlay: View {
                 forward: position.train.forward
             )
         }
-    }
-}
-
-/// The bus itself on the spine: the same `bus-<colorHex>` pictogram the map
-/// draws, turned along the spine, ringed by nothing because the art already
-/// carries its own white outline (spec S2, S8). No name chip here: every row
-/// already says which line it is.
-private struct BusDiagramMarker: View {
-    let line: BusLine
-    let forward: Bool
-
-    var body: some View {
-        Image(BusMarker.assetName(for: line))
-            .resizable()
-            .scaledToFit()
-            .frame(
-                width: BusMarker.markerSize.width,
-                height: BusMarker.markerSize.height
-            )
-            .rotationEffect(.degrees(forward ? 90 : -90))
     }
 }
