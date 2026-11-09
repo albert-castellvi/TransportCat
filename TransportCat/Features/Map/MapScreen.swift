@@ -341,7 +341,12 @@ struct MapScreen: View {
                 MapPolyline(coordinates: mapOverlay.line)
                     .stroke(Color(hex: selectedLine.colorHex), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            ForEach(state.stations) { station in
+            // Keyed by position in the published list, the rule the diagram
+            // already follows: a station code is not unique enough (a line can
+            // list the same station twice) and the operator id may be absent,
+            // so `ForEach(state.stations)` produced duplicate identities and
+            // the annotation glitches that come with them (#59).
+            ForEach(Array(state.stations.enumerated()), id: \.offset) { _, station in
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         selectedStation = station
@@ -390,7 +395,10 @@ struct MapScreen: View {
             // of service, slightly offset so the station dot stays visible
             // (spec S7). Not tappable: the alert's text lives in the Parades
             // and Avisos screens.
-            ForEach(mapOverlay.facilityStations) { mark in
+            // Same rule for the facility marks: their identity is the
+            // position in the list, not the station code the mark carries
+            // (#59).
+            ForEach(Array(mapOverlay.facilityStations.enumerated()), id: \.offset) { _, mark in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
                     FacilityStationIcon(kind: mark.kind)
                         .offset(x: 12, y: -12)
