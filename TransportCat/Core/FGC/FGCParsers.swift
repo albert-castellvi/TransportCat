@@ -143,10 +143,7 @@ enum FGCParser {
     }
 
     static func trains(fromRecords records: [[String: Any]], stationNames: [String: String] = [:]) -> [FGCTrain] {
-        // The catalog decides whether `NO` is the not-stopped sentinel or a
-        // real station code (spec S3), so it is resolved once per payload.
-        let knownStationCodes = Set(stationNames.keys)
-        return records.compactMap { record in
+        records.compactMap { record in
             guard let id = JSONValue.string(from: record["id"]), !id.isEmpty,
                   let lineCode = JSONValue.string(from: record["lin"]), !lineCode.isEmpty,
                   let point = JSONValue.dictionary(from: record["geo_point_2d"]),
@@ -167,10 +164,7 @@ enum FGCParser {
                 position: GeoPoint(latitude: latitude, longitude: longitude),
                 nextStopCodes: FGCNetwork.nextStopCodes(from: JSONValue.string(from: record["properes_parades"])),
                 isOnTime: (JSONValue.string(from: record["en_hora"]) ?? "").caseInsensitiveCompare("True") == .orderedSame,
-                stoppedAtStopCode: FGCNetwork.stoppedAtStopCode(
-                    from: stoppedAt,
-                    knownStationCodes: knownStationCodes
-                ),
+                stoppedAtStopCode: (stoppedAt == nil || stoppedAt == "NO") ? nil : stoppedAt,
                 unitType: JSONValue.string(from: record["tipus_unitat"]),
                 occupancy: occupancy(from: record)
             )
@@ -324,22 +318,6 @@ enum FGCNetwork {
     }
 
     // MARK: - properes_parades (S3)
-
-    /// The feed's "this train is not stopped" value of `estacionat_a`.
-    static let notStoppedSentinel = "NO"
-
-    /// `estacionat_a` read as a stop code: nil for a missing value and for the
-    /// `"NO"` sentinel. `NO` is also a real station code of the catalog, so
-    /// the sentinel only counts as "not stopped" when no station of the
-    /// network uses that code; otherwise a train parked there would be
-    /// reported as running.
-    static func stoppedAtStopCode(from raw: String?, knownStationCodes: Set<String>) -> String? {
-        guard let raw, !raw.isEmpty else { return nil }
-        if raw == notStoppedSentinel, !knownStationCodes.contains(raw) {
-            return nil
-        }
-        return raw
-    }
 
     /// Parses the semicolon-separated pseudo-JSON of `properes_parades`:
     /// `{"parada": "GR"};{"parada": "PR"}`. Each chunk is read on its own
