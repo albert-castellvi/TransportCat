@@ -46,6 +46,10 @@ struct FGCMapScreen: View {
     /// glide yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
+    /// Line the pending vehicle focus asked for. A focus owns only the one line
+    /// change it caused: any later change means the rider moved on and the
+    /// pending focus is dropped instead of disabling the reset (spec S11).
+    @State private var pendingVehicleFocusLine: String?
     /// Where the camera was commanded to last, so the continuous callback can
     /// tell our own follow animation from a pan by the rider.
     @State private var followAnchor: GeoPoint?
@@ -145,11 +149,18 @@ struct FGCMapScreen: View {
             .onChange(of: router.pendingFocus) { _, destination in
                 applyFocus(destination)
             }
-            .onChange(of: selectedLineCode) { _, _ in
+            .onChange(of: selectedLineCode) { _, newCode in
                 // A new line is a new subject: drop the old train and refit —
                 // unless a focus just moved to this line and is about to open
-                // its sheet (spec S11).
-                if pendingVehicleFocusID == nil {
+                // its sheet (spec S11). Only the line change the focus asked
+                // for is exempt: a second change means the rider moved on, so
+                // a focus whose train never showed up is dropped here instead
+                // of disabling this reset for the rest of the session.
+                let focusOwnsThisChange = pendingVehicleFocusID != nil
+                    && pendingVehicleFocusLine == newCode
+                if !focusOwnsThisChange {
+                    pendingVehicleFocusID = nil
+                    pendingVehicleFocusLine = nil
                     selectedVehicle = nil
                     sheetVehicle = nil
                     followingVehicleID = nil
@@ -499,6 +510,7 @@ struct FGCMapScreen: View {
             resolvePendingPlaceFocus()
         case .vehicle(_, let lineCode, let vehicleID):
             pendingVehicleFocusID = vehicleID
+            pendingVehicleFocusLine = lineCode
             let changedLine = selectedLineCode != lineCode
             selectedLineCode = lineCode
             // A line change re-triggers through the glide tick; with the same
@@ -531,6 +543,7 @@ struct FGCMapScreen: View {
         guard let vehicleID = pendingVehicleFocusID,
               let vehicle = state.vehicles.first(where: { $0.id == vehicleID }) else { return }
         pendingVehicleFocusID = nil
+        pendingVehicleFocusLine = nil
         sheetVehicle = vehicle
         followingVehicleID = vehicle.id
         centerCamera(on: vehicle.position)
