@@ -88,7 +88,7 @@ enum TheoreticalFleet {
             let distance = distances[routeIndexes[index]]
             guard let point = engine.point(atRouteDistance: distance) else { return nil }
             return TrainPosition(
-                id: identifier(run),
+                id: identifier(run, lineCode: lineCode),
                 lineCode: lineCode,
                 destination: run.headsign,
                 forward: forward,
@@ -117,7 +117,7 @@ enum TheoreticalFleet {
             let distance = distances[from] + (distances[to] - distances[from]) * progress
             guard let point = engine.point(atRouteDistance: distance) else { return nil }
             return TrainPosition(
-                id: identifier(run),
+                id: identifier(run, lineCode: lineCode),
                 lineCode: lineCode,
                 destination: run.headsign,
                 forward: forward,
@@ -135,9 +135,15 @@ enum TheoreticalFleet {
         return nil
     }
 
-    /// Stable identity of a scheduled train: the direction and the departure
-    /// from the service day's midnight, which no other run of the day shares.
-    private static func identifier(_ run: ScheduledRun) -> String {
-        "T\(run.directionID)-\(run.startSec)"
+    /// Stable identity of a scheduled train: the line, the direction and the
+    /// departure from the service day's midnight, which no other run of the
+    /// same line shares (#34).
+    ///
+    /// The line code is part of the id because the global map merges every
+    /// line's positions into one `ForEach`; two lines with a clockface
+    /// departure at the same second would otherwise collide, which is what
+    /// the live ids already avoid by starting with the line code.
+    private static func identifier(_ run: ScheduledRun, lineCode: String) -> String {
+        "\(lineCode)-T\(run.directionID)-\(run.startSec)"
     }
 }
