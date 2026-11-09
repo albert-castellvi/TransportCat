@@ -57,6 +57,13 @@ final class AppModel: ObservableObject {
     /// the UI can tell "stale but real" from "never loaded".
     @Published private(set) var alertsUpdatedAt: Date?
 
+    /// Bumped every time a line's topology and its offline copy have landed
+    /// (#55). The chrome derives its labels from those copies (the metro
+    /// termini, the bus directions), so a mounted accessory reads them again
+    /// when this moves instead of keeping the empty read it did before the
+    /// first fetch answered.
+    @Published private(set) var topologyRevision = 0
+
     /// Bus incidents (`/alerts/bus/channels/WEB`, spec S7). Same lifecycle as
     /// the metro alerts: loaded by `startAlertsPolling`, kept on a failure.
     @Published var busAlerts: [ServiceAlert] = []
@@ -134,6 +141,24 @@ final class AppModel: ObservableObject {
                 "alerts": busAlerts.count,
             ])
         }
+    }
+
+    /// Signals the chrome that a line's topology cache has a fresh copy (#55),
+    /// once the background write returns: a read that beat the file would leave
+    /// the accessory's labels empty again.
+    ///
+    /// The write itself happens off the main actor (`saveInBackground`), so the
+    /// callers hand in the task it returned instead of bumping immediately.
+    static func topologyWillPublish(after save: Task<Void, Never>?) {
+        Task { @MainActor in
+            if let save { _ = await save.value }
+            shared.topologyDidPublish()
+        }
+    }
+
+    /// Bumps `topologyRevision`, redrawing the chrome that reads the caches.
+    private func topologyDidPublish() {
+        topologyRevision &+= 1
     }
 
     /// Loads the alerts immediately and then every minute until the task is
@@ -292,9 +317,11 @@ final class LineState {
             // Spec S21: a successful load is the moment to refresh this
             // line's offline copy. S5: the encode and the write happen off the
             // main actor, so the fresh map does not wait for the disk.
-            OfflineCache.saveMetroTopology(
+            let saved = OfflineCache.saveMetroTopology(
                 stations: loadedStations, geometry: loadedGeometry, lineCode: line.code
             )
+            // #55: the chrome re-reads the metro termini from this copy.
+            AppModel.topologyWillPublish(after: saved)
         } catch {
             Self.report(error, "stations", line: line.code)
             // Spec S21: a failed load falls back to the cached topology, so
