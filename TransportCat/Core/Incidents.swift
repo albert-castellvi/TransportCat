@@ -140,15 +140,23 @@ enum IncidentIndex {
     /// Longest snippet taken from a text that has no sentence break.
     private static let maxTitleLength = 70
 
+    /// Dots that end an abbreviation, not a sentence, folded to lowercase and
+    /// without the dot: the operator's own copy is full of "Pl. Catalunya",
+    /// "Av. Diagonal" or "St. Andreu" mid-alert.
+    private static let abbreviationStems: Set<String> = [
+        "pl", "plta", "pca", "av", "avda", "st", "sta", "c", "n", "ptge",
+        "sr", "sra", "dr", "dra", "tel", "num", "p", "ex", "aprox", "etc",
+    ]
+
     /// The first sentence of the alert text, so the diagram says what actually
-    /// happens instead of a generic label. The cut is at the first ". "; a sentence
-    /// longer than `maxTitleLength` is cut at a word boundary with an ellipsis. Missing or
+    /// happens instead of a generic label. A sentence longer than
+    /// `maxTitleLength` is cut at a word boundary with an ellipsis. Missing or
     /// empty text keeps the generic title.
     private static func firstSentence(from text: String?) -> String {
         guard let text, !text.isEmpty else { return genericTitle }
         var sentence = text
-        if let separator = text.range(of: ". ") {
-            let head = String(text[text.startIndex..<separator.lowerBound])
+        if let boundary = sentenceBoundary(in: text) {
+            let head = String(text[text.startIndex..<boundary])
             if !head.isEmpty { sentence = head }
         }
         guard sentence.count > maxTitleLength else { return sentence }
@@ -156,6 +164,34 @@ enum IncidentIndex {
         var cut = String(sentence.prefix(maxTitleLength))
         if let lastSpace = cut.lastIndex(of: " ") { cut = String(cut[cut.startIndex..<lastSpace]) }
         return cut.trimmingCharacters(in: .whitespaces) + "…"
+    }
+
+    /// Where the first sentence of `text` ends: the first ". " whose next word
+    /// starts with an uppercase letter and which is not the dot of an
+    /// abbreviation. The uppercase rule alone is not enough — "Pl. Catalunya"
+    /// also is a dot followed by a capital — hence the abbreviation list.
+    private static func sentenceBoundary(in text: String) -> String.Index? {
+        var searchStart = text.startIndex
+        while let separator = text.range(of: ". ", range: searchStart..<text.endIndex) {
+            let head = text[text.startIndex..<separator.lowerBound]
+            let nextWord = text[separator.upperBound...].drop { $0.isWhitespace }
+            let startsSentence = nextWord.first?.isUppercase ?? false
+            if startsSentence, !endsInAbbreviation(head) {
+                return separator.lowerBound
+            }
+            searchStart = separator.upperBound
+        }
+        return nil
+    }
+
+    /// Whether `head` ends in an abbreviation ("... de Pl"), so the dot after
+    /// it does not end the sentence.
+    private static func endsInAbbreviation(_ head: Substring) -> Bool {
+        guard let word = head.split(separator: " ").last else { return false }
+        let stem = word
+            .trimmingCharacters(in: CharacterSet(charactersIn: ".", ",", "("))
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "ca_ES"))
+        return abbreviationStems.contains(stem)
     }
 
     /// The feed ships HTML in `textCa` ("...<br>Si els necessites..."). Line

@@ -18,7 +18,12 @@ struct WatchPlaceDetailView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(arrivals) { arrival in
+                    // Identified by the position in this fetch, not by
+                    // `NextArrival.id`: the FGC open feed has no minutes, so
+                    // every train of one fetch shares line, destination and
+                    // date, and two trains of one line to the same terminus
+                    // would repeat the id inside this `ForEach` (bug #41).
+                    ForEach(Array(arrivals.enumerated()), id: \.offset) { _, arrival in
                         WatchArrivalRow(arrival: arrival)
                     }
                 }
