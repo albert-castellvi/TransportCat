@@ -13,8 +13,9 @@ final class TMBClient {
     /// Station feeds already fetched by the place-code bridge, per line. Metro
     /// topology is immutable in practice and the bridge runs on every arrivals
     /// pass, so the cache keeps the translation from doubling the request
-    /// count of a poll. A relaunch starts it empty.
-    private var stationFeedCache: [String: [Station]] = [:]
+    /// count of a poll. A relaunch starts it empty. Main-actor isolated: one
+    /// client is shared by every screen, and their passes run concurrently.
+    @MainActor private var stationFeedCache: [String: [Station]] = [:]
 
     init(session: URLSession = .shared, credentials: TMBCredentials) {
         self.session = session
@@ -97,7 +98,7 @@ final class TMBClient {
     /// One line's station feed, cached for the process: the code bridge of
     /// `metroArrivals(lineCode:places:)` asks for it on every arrivals pass.
     /// An empty answer is not cached, so a failed fetch is retried next pass.
-    func stationFeed(lineCode: String) async -> [Station] {
+    @MainActor func stationFeed(lineCode: String) async -> [Station] {
         if let cached = stationFeedCache[lineCode] { return cached }
         guard let stations = try? await stations(lineCode: lineCode), !stations.isEmpty else { return [] }
         stationFeedCache[lineCode] = stations
