@@ -168,11 +168,15 @@ struct MapScreen: View {
             }
             .onChange(of: selectedLineCode) { _, _ in
                 // A new line is a new subject: drop the old train, its follow,
-                // the vehicle selection and any incident card (S10, S6, S7).
+                // the vehicle selection, the station sheet and any incident
+                // card (S10, S6, S7). The station sheet re-derives its line
+                // from the selection, so keeping it open would show the new
+                // line's data for the old station (#52).
                 selectedTrain = nil
                 followingTrainID = nil
                 selectedVehicleID = nil
                 selectedIncidentAlertID = nil
+                selectedStation = nil
             }
             // The interchange capsules (D4) read the places catalog, which may
             // arrive after the line's topology: a loaded catalog re-derives
