@@ -13,16 +13,19 @@ final class PersistedModeTests: XCTestCase {
     private var suiteName = ""
     private var defaults: UserDefaults!
 
-    override func setUpWithError() throws {
-        try super.setUpWithError()
+    // The async variants run on the class's main actor; the synchronous
+    // setUpWithError/tearDownWithError are nonisolated and cannot touch the
+    // main-actor stored properties.
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "PersistedModeTests-\(UUID().uuidString)"
         defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
         defaults = nil
-        try super.tearDownWithError()
+        try await super.tearDown()
     }
 
     /// Fresh install: a line was viewed (so `metroSelectedLine` is stored) but
