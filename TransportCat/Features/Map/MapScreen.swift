@@ -726,11 +726,20 @@ struct MapScreen: View {
 
     private static func dayText(_ date: Date) -> String {
         // The format the former incident sheet printed, as plain text.
-        Self.incidentDayFormatter.string(from: date)
+        Self.alertDayFormatter.string(from: date)
     }
 
-    private static let incidentDayFormatter: DateFormatter = {
+    /// An alert's calendar day, "12/03/2026". Pinned to a fixed locale and the
+    /// Gregorian calendar, the convention `ScheduleTimetable` already follows:
+    /// inheriting the device's would print a Thai Buddhist (2569), Japanese or
+    /// Republic-of-China year instead of the one the feed means (#54).
+    ///
+    /// Internal so a test can pin the calendar and the locale: the rendered
+    /// string alone cannot show them on a Gregorian device.
+    static let alertDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "dd/MM/yyyy"
         return formatter
     }()
