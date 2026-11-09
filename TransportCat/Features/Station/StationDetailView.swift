@@ -424,11 +424,13 @@ struct StationDetailView: View {
         do {
             let client = try TMBClient.fromBundle()
             // The sheet's code is the catalog's `ID_ESTACIO` when it came from a
-            // place and the line feed's `CODI_ESTACIO` when it did not; asking
-            // with the place lets the client bridge the two code spaces and
-            // answer under the same place (spec S1).
-            let fetched = try await client.metroArrivals(lineCode: line.code, places: [favoritePlace])
-            arrivals = fetched[favoritePlace.id] ?? []
+            // place and the line feed's `CODI_ESTACIO` when it did not. Resolve
+            // it against the line's stations; without that feed the station
+            // keeps its own code, which is what the sheet asked before (spec S1).
+            let feed = await client.stationFeed(lineCode: line.code)
+            let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
+            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: [stationCode])
+            arrivals = fetched[stationCode] ?? []
             errorMessage = nil
             hasLoaded = true
             syncScheduledReminders()
