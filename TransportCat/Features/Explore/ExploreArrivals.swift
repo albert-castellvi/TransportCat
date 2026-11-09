@@ -139,7 +139,9 @@ enum ExploreArrivals {
     // MARK: - FGC
 
     /// Trains of the shared state stopped at or announcing the station, in
-    /// feed order. Pure state reading: the RootView poller owns the refresh.
+    /// feed order. Pure state reading: whichever poller is alive owns the
+    /// refresh — `RootView` under the FGC and global modes, `ExploreScreen`
+    /// under the others — so this never starts a second one.
     @MainActor
     private static func addFGC(
         places: [Place],
