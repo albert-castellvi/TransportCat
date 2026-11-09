@@ -159,10 +159,17 @@ struct StationDetailView: View {
         }
     }
 
-    /// `"<placeId>|<línia>|<destí>|<n>"` — one reminder id per arrival and
-    /// lead time (spec S13).
+    /// `ArrivalReminder.reminderID` — one reminder id per train and lead time,
+    /// so two trains to the same destination keep their own reminders
+    /// (spec S13).
     private func reminderID(_ arrival: Arrival, minutesBefore: Int) -> String {
-        "\(favoritePlace.id)|\(line.displayName)|\(arrival.destination)|\(minutesBefore)"
+        ArrivalReminder.reminderID(
+            placeID: favoritePlace.id,
+            lineLabel: line.displayName,
+            destination: arrival.destination,
+            serviceCode: arrival.serviceCode,
+            minutesBefore: minutesBefore
+        )
     }
 
     /// When the rider wants to be warned, or nil when that moment already
