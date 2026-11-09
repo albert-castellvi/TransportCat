@@ -534,6 +534,11 @@ final class LineState {
     func tick() {
         guard let engine else { return }
         if isTheoretical {
+            // #38: a timetable is not an animation state. Dropping the
+            // retained distances here is what keeps the live transition from
+            // easing out of the last live poll's positions when the feed
+            // comes back.
+            motion.reset()
             positions = theoreticalPositions(now: Date())
             return
         }

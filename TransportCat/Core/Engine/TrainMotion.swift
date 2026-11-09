@@ -107,6 +107,20 @@ struct TrainMotion {
         tracks = updated
     }
 
+    /// Drops every retained marker state, so the next `update` starts from the
+    /// polled positions instead of the distances drawn for the previous feed
+    /// (#38).
+    ///
+    /// `LineState.tick()` publishes the timetable through `positions` and
+    /// never feeds this type, so without a reset the state of the last live
+    /// poll would survive the whole theoretical period and be reused when the
+    /// feed returns: the marker would ease from a minutes-old position instead
+    /// of starting where the feed says it is.
+    mutating func reset() {
+        tracks = [:]
+        lastAdvance = nil
+    }
+
     /// Advances every marker to `now`. Intended to be called at the display
     /// tick rate (10 Hz); the elapsed time is clamped to 0...5 s so a paused
     /// app does not read as a permanently running train, and a zero-length

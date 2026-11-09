@@ -297,6 +297,34 @@ final class TrainMotionTests: XCTestCase {
         XCTAssertGreaterThan(drawnDistances.count, 1)
     }
 
+    /// #38: while a line is drawn from its timetable the live animation state
+    /// is dropped, so when the feed returns the marker starts from the polled
+    /// position instead of easing from the distance drawn minutes ago.
+    func testResetDropsTheRetainedDisplayedDistance() throws {
+        let engine = try makeEngine()
+        var motion = TrainMotion()
+
+        let before = try XCTUnwrap(positions(engine, seconds: 50).first)
+        motion.update(with: [before], now: start)
+        _ = motion.advance(to: start, engine: engine)
+
+        // The theoretical period: nothing feeds the motion state, and
+        // `LineState.tick()` resets it instead.
+        motion.reset()
+
+        // The live feed returns with the same train id at another place.
+        let resumed = try XCTUnwrap(positions(engine, seconds: 260).first)
+        XCTAssertEqual(resumed.id, before.id)
+        XCTAssertNotEqual(resumed.routeDistance, before.routeDistance, accuracy: 1e-9)
+
+        motion.update(with: [resumed], now: start.addingTimeInterval(300))
+        let drawn = try XCTUnwrap(
+            motion.advance(to: start.addingTimeInterval(300), engine: engine).first
+        )
+
+        XCTAssertEqual(drawn.routeDistance, resumed.routeDistance, accuracy: 1e-9)
+    }
+
     /// Pure value type: the same calls with the same dates give the same
     /// result.
     func testSameInputsProduceTheSameOutput() throws {
