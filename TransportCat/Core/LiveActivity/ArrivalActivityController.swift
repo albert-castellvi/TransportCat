@@ -128,6 +128,11 @@ final class ArrivalActivityController {
 
     /// Ends the activity a little after the arrival, if the app is still
     /// running: `dismissalPolicy: .after` keeps it on screen until then.
+    ///
+    /// A cancelled task (a refresh or an explicit end replaced this one) must
+    /// not end the activity: `Task.sleep` throws `CancellationError` and the
+    /// cancelled task would otherwise fall through to `end`, ending the very
+    /// activity it was asked to update and clearing the newer task's entry.
     private func scheduleEnd(of activity: Activity<ArrivalActivityAttributes>, at date: Date) {
         endTasks[activity.id]?.cancel()
         endTasks[activity.id] = Task { [weak self] in
@@ -135,6 +140,7 @@ final class ArrivalActivityController {
             if delay > 0 {
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
+            guard !Task.isCancelled else { return }
             await activity.end(nil, dismissalPolicy: .after(date))
             self?.endTasks[activity.id] = nil
         }
