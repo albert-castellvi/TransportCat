@@ -8,10 +8,10 @@ enum GeoJSONParser {
 
     /// Decodes `features[]` of a stations FeatureCollection. Property names
     /// follow TMB's WFS export: NOM_ESTACIO, CODI_ESTACIO, ORDRE_ESTACIO,
-    /// ID_ESTACIO, NOM_TIPUS_ACCESSIBILITAT... All 11 lines return the same 25
-    /// properties, so `ID_ESTACIO` and `NOM_TIPUS_ACCESSIBILITAT` stay optional
-    /// only because the schema does not guarantee them, not because some line
-    /// family drops them.
+    /// ID_ESTACIO, CODI_GRUP_ESTACIO, NOM_TIPUS_ACCESSIBILITAT... All 11 lines
+    /// return the same 25 properties, so the derived fields stay optional only
+    /// because the schema does not guarantee them, not because some line family
+    /// drops them.
     static func stations(from data: Data, lineCode: String) throws -> [Station] {
         let root = try JSONSerialization.jsonObject(with: data)
         guard let dict = JSONValue.dictionary(from: root),
@@ -42,6 +42,7 @@ enum GeoJSONParser {
                 latitude: latitude,
                 longitude: longitude,
                 id: JSONValue.int(from: properties["ID_ESTACIO"]),
+                groupCode: JSONValue.int(from: properties["CODI_GRUP_ESTACIO"]),
                 accessible: accessibility.map { $0.caseInsensitiveCompare("Accessible") == .orderedSame }
             )
         }

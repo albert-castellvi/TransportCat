@@ -689,8 +689,14 @@ struct GlobalMapScreen: View {
         alertDayFormatter.string(from: date)
     }
 
+    /// An alert's calendar day, "12/03/2026", pinned to the Gregorian calendar
+    /// and a fixed locale like the metro map's formatter: the device's calendar
+    /// would render a Thai Buddhist or Japanese year instead of the feed's
+    /// (#54).
     private static let alertDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "dd/MM/yyyy"
         return formatter
     }()

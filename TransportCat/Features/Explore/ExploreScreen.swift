@@ -17,6 +17,14 @@ struct ExploreScreen: View {
     /// Whether the first arrivals refresh has finished, so the rows can tell
     /// "loading" from "nothing expected here".
     @State private var arrivalsLoaded = false
+    /// Generation of the arrivals refresh (spec S12): the 30 s loop and the
+    /// star toggle both refresh, and only the newest pass may write, so the
+    /// slower older one cannot replace fresh arrivals.
+    @State private var arrivalsGeneration = ArrivalRefreshGeneration()
+    /// The map mode that keeps `RootView`'s single FGC poller alive (spec S6).
+    /// Under metro and bus that task is cancelled, so this screen refreshes the
+    /// shared FGC snapshot itself (spec S12).
+    @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
 
     /// Refresh period of the favorites' arrivals (spec S12), in nanoseconds.
     private static let arrivalsRefreshIntervalNanoseconds: UInt64 = 30_000_000_000
@@ -93,14 +101,15 @@ struct ExploreScreen: View {
             }
             await busStore.load(client: client)
         }
-        // The Línies tab list needs FGC routes and this screen only reads the
-        // shared state; the topology load is the same one-off the map does.
+        // The Línies tab list needs FGC routes and the favorites read the
+        // shared trains; the topology load is the same one-off the map does.
         if fgc.lines.isEmpty {
             await fgc.loadTopology()
         }
         LocationService.shared.start()
 
         while !Task.isCancelled {
+            await refreshFGCSnapshotIfNeeded()
             await refreshFavoriteArrivals()
             do {
                 try await Task.sleep(nanoseconds: Self.arrivalsRefreshIntervalNanoseconds)
@@ -110,12 +119,30 @@ struct ExploreScreen: View {
         }
     }
 
+    /// Keeps the FGC snapshot alive while the map's poller is not (spec S12):
+    /// the RootView loop only runs under the FGC and global modes, so under
+    /// metro and bus the 30 s refresh of the favorites re-read a list nothing
+    /// updated. Same cadence as the feed, so a favorite's rows stay current
+    /// instead of freezing on the last FGC-tab poll.
+    @MainActor
+    private func refreshFGCSnapshotIfNeeded() async {
+        let mode = AppMode(rawValue: modeRaw) ?? .metro
+        guard mode != .fgc, mode != .global, !fgc.lines.isEmpty else { return }
+        await fgc.poll()
+    }
+
     /// One refresh pass over the favorite places. A cancelled pass throws away
-    /// its answer instead of racing the next one.
+    /// its answer, and so does a pass a newer one has already replaced: only
+    /// the newest generation writes the snapshot.
     @MainActor
     private func refreshFavoriteArrivals() async {
+        let generation = arrivalsGeneration.begin()
         let places = favorites.favoritePlaces
-        defer { if !Task.isCancelled { arrivalsLoaded = true } }
+        defer {
+            if !Task.isCancelled, arrivalsGeneration.isCurrent(generation) {
+                arrivalsLoaded = true
+            }
+        }
         guard !places.isEmpty else {
             favoriteArrivals = [:]
             return
@@ -127,7 +154,7 @@ struct ExploreScreen: View {
             fgcState: fgc,
             busLines: busStore.lines
         )
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, arrivalsGeneration.isCurrent(generation) else { return }
         favoriteArrivals = loaded
     }
 

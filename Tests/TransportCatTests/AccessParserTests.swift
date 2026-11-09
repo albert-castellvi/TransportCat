@@ -98,6 +98,32 @@ final class AccessParserTests: XCTestCase {
         XCTAssertEqual(TMBAccessParser.groupStationCode(forStationCode: 315), 6660315)
     }
 
+    /// #28: `CODI_GRUP_ESTACIO` is one code per physical station shared by
+    /// every line, so the per-line offset can only fit one line of an
+    /// interchange. The feed's own value must win, and the offset stay as the
+    /// fallback for the payloads that do not carry it.
+    func testFeedGroupCodeWinsOverTheOffset() throws {
+        let stations = try GeoJSONParser.stations(from: fixture("stations-L1"), lineCode: "1")
+        let bellvitge = try XCTUnwrap(stations.first { $0.name == "Hospital de Bellvitge" })
+        XCTAssertEqual(bellvitge.groupCode, 6_660_111, "the station feed decodes CODI_GRUP_ESTACIO")
+        XCTAssertEqual(
+            TMBAccessParser.groupStationCode(forStationCode: bellvitge.code, feedGroupCode: bellvitge.groupCode),
+            6_660_111
+        )
+
+        // At an interchange the offset is wrong: one group code is shared by
+        // every per-line station code of the same physical station.
+        XCTAssertEqual(
+            TMBAccessParser.groupStationCode(forStationCode: 324, feedGroupCode: 6_660_220),
+            6_660_220
+        )
+        XCTAssertEqual(
+            TMBAccessParser.groupStationCode(forStationCode: 324, feedGroupCode: nil),
+            6_660_324,
+            "without the feed value the documented offset is still the fallback"
+        )
+    }
+
     // MARK: - FGC wheelchair_boarding (spec S17)
 
     func testFGCStopsCarryWheelchairBoarding() throws {

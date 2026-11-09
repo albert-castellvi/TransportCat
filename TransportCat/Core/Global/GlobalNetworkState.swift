@@ -164,23 +164,35 @@ final class GlobalNetworkState {
 
     // MARK: - Metro driving
 
-    /// Builds the eleven `LineState`s once and loads their topology
-    /// concurrently, then publishes the layers and dots in a single rebuild
-    /// (spec S7). Per-line publication would mean one full
-    /// `rebuildMetroLayersAndDots()` per completed line — eleven map
-    /// invalidations — so the global map fills in once, after the slowest
-    /// line, instead.
+    /// Builds the missing `LineState`s and loads their topology concurrently,
+    /// then publishes the layers and dots in a single rebuild (spec S7).
+    /// Per-line publication would mean one full `rebuildMetroLayersAndDots()`
+    /// per completed line — eleven map invalidations — so the global map fills
+    /// in once, after the slowest line, instead.
+    ///
+    /// #27: a line whose load failed or was cancelled while leaving the map
+    /// keeps an empty `stations` list, and this instance is a session
+    /// singleton, so the lines that are still empty are rebuilt here instead
+    /// of being skipped for the rest of the session. The lines that already
+    /// loaded keep their state.
     private func ensureLineStates() async {
-        guard lineStates.isEmpty, let client = AppModel.shared.client else { return }
-        var built: [String: LineState] = [:]
-        for line in MetroLine.allLines {
-            built[line.code] = LineState(line: line, client: client)
+        guard let client = AppModel.shared.client else { return }
+        let pending = Self.linesNeedingTopologyLoad(
+            stationCounts: lineStates.mapValues(\.stations.count)
+        )
+        guard !pending.isEmpty else { return }
+
+        var built = lineStates
+        var loading: [LineState] = []
+        for line in pending {
+            let state = built[line.code] ?? LineState(line: line, client: client)
+            built[line.code] = state
+            loading.append(state)
         }
         lineStates = built
 
         await withTaskGroup(of: Void.self) { group in
-            for line in MetroLine.allLines {
-                guard let state = built[line.code] else { continue }
+            for state in loading {
                 group.addTask {
                     await state.loadTopology()
                 }
@@ -189,6 +201,20 @@ final class GlobalNetworkState {
         }
         rebuildMetroLayersAndDots()
         refreshIncidents()
+    }
+
+    /// The lines whose topology still has to load: the ones with no state yet
+    /// and the ones whose load left no stations behind (#27).
+    ///
+    /// `loadTopology` publishes its stations before anything else and the
+    /// offline fallback publishes the cached list, so a line that loaded —
+    /// online or from the cache — always has them; an empty list is exactly
+    /// the signal of a failed or cancelled request.
+    static func linesNeedingTopologyLoad(
+        stationCounts: [String: Int],
+        lines: [MetroLine] = MetroLine.allLines
+    ) -> [MetroLine] {
+        lines.filter { (stationCounts[$0.code] ?? 0) == 0 }
     }
 
     /// Advances every line's interpolation by one tick and republishes the

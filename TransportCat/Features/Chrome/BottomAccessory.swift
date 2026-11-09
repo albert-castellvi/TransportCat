@@ -157,8 +157,13 @@ private struct MetroLineChip: View {
             }
         }
         // The termini are static catalog data: one cache read per selected
-        // line, refreshed when the selection changes, not while rendering.
-        .task(id: selectedLineCode) {
+        // line, never while rendering. The read also repeats when a topology
+        // lands, because this chip mounts before the line's own load writes
+        // the cache and the line code alone never changes again (#55).
+        .task(id: TopologyReadKey(
+            lineCode: selectedLineCode,
+            revision: app.topologyRevision
+        )) {
             termini = MetroLineTermini.cachedTermini(lineCode: selectedLineCode)
         }
     }
@@ -184,6 +189,8 @@ private struct MetroLineChip: View {
 @MainActor
 private struct BusAccessoryControls: View {
     private var store: BusCatalogStore { BusCatalogStore.shared }
+    /// Publishes `topologyRevision`, which the cache read below watches (#55).
+    @EnvironmentObject private var app: AppModel
     /// The shared direction: the map and the Parades bus screen resolve it
     /// against the line's directions (spec S4).
     @AppStorage(BusDirectionSelection.storageKey) private var storedDirectionID = 1
@@ -205,8 +212,13 @@ private struct BusAccessoryControls: View {
             }
         }
         // The direction ids are static catalog data: one cache read per
-        // selected line, never a poll (spec S4).
-        .task(id: store.selectedLine?.code) {
+        // selected line, never a poll (spec S4). The read repeats when a
+        // topology lands, because the accessory mounts before the bus screen
+        // writes the cache and the line code alone never changes again (#55).
+        .task(id: TopologyReadKey(
+            lineCode: store.selectedLine.map { String($0.code) } ?? "",
+            revision: app.topologyRevision
+        )) {
             guard let code = store.selectedLine?.code,
                   let topology = OfflineCache.loadBusTopology(lineCode: code) else {
                 availableDirections = []
@@ -401,4 +413,15 @@ private struct GlobalOperatorToggles: View {
         case .fgc: return Color(hex: "F39200")
         }
     }
+}
+
+// MARK: - Cache reads
+
+/// Inputs of an accessory cache read (#55): the line on screen plus the
+/// revision a finished topology load bumps. A control that mounted before the
+/// cache had its copy therefore reads it again when the copy lands, instead of
+/// showing an empty label until the control remounts.
+private struct TopologyReadKey: Equatable {
+    let lineCode: String
+    let revision: Int
 }

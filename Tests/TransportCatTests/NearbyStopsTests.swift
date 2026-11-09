@@ -241,6 +241,39 @@ final class NearbyStopsTests: XCTestCase {
         XCTAssertTrue(NearbyStops.lineRows(metroArrivals: [], busArrivals: [], fgcArrivals: [], busLines: []).isEmpty)
     }
 
+    /// #48: FGC rows are appended one per train, so two trains of one line at
+    /// the same station would show two rows with the same identity and SwiftUI
+    /// would drop or reuse one of them. Metro and bus rows stay grouped per
+    /// line and keep the line label as their identity.
+    func testTwoFGCTrainsOfOneLineGetDistinctRowIdentities() {
+        func train(id: String, destination: String) -> FavoriteArrival {
+            FavoriteArrival(
+                id: id,
+                lineLabel: "S1",
+                colorHex: "84BD00",
+                textColorHex: "10220A",
+                destination: destination,
+                countdown: nil,
+                status: "Puntual",
+                statusIsOnTime: true
+            )
+        }
+
+        let rows = NearbyStops.lineRows(
+            metroArrivals: [],
+            busArrivals: [],
+            fgcArrivals: [
+                train(id: "S1-GR-1", destination: "Terrassa"),
+                train(id: "S1-GR-2", destination: "Sabadell"),
+            ],
+            busLines: []
+        )
+
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertEqual(Set(rows.map(\.id)).count, 2, "two rows of one line must not share an id")
+        XCTAssertEqual(Set(rows.map(\.lineLabel)), ["S1"], "the badge still reads the line")
+    }
+
     func testMetroTimeTextWithoutCountdownIsDash() {
         XCTAssertEqual(NearbyStops.timeText(seconds: nil), "—")
         XCTAssertEqual(NearbyStops.timeText(seconds: 30), "ara")

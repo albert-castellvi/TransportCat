@@ -106,6 +106,47 @@ enum TMBPlaceParser {
         .sorted(by: placeOrder)
     }
 
+    // MARK: - Station codes
+
+    /// The per-line `CODI_ESTACIO` a place code names in one line's station
+    /// feed.
+    ///
+    /// `Place.code` is the line-independent `ID_ESTACIO` (spec S1: it is what
+    /// `FavoritesStore` persists) while i-Metro keys arrivals by the per-line
+    /// `CODI_ESTACIO`. The two spaces overlap numerically — L1's Catalunya is
+    /// code 128 with id 101, and a different station can carry 101 as its code
+    /// — so the bridge matches `ID_ESTACIO` first, then the folded name (a
+    /// place merged across lines carries the id of one line only), and only
+    /// then the code itself. An empty feed returns the code unchanged, which is
+    /// the request the app made before the bridge existed.
+    static func stationCode(forPlaceCode placeCode: Int, name: String, in stations: [Station]) -> Int {
+        guard !stations.isEmpty else { return placeCode }
+        if let byID = stations.first(where: { $0.id == placeCode }) { return byID.code }
+        let folded = PlaceIndex.normalized(name)
+        if !folded.isEmpty,
+           let byName = stations.first(where: { PlaceIndex.normalized($0.name) == folded }) {
+            return byName.code
+        }
+        if stations.contains(where: { $0.code == placeCode }) { return placeCode }
+        return placeCode
+    }
+
+    /// The same bridge for a `Station` of either kind: the line feed's own
+    /// (whose `code` is already the `CODI_ESTACIO` and whose `id` is its
+    /// `ID_ESTACIO`) or the synthetic one the place sheets build (both fields
+    /// hold the place's `ID_ESTACIO`). A line-feed station identifies itself by
+    /// its `ID_ESTACIO`, so the match cannot land on a neighbouring station
+    /// whose per-line code happens to equal it.
+    static func stationCode(forStation station: Station, in stations: [Station]) -> Int {
+        guard !stations.isEmpty else { return station.code }
+        if let id = station.id {
+            return stationCode(forPlaceCode: id, name: station.name, in: stations)
+        }
+        guard !stations.isEmpty else { return station.code }
+        if stations.contains(where: { $0.code == station.code }) { return station.code }
+        return stationCode(forPlaceCode: station.code, name: station.name, in: stations)
+    }
+
     // MARK: - Bus
 
     /// Decodes `/transit/parades`, the all-network bus stop list.

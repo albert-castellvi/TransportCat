@@ -506,6 +506,36 @@ final class IncidentIndexTests: XCTestCase {
         XCTAssertEqual(exactIndex[136]?.first?.title, exactText)
     }
 
+    /// Bug #37: the dot of a place abbreviation is not a sentence break, so the
+    /// title keeps "Pl. Catalunya" instead of ending at "Pl".
+    func testOtherIncidentTitleIgnoresAbbreviationDots() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let text = "L'accés de Pl. Catalunya queda tancat per obres. Més informació a la web."
+        let index = IncidentIndex.incidents(
+            for: [alert(id: "5005", begin: nil, end: nil, effectCode: "PP2", text: text)],
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(
+            index[136]?.first?.title,
+            "L'accés de Pl. Catalunya queda tancat per obres"
+        )
+    }
+
+    /// A dot followed by lowercase copy is not the end of a sentence either.
+    func testOtherIncidentTitleIgnoresDotsBeforeLowercaseText() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let text = "Obres a la L1. consulta el web"
+        let index = IncidentIndex.incidents(
+            for: [alert(id: "5006", begin: nil, end: nil, effectCode: "PP2", text: text)],
+            stations: [station(code: 136, name: "Torras i Bages", line: "1")],
+            lineCode: "1",
+            now: now
+        )
+        XCTAssertEqual(index[136]?.first?.title, text)
+    }
+
     func testOtherIncidentTitleFallsBackWhenTheTextIsMissing() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let alerts = [

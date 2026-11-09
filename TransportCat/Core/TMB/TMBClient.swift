@@ -10,6 +10,12 @@ import Foundation
 final class TMBClient {
     private let session: URLSession
     private let credentials: TMBCredentials
+    /// Station feeds already fetched by the place-code bridge, per line. Metro
+    /// topology is immutable in practice and the bridge runs on every arrivals
+    /// pass, so the cache keeps the translation from doubling the request
+    /// count of a poll. A relaunch starts it empty. Main-actor isolated: one
+    /// client is shared by every screen, and their passes run concurrently.
+    @MainActor private var stationFeedCache: [String: [Station]] = [:]
 
     init(session: URLSession = .shared, credentials: TMBCredentials) {
         self.session = session
@@ -48,6 +54,38 @@ final class TMBClient {
         return try MetroParser.arrivals(from: data, lineCode: lineCode)
     }
 
+    /// Live arrivals of one metro line for the given places, keyed by
+    /// `Place.id`.
+    ///
+    /// `Place.code` — and the station sheets reached from a place — carry the
+    /// line-independent `ID_ESTACIO`, while i-Metro keys its answer by the
+    /// per-line `CODI_ESTACIO`. Every code is therefore translated through the
+    /// line's own station feed before the request (see
+    /// `TMBPlaceParser.stationCode(forPlaceCode:name:in:)`) and the answer is
+    /// mapped back to the place the caller asked for, so a caller never has to
+    /// know which code space it holds. A failed station feed falls back to the
+    /// codes as given.
+    func metroArrivals(lineCode: String, places: [Place]) async throws -> [String: [Arrival]] {
+        let feed = await stationFeed(lineCode: lineCode)
+        let requested = places.compactMap { place -> (id: String, stationCode: Int)? in
+            guard let code = Int(place.code) else { return nil }
+            let stationCode = TMBPlaceParser.stationCode(forPlaceCode: code, name: place.name, in: feed)
+            return (place.id, stationCode)
+        }
+        guard !requested.isEmpty else { return [:] }
+        let fetched = try await metroArrivals(
+            lineCode: lineCode,
+            stationCodes: requested.map(\.stationCode)
+        )
+        var result: [String: [Arrival]] = [:]
+        for item in requested {
+            if let arrivals = fetched[item.stationCode] {
+                result[item.id] = arrivals
+            }
+        }
+        return result
+    }
+
     /// Current metro service alerts.
     /// GET /alerts/metro/channels/WEB
     func alerts() async throws -> [ServiceAlert] {
@@ -56,6 +94,19 @@ final class TMBClient {
     }
 
     // MARK: - Transport
+
+    /// One line's station feed, cached for the process: the code bridge of
+    /// `metroArrivals(lineCode:places:)` asks for it on every arrivals pass.
+    /// An empty answer is not cached, so a failed fetch is retried next pass.
+    /// `Place.lineCodes` holds display names ("L1") while the path needs the
+    /// `CODI_LINIA` ("1"), so a display name is mapped to its code first.
+    @MainActor func stationFeed(lineCode: String) async -> [Station] {
+        let code = MetroLine.allLines.first { $0.displayName == lineCode }?.code ?? lineCode
+        if let cached = stationFeedCache[code] { return cached }
+        guard let stations = try? await stations(lineCode: code), !stations.isEmpty else { return [] }
+        stationFeedCache[code] = stations
+        return stations
+    }
 
     /// Credentialed GET shared by the metro and bus endpoints; bus requests
     /// live in `TMBClient+Bus.swift`, which needs it visible across files.

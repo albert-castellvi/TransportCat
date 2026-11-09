@@ -81,8 +81,7 @@ struct ArrivalWidgetView: View {
                         .font(.caption2)
                         .lineLimit(1)
                     Spacer(minLength: 0)
-                    Text(ArrivalWidgetStyle.minutesText(until: arrival.date, now: entry.date))
-                        .font(.caption2.weight(.semibold).monospacedDigit())
+                    countdown(arrival, font: .caption2.weight(.semibold))
                 }
                 ForEach(Array(entry.arrivals.dropFirst().prefix(1).enumerated()), id: \.offset) { _, next in
                     HStack(spacing: 5) {
@@ -91,8 +90,7 @@ struct ArrivalWidgetView: View {
                             .font(.caption2)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        Text(ArrivalWidgetStyle.minutesText(until: next.date, now: entry.date))
-                            .font(.caption2.monospacedDigit())
+                        countdown(next, font: .caption2)
                     }
                 }
             }
@@ -126,14 +124,31 @@ struct ArrivalWidgetView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            Text(ArrivalWidgetStyle.minutesText(until: arrival.date, now: entry.date))
-                .font(.caption.weight(.semibold).monospacedDigit())
+            countdown(arrival, font: .caption.weight(.semibold))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "Línia \(arrival.line) cap a \(arrival.destination), "
-                + ArrivalWidgetStyle.minutesText(until: arrival.date, now: entry.date)
+                + ArrivalWidgetStyle.minutesText(until: arrival.date, now: Date())
         )
+    }
+
+    /// Countdown of one arrival, from the wall clock instead of the entry date.
+    ///
+    /// `Text(timerInterval:)` is a self-updating text: the widget keeps counting
+    /// down between reloads, which WidgetKit only grants within its own budget,
+    /// so the number is never frozen at fetch time (bug #30). An arrival that
+    /// the last fetch already saw as due (or that an old entry renders as past)
+    /// reads "ara", the same word `ArrivalWidgetStyle.minutesText` uses.
+    @ViewBuilder
+    private func countdown(_ arrival: NextArrival, font: Font) -> some View {
+        if ArrivalWidgetStyle.isDue(arrival.date) {
+            Text("ara")
+                .font(font.monospacedDigit())
+        } else {
+            Text(timerInterval: Date.now...arrival.date, countsDown: true)
+                .font(font.monospacedDigit())
+        }
     }
 
     /// Line code on its brand color, the same badge the app draws.
@@ -166,10 +181,17 @@ enum ArrivalWidgetStyle {
             .colorHex ?? "6B7280"
     }
 
+    /// Whether an arrival is due: the 30-second grace the countdown reads
+    /// "ara" for, shared by the static text and the self-updating timer.
+    static func isDue(_ date: Date, now: Date = Date()) -> Bool {
+        date.timeIntervalSince(now) <= 30
+    }
+
     /// "<1 min", "2 min" or "ara" for an arrival, never a negative countdown.
+    /// The widget prints a self-updating timer instead; this is the text of the
+    /// accessibility label and the spoken form.
     static func minutesText(until date: Date, now: Date) -> String {
-        let seconds = date.timeIntervalSince(now)
-        if seconds <= 30 { return "ara" }
-        return "\(Int(ceil(seconds / 60))) min"
+        if isDue(date, now: now) { return "ara" }
+        return "\(Int(ceil(date.timeIntervalSince(now) / 60))) min"
     }
 }

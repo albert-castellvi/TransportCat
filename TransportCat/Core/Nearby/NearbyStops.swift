@@ -15,8 +15,15 @@ struct NearbyLineRow: Identifiable, Equatable {
     /// Second direction; nil when the feed announced only one.
     let secondDestination: String?
     let secondTime: String?
+    /// Per-arrival discriminator: FGC rows are one per train, so the line
+    /// label alone is not unique (two trains of one line serve a station at the
+    /// same time). The rows the feed groups per line leave it nil.
+    var discriminator: String? = nil
 
-    var id: String { lineLabel }
+    var id: String {
+        guard let discriminator else { return lineLabel }
+        return "\(lineLabel)|\(discriminator)"
+    }
 }
 
 /// One stop card of "A prop teu" (spec S10): a place, its distance and the
@@ -168,6 +175,7 @@ enum NearbyStops {
 
         // FGC: read-only from the shared state's derived arrivals; no minutes
         // exist, so the time text is the status the Explora rows already use.
+        // One row per train, so the train id keeps the identities apart.
         for arrival in fgcArrivals.prefix(maxRowsPerStop) {
             rows.append(NearbyLineRow(
                 lineLabel: arrival.lineLabel,
@@ -176,7 +184,8 @@ enum NearbyStops {
                 firstDestination: arrival.destination,
                 firstTime: arrival.status ?? "—",
                 secondDestination: nil,
-                secondTime: nil
+                secondTime: nil,
+                discriminator: arrival.id
             ))
         }
 

@@ -153,7 +153,9 @@ final class BusLineState {
             // directions are rebuilt from stops and routes, never cached. S5:
             // the copy is written off the main actor, so the fresh map does not
             // wait for the encode and the disk.
-            OfflineCache.saveBusTopology(stops: loadedStops, routes: loadedRoutes, lineCode: line.code)
+            let saved = OfflineCache.saveBusTopology(stops: loadedStops, routes: loadedRoutes, lineCode: line.code)
+            // #55: the chrome re-reads the bus directions from this copy.
+            AppModel.topologyWillPublish(after: saved)
             publishDirections(stops: loadedStops, routes: loadedRoutes)
             Self.log.info("Bus line \(self.line.name, privacy: .public): \(loadedStops.count) stops, \(self.directions.count) directions, \(self.polledStopCount) polled")
         } catch {

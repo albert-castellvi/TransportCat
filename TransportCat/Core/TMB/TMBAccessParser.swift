@@ -64,14 +64,25 @@ enum TMBAccessParser {
     /// feature of the real L1 station feed (111→6660111, 112→6660112,
     /// 113→6660113 in `Fixtures/stations-L1.json`) and the API documentation
     /// examples (`CodiEstacio` 210 with `CodiGrupEstacio` 6660210, and the
-    /// `Acces` example 6660315 for Palau Reial, station 315). The accesses
-    /// endpoint is keyed by the group code, which the app's `Station` model
-    /// does not carry, so the offset is the only bridge between the two.
+    /// `Acces` example 6660315 for Palau Reial, station 315).
+    ///
+    /// The offset is only a fallback: it holds for single-line stations, but
+    /// `CODI_GRUP_ESTACIO` is one code per physical station shared by every
+    /// line, so at an interchange it can be right for at most one line
+    /// (Catalunya is 128 on L1 and 324 on L3, one group code for both). The
+    /// station feed carries the real value, which `Station.groupCode` decodes.
     static let groupCodeOffset = 6_660_000
 
-    /// The station-group code the access endpoint wants for a `CODI_ESTACIO`.
+    /// The station-group code the access endpoint wants for a `CODI_ESTACIO`
+    /// when the feed gave none.
     static func groupStationCode(forStationCode stationCode: Int) -> Int {
         stationCode + groupCodeOffset
+    }
+
+    /// The station-group code to query: the feed's own `CODI_GRUP_ESTACIO`
+    /// when it carries one, else the documented offset.
+    static func groupStationCode(forStationCode stationCode: Int, feedGroupCode: Int?) -> Int {
+        feedGroupCode ?? groupStationCode(forStationCode: stationCode)
     }
 
     /// The station's accesses, in feed order. A feature without a name is

@@ -19,12 +19,10 @@ enum WatchArrivalFormatting {
     }
 }
 
-/// `NextArrival` comes from the shared S15 file and carries no identity of its
-/// own; the watch lists it, so the same line + destination + minute is the row
-/// identity (two trains of one line at one station in the same minute collapse,
-/// which is what a wrist-sized list wants anyway).
-extension NextArrival: Identifiable {
-    var id: String {
-        "\(line)|\(destination)|\(Int(date.timeIntervalSince1970))"
-    }
-}
+// MARK: - Row identity
+//
+// `NextArrival` comes from the shared S15 file and carries no identity: its
+// line, destination and date are not unique, because the FGC open feed has no
+// minutes and stamps every train of one fetch with the same `now`. A list of
+// arrivals is therefore identified by position in the fetch, which is the
+// order `NextArrivalsFetcher.rank` sorts by (see `WatchPlaceDetailView`).

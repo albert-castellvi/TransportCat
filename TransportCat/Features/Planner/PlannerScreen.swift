@@ -3,6 +3,7 @@ import SwiftUI
 /// Trip planner (spec S16): origin, destination, time and the list of
 /// itineraries the TMB planner returns. Pushed from Explora's
 /// "Planifica un viatge" row.
+@MainActor
 struct PlannerScreen: View {
     @EnvironmentObject private var app: AppModel
 
@@ -17,6 +18,10 @@ struct PlannerScreen: View {
     @State private var errorMessage: String?
     /// Which endpoint the place picker sheet is editing.
     @State private var picking: PlannerPickerTarget?
+
+    /// Read in `body`, so a fix that lands after the push re-evaluates the
+    /// origin default below.
+    private var location: LocationService { LocationService.shared }
 
     init() {}
 
@@ -45,12 +50,23 @@ struct PlannerScreen: View {
         }
         .task {
             // The origin default: a fix is offered as "La meva ubicació" as
-            // soon as the service has one (spec S16).
-            LocationService.shared.start()
-            if origin == nil, let current = PlannerEndpoint.currentLocation() {
-                origin = current
-            }
+            // soon as the service has one (spec S16). The first fix usually
+            // lands after this task, so `onChange` below takes it too.
+            location.start()
+            adoptCurrentLocation()
         }
+        .onChange(of: location.location) { _, _ in
+            adoptCurrentLocation()
+        }
+    }
+
+    /// Uses the first fix as the origin while the rider has not picked one
+    /// (spec S16). Re-run on every fix: on a cold start, or after Explora
+    /// stopped the service on its way out, `currentLocation()` is still nil
+    /// when the screen appears.
+    private func adoptCurrentLocation() {
+        guard origin == nil, let current = PlannerEndpoint.currentLocation() else { return }
+        origin = current
     }
 
     // MARK: - Sections

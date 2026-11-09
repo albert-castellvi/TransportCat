@@ -19,6 +19,29 @@ struct FavoriteArrival: Identifiable, Hashable {
     let statusIsOnTime: Bool?
 }
 
+/// Serializes the passes that refresh the favorites' arrivals (spec S12).
+///
+/// The screen refreshes from its 30 s loop and from a star or unstar, and both
+/// passes are away in their network calls at the same time. A generation
+/// counter makes the newest pass the owner of the snapshot: an older pass that
+/// finishes later discards its answer instead of replacing a newer one that
+/// already contains the place the rider just starred.
+struct ArrivalRefreshGeneration {
+    /// Generation of the newest pass; 0 before the first one.
+    private(set) var current = 0
+
+    /// Starts a pass and returns its generation.
+    mutating func begin() -> Int {
+        current += 1
+        return current
+    }
+
+    /// Whether the pass still owns the snapshot: false once a newer pass began.
+    func isCurrent(_ generation: Int) -> Bool {
+        generation == current
+    }
+}
+
 /// Fetches the next arrivals of the favorite places (spec S12): metro through
 /// the existing `TMBClient.metroArrivals` in one call per line covering all
 /// its favorite stations, bus through `busArrivals(stopCode:)` per stop, and
@@ -45,7 +68,9 @@ enum ExploreArrivals {
     // MARK: - Metro
 
     /// One i-Metro request per line that serves a favorite station; the feed
-    /// answers with every requested station at once.
+    /// answers with every requested station at once. The places are asked as
+    /// places: `TMBClient` bridges the catalog's `ID_ESTACIO` to the per-line
+    /// `CODI_ESTACIO` the feed keys by, and answers under `Place.id` again.
     @MainActor
     private static func addMetro(
         places: [Place],
@@ -56,25 +81,23 @@ enum ExploreArrivals {
         guard !metroPlaces.isEmpty else { return }
 
         // One request per line, asked with every favorite station at once.
-        var stationsByLine: [String: Set<Int>] = [:]
+        var placesByLine: [String: [Place]] = [:]
         for place in metroPlaces {
-            guard let code = Int(place.code) else { continue }
             for lineCode in place.lineCodes {
-                stationsByLine[lineCode, default: []].insert(code)
+                placesByLine[lineCode, default: []].append(place)
             }
         }
-        var arrivalsByStation: [Int: [Arrival]] = [:]
-        for (lineCode, codes) in stationsByLine {
-            guard let fetched = try? await client.metroArrivals(lineCode: lineCode, stationCodes: Array(codes))
+        var arrivalsByPlace: [String: [Arrival]] = [:]
+        for (lineCode, linePlaces) in placesByLine {
+            guard let fetched = try? await client.metroArrivals(lineCode: lineCode, places: linePlaces)
             else { continue }
-            for (code, arrivals) in fetched {
-                arrivalsByStation[code, default: []].append(contentsOf: arrivals)
+            for (id, arrivals) in fetched {
+                arrivalsByPlace[id, default: []].append(contentsOf: arrivals)
             }
         }
 
         for place in metroPlaces {
-            guard let code = Int(place.code),
-                  let arrivals = arrivalsByStation[code], !arrivals.isEmpty else { continue }
+            guard let arrivals = arrivalsByPlace[place.id], !arrivals.isEmpty else { continue }
             let soonest = arrivals
                 .sorted { ($0.seconds ?? .max) < ($1.seconds ?? .max) }
                 .prefix(ExploreFormatting.arrivalsPerPlace)
@@ -139,7 +162,9 @@ enum ExploreArrivals {
     // MARK: - FGC
 
     /// Trains of the shared state stopped at or announcing the station, in
-    /// feed order. Pure state reading: the RootView poller owns the refresh.
+    /// feed order. Pure state reading: whichever poller is alive owns the
+    /// refresh — `RootView` under the FGC and global modes, `ExploreScreen`
+    /// under the others — so this never starts a second one.
     @MainActor
     private static func addFGC(
         places: [Place],

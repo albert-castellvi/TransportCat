@@ -91,7 +91,7 @@ final class TheoreticalFleetTests: XCTestCase {
             ).first
         )
 
-        XCTAssertEqual(position.id, "T0-21600")
+        XCTAssertEqual(position.id, "94-T0-21600")
         XCTAssertTrue(position.isTheoretical)
         XCTAssertTrue(position.forward)
         XCTAssertEqual(position.destination, "Can Zam")
@@ -162,9 +162,28 @@ final class TheoreticalFleetTests: XCTestCase {
 
         // A ten-minute trip every five minutes means two trains are on the line
         // at 06:05 (the 06:00 and the 06:05 one); the 06:10 one is not out yet.
-        XCTAssertEqual(positions.map(\.id), ["T0-21600", "T0-21900"])
+        XCTAssertEqual(positions.map(\.id), ["94-T0-21600", "94-T0-21900"])
         XCTAssertEqual(Set(positions.map(\.id)).count, positions.count)
         XCTAssertTrue(positions.allSatisfy(\.isTheoretical))
+    }
+
+    /// #34: the global map merges every line's vehicles into one `ForEach`,
+    /// so the identity of a scheduled train carries the line. Two lines with a
+    /// clockface departure at the same second used to emit the same id.
+    func testTwoLinesWithTheSameClockfaceDepartureGetDifferentIds() throws {
+        let engine = try engine(for: stations, geometry: geometry)
+        let first = try line(stops: [1, 2], arrivals: [0, 300], departures: [30, 330], starts: [21_600], code: 96)
+        let second = try line(stops: [1, 2], arrivals: [0, 300], departures: [30, 330], starts: [21_600], code: 97)
+        let now = date(2026, 10, 30, 6, 2, 15)
+
+        let ids = [first, second].compactMap { line in
+            TheoreticalFleet.positions(line: line, stations: stations, engine: engine, now: now).first?.id
+        }
+
+        XCTAssertEqual(ids.count, 2)
+        XCTAssertEqual(Set(ids).count, 2, "\(ids)")
+        // The line leads the id, like the live ids the engine builds.
+        XCTAssertEqual(ids, ["96-T0-21600", "97-T0-21600"])
     }
 
     func testBackwardPatternReportsTheReverseDirection() throws {

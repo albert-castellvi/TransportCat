@@ -159,10 +159,17 @@ struct StationDetailView: View {
         }
     }
 
-    /// `"<placeId>|<línia>|<destí>|<n>"` — one reminder id per arrival and
-    /// lead time (spec S13).
+    /// `ArrivalReminder.reminderID` — one reminder id per train and lead time,
+    /// so two trains to the same destination keep their own reminders
+    /// (spec S13).
     private func reminderID(_ arrival: Arrival, minutesBefore: Int) -> String {
-        "\(favoritePlace.id)|\(line.displayName)|\(arrival.destination)|\(minutesBefore)"
+        ArrivalReminder.reminderID(
+            placeID: favoritePlace.id,
+            lineLabel: line.displayName,
+            destination: arrival.destination,
+            serviceCode: arrival.serviceCode,
+            minutesBefore: minutesBefore
+        )
     }
 
     /// When the rider wants to be warned, or nil when that moment already
@@ -229,13 +236,18 @@ struct StationDetailView: View {
     /// Moves the running activity to the refreshed arrival of the same
     /// destination, so the lock-screen countdown follows the live feed. A
     /// sheet for another line at the same station leaves it alone.
+    ///
+    /// When no arrival matches any more the train the rider follows has left
+    /// the feed, so the activity is left as it is: rebinding it to an unrelated
+    /// train would count down to another destination while keeping the old
+    /// label on the lock screen.
     private func refreshLiveActivity() {
         guard let running = ArrivalActivityController.shared.runningActivity(forPlace: favoritePlace.id),
               running.lineCode == line.code else {
             return
         }
-        let matching = arrivals.first { $0.destination == running.destination } ?? arrivals.first
-        guard let arrival = matching, let seconds = arrival.seconds else { return }
+        guard let arrival = arrivals.first(where: { $0.destination == running.destination }),
+              let seconds = arrival.seconds else { return }
         ArrivalActivityController.shared.update(
             id: running.id,
             arrivalDate: Date().addingTimeInterval(TimeInterval(seconds))
@@ -411,8 +423,14 @@ struct StationDetailView: View {
     private func refresh() async {
         do {
             let client = try TMBClient.fromBundle()
-            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: [station.code])
-            arrivals = fetched[station.code] ?? []
+            // The sheet's code is the catalog's `ID_ESTACIO` when it came from a
+            // place and the line feed's `CODI_ESTACIO` when it did not. Resolve
+            // it against the line's stations; without that feed the station
+            // keeps its own code, which is what the sheet asked before (spec S1).
+            let feed = await client.stationFeed(lineCode: line.code)
+            let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
+            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: [stationCode])
+            arrivals = fetched[stationCode] ?? []
             errorMessage = nil
             hasLoaded = true
             syncScheduledReminders()
@@ -432,9 +450,18 @@ struct StationDetailView: View {
         // whose `code` is the `ID_ESTACIO`. The accesses feed and the schedule
         // pack want `CODI_ESTACIO`, so resolve it against the line's stations.
         let feed = (try? await client.stations(lineCode: line.code)) ?? []
-        let stationCode = Self.resolveStationCode(station, in: feed)
+        let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
 
-        accesses = (try? await client.stationAccesses(forStationCode: stationCode)) ?? []
+        // The access endpoint is keyed by `CODI_GRUP_ESTACIO`, one code per
+        // physical station, so the line's own value wins over the per-line
+        // offset: at an interchange the offset can only fit one of the lines
+        // (spec S17).
+        let feedGroupCode = feed.first { $0.code == stationCode }?.groupCode ?? station.groupCode
+        let groupCode = TMBAccessParser.groupStationCode(
+            forStationCode: stationCode,
+            feedGroupCode: feedGroupCode
+        )
+        accesses = (try? await client.stationAccesses(groupStationCode: groupCode)) ?? []
 
         guard let lineCode = Int(line.code),
               let schedule = await ScheduleStore.shared.line(mode: .metro, code: lineCode) else { return }
@@ -442,17 +469,6 @@ struct StationDetailView: View {
         let now = Date()
         timetableDirections = ScheduleTimetable.firstLast(line: schedule, stopCode: stationCode, date: now)
         timetableDepartures = ScheduleTimetable.departures(line: schedule, stopCode: stationCode, from: now)
-    }
-
-    /// The `CODI_ESTACIO` of `station` as the line's own feed knows it: the
-    /// code when the feed has it, else the match by `ID_ESTACIO`, else by
-    /// name. With no feed at all the sheet's code is the best guess.
-    private static func resolveStationCode(_ station: Station, in feed: [Station]) -> Int {
-        guard !feed.isEmpty else { return station.code }
-        if feed.contains(where: { $0.code == station.code }) { return station.code }
-        if let byId = feed.first(where: { $0.id == station.code || $0.id == station.id }) { return byId.code }
-        if let byName = feed.first(where: { $0.name == station.name }) { return byName.code }
-        return station.code
     }
 }
 

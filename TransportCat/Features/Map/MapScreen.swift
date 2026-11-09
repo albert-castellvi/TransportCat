@@ -168,11 +168,15 @@ struct MapScreen: View {
             }
             .onChange(of: selectedLineCode) { _, _ in
                 // A new line is a new subject: drop the old train, its follow,
-                // the vehicle selection and any incident card (S10, S6, S7).
+                // the vehicle selection, the station sheet and any incident
+                // card (S10, S6, S7). The station sheet re-derives its line
+                // from the selection, so keeping it open would show the new
+                // line's data for the old station (#52).
                 selectedTrain = nil
                 followingTrainID = nil
                 selectedVehicleID = nil
                 selectedIncidentAlertID = nil
+                selectedStation = nil
             }
             // The interchange capsules (D4) read the places catalog, which may
             // arrive after the line's topology: a loaded catalog re-derives
@@ -337,7 +341,12 @@ struct MapScreen: View {
                 MapPolyline(coordinates: mapOverlay.line)
                     .stroke(Color(hex: selectedLine.colorHex), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            ForEach(state.stations) { station in
+            // Keyed by position in the published list, the rule the diagram
+            // already follows: a station code is not unique enough (a line can
+            // list the same station twice) and the operator id may be absent,
+            // so `ForEach(state.stations)` produced duplicate identities and
+            // the annotation glitches that come with them (#59).
+            ForEach(Array(state.stations.enumerated()), id: \.offset) { _, station in
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         selectedStation = station
@@ -386,7 +395,10 @@ struct MapScreen: View {
             // of service, slightly offset so the station dot stays visible
             // (spec S7). Not tappable: the alert's text lives in the Parades
             // and Avisos screens.
-            ForEach(mapOverlay.facilityStations) { mark in
+            // Same rule for the facility marks: their identity is the
+            // position in the list, not the station code the mark carries
+            // (#59).
+            ForEach(Array(mapOverlay.facilityStations.enumerated()), id: \.offset) { _, mark in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
                     FacilityStationIcon(kind: mark.kind)
                         .offset(x: 12, y: -12)
@@ -722,11 +734,20 @@ struct MapScreen: View {
 
     private static func dayText(_ date: Date) -> String {
         // The format the former incident sheet printed, as plain text.
-        Self.incidentDayFormatter.string(from: date)
+        Self.alertDayFormatter.string(from: date)
     }
 
-    private static let incidentDayFormatter: DateFormatter = {
+    /// An alert's calendar day, "12/03/2026". Pinned to a fixed locale and the
+    /// Gregorian calendar, the convention `ScheduleTimetable` already follows:
+    /// inheriting the device's would print a Thai Buddhist (2569), Japanese or
+    /// Republic-of-China year instead of the one the feed means (#54).
+    ///
+    /// Internal so a test can pin the calendar and the locale: the rendered
+    /// string alone cannot show them on a Gregorian device.
+    static let alertDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "dd/MM/yyyy"
         return formatter
     }()
@@ -777,6 +798,16 @@ struct MapScreen: View {
             // station: the line change reloads the state, and the station
             // centering resolves with its topology (fitCamera path).
             selectedIncidentAlertID = nil
+            // #31: a station focus is a new subject even when the station
+            // belongs to the line already selected, where the `else` branch
+            // below changes no line and the line-change handler never runs.
+            // The train sheet and the follow would otherwise stay armed: the
+            // follow re-centers on every position tick and overrides the
+            // station centering, and the station sheet stays hidden behind
+            // the train's subject.
+            selectedTrain = nil
+            followingTrainID = nil
+            selectedVehicleID = nil
             if let line = place.lineCodes.first.flatMap(Self.metroLine(matching:)), line.code != selectedLineCode {
                 pendingPlace = place
                 selectedLineCode = line.code
@@ -867,6 +898,10 @@ struct MapScreen: View {
             return
         }
         pendingVehicleID = nil
+        // #31, mirror case: the train focus replaces the station sheet
+        // instead of arming a second subject behind it, which used to appear
+        // the moment the station sheet was dismissed.
+        selectedStation = nil
         followingTrainID = id
         selectedTrain = train
     }

@@ -22,15 +22,16 @@ enum WatchArrivalsProvider {
 
         switch place.kind {
         case .metroStation:
-            guard let stationCode = Int(place.code) else { return [] }
-            // i-Metro answers per line, so one request per serving line.
+            guard Int(place.code) != nil else { return [] }
+            // i-Metro answers per line, so one request per serving line; the
+            // client bridges the place's ID_ESTACIO to the line's CODI_ESTACIO.
             var fetched: [Arrival] = []
             for lineCode in place.lineCodes {
                 guard let arrivals = try? await client.metroArrivals(
                     lineCode: lineCode,
-                    stationCodes: [stationCode]
+                    places: [place]
                 ) else { continue }
-                fetched.append(contentsOf: arrivals[stationCode] ?? [])
+                fetched.append(contentsOf: arrivals[place.id] ?? [])
             }
             return fetched
                 .sorted { ($0.seconds ?? .max) < ($1.seconds ?? .max) }

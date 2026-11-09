@@ -74,6 +74,21 @@ final class FGCParserTests: XCTestCase {
         XCTAssertTrue(lines.allSatisfy { $0.colorHex == $0.colorHex.uppercased() })
     }
 
+    /// An empty `route_short_name` is as absent as a null one: the record must
+    /// fall back to `route_id` instead of being dropped, and only a route with
+    /// both values empty disappears.
+    func testEmptyRouteShortNameFallsBackToRouteID() {
+        let lines = FGCParser.routes(fromRecords: [
+            ["route_id": "X", "route_short_name": "", "route_long_name": "Xarxa"],
+            ["route_id": "Y", "route_short_name": "S1"],
+            ["route_id": "", "route_short_name": ""],
+        ])
+        XCTAssertEqual(lines.map(\.code), ["X", "S1"])
+        XCTAssertEqual(lines.first?.name, "Xarxa")
+        // A filled short name still wins over the route id.
+        XCTAssertEqual(lines.last?.name, "S1")
+    }
+
     // MARK: - S2: stations and the stop-code join
 
     func testStationsParseOrderedWithCodeAndName() throws {
