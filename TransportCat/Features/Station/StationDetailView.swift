@@ -229,13 +229,18 @@ struct StationDetailView: View {
     /// Moves the running activity to the refreshed arrival of the same
     /// destination, so the lock-screen countdown follows the live feed. A
     /// sheet for another line at the same station leaves it alone.
+    ///
+    /// When no arrival matches any more the train the rider follows has left
+    /// the feed, so the activity is left as it is: rebinding it to an unrelated
+    /// train would count down to another destination while keeping the old
+    /// label on the lock screen.
     private func refreshLiveActivity() {
         guard let running = ArrivalActivityController.shared.runningActivity(forPlace: favoritePlace.id),
               running.lineCode == line.code else {
             return
         }
-        let matching = arrivals.first { $0.destination == running.destination } ?? arrivals.first
-        guard let arrival = matching, let seconds = arrival.seconds else { return }
+        guard let arrival = arrivals.first(where: { $0.destination == running.destination }),
+              let seconds = arrival.seconds else { return }
         ArrivalActivityController.shared.update(
             id: running.id,
             arrivalDate: Date().addingTimeInterval(TimeInterval(seconds))
