@@ -189,7 +189,11 @@ struct BusMapScreen: View {
             }
             .onChange(of: store.selectedLine?.code) { _, _ in
                 // A new line is a new subject: drop the old bus, its follow,
-                // the vehicle selection and any incident card (S10, S6, S7).
+                // the vehicle selection, any incident card (S10, S6, S7) and
+                // the stop sheet, which titles and colours itself with the
+                // current line and derives its incidents from it (bug #53).
+                // A pending place focus reopens the stop it names below.
+                selectedStop = nil
                 selectedBus = nil
                 followingVehicleID = nil
                 selectedVehicleID = nil
