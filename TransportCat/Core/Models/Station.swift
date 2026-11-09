@@ -16,6 +16,10 @@ struct Station: Identifiable, Hashable {
     /// TMB numeric `ID_ESTACIO` (present on every line today, optional in the
     /// schema).
     let id: Int?
+    /// TMB numeric `CODI_GRUP_ESTACIO`, the one code every line of a physical
+    /// station shares (optional in the schema, and absent from the mirrored
+    /// snapshots the offline cache keeps). The access endpoint is keyed by it.
+    var groupCode: Int? = nil
     /// `NOM_TIPUS_ACCESSIBILITAT == "Accessible"` (present on every line today,
     /// optional in the schema).
     let accessible: Bool?

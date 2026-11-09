@@ -45,7 +45,9 @@ enum ExploreArrivals {
     // MARK: - Metro
 
     /// One i-Metro request per line that serves a favorite station; the feed
-    /// answers with every requested station at once.
+    /// answers with every requested station at once. The places are asked as
+    /// places: `TMBClient` bridges the catalog's `ID_ESTACIO` to the per-line
+    /// `CODI_ESTACIO` the feed keys by, and answers under `Place.id` again.
     @MainActor
     private static func addMetro(
         places: [Place],
@@ -56,25 +58,23 @@ enum ExploreArrivals {
         guard !metroPlaces.isEmpty else { return }
 
         // One request per line, asked with every favorite station at once.
-        var stationsByLine: [String: Set<Int>] = [:]
+        var placesByLine: [String: [Place]] = [:]
         for place in metroPlaces {
-            guard let code = Int(place.code) else { continue }
             for lineCode in place.lineCodes {
-                stationsByLine[lineCode, default: []].insert(code)
+                placesByLine[lineCode, default: []].append(place)
             }
         }
-        var arrivalsByStation: [Int: [Arrival]] = [:]
-        for (lineCode, codes) in stationsByLine {
-            guard let fetched = try? await client.metroArrivals(lineCode: lineCode, stationCodes: Array(codes))
+        var arrivalsByPlace: [String: [Arrival]] = [:]
+        for (lineCode, linePlaces) in placesByLine {
+            guard let fetched = try? await client.metroArrivals(lineCode: lineCode, places: linePlaces)
             else { continue }
-            for (code, arrivals) in fetched {
-                arrivalsByStation[code, default: []].append(contentsOf: arrivals)
+            for (id, arrivals) in fetched {
+                arrivalsByPlace[id, default: []].append(contentsOf: arrivals)
             }
         }
 
         for place in metroPlaces {
-            guard let code = Int(place.code),
-                  let arrivals = arrivalsByStation[code], !arrivals.isEmpty else { continue }
+            guard let arrivals = arrivalsByPlace[place.id], !arrivals.isEmpty else { continue }
             let soonest = arrivals
                 .sorted { ($0.seconds ?? .max) < ($1.seconds ?? .max) }
                 .prefix(ExploreFormatting.arrivalsPerPlace)

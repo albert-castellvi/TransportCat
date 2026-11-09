@@ -37,6 +37,24 @@ final class ArrivalReminder {
 
     // MARK: - Contract API (consumed by the arrival rows and the watcher)
 
+    /// The identifier of one reminder: `"<placeId>|<línia>|<destí>|<servei>|<n>"`.
+    ///
+    /// One id per train and lead time (spec S13). The train code is part of the
+    /// id because a line serves the same destination with several trains at
+    /// once: without it the second reminder of a destination replaced the first
+    /// and only one of the two rows the rider picked was ever announced. When
+    /// the feed gives no train code there is nothing to tell two trains apart,
+    /// and the row falls back to the destination and lead time alone.
+    nonisolated static func reminderID(
+        placeID: String,
+        lineLabel: String,
+        destination: String,
+        serviceCode: String?,
+        minutesBefore: Int
+    ) -> String {
+        "\(placeID)|\(lineLabel)|\(destination)|\(serviceCode ?? "-")|\(minutesBefore)"
+    }
+
     /// Schedules a reminder for `at`, asking permission on first use. Returns
     /// false when permission is denied, the date lies in the past, or the
     /// system refuses the request. An id that is already scheduled is replaced.
