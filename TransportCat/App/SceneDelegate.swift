@@ -98,10 +98,15 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     /// no line (global). The mode and code travel in `userInfo` because the
     /// home screen shows the item captured when it was built: after a line
     /// change the delivered item must still route to the line it displays.
+    ///
+    /// #44: the mode comes from `AppRouter.effectiveMode`, not from `appMode`
+    /// alone — that key is only written by the router and the mode menu, so a
+    /// fresh install that browsed lines in the default metro mode has a line
+    /// selected and no mode stored, and used to lose the item.
     @MainActor
     private static func makeLastLineItem() -> UIApplicationShortcutItem? {
         let defaults = UserDefaults.standard
-        guard let mode = defaults.string(forKey: AppRouter.appModeKey) else { return nil }
+        let mode = AppRouter.effectiveMode(defaults: defaults)
 
         let storedCode: String?
         switch mode {

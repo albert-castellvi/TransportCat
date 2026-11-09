@@ -100,6 +100,17 @@ final class AppRouter {
         pendingFocus = destination
     }
 
+    /// The mode the app is effectively on, read from the persisted keys (#44).
+    ///
+    /// `appMode` is written by `open(_:)` and by the mode menu only, while
+    /// browsing lines in the default metro mode persists just
+    /// `metroSelectedLine`. A fresh install is therefore on the metro mode its
+    /// screens default to (`AppMode.metro`), and this is the value the
+    /// home-screen line quick action has to read.
+    static func effectiveMode(defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: appModeKey) ?? metroMode
+    }
+
     /// Marks the focus as handled.
     func clearFocus() {
         pendingFocus = nil
