@@ -26,9 +26,15 @@ enum FGCParser {
 
     static func routes(fromRecords records: [[String: Any]]) -> [FGCLine] {
         records.compactMap { record in
-            guard let code = JSONValue.string(from: record["route_short_name"])
-                    ?? JSONValue.string(from: record["route_id"]),
-                  !code.isEmpty else {
+            // An empty `route_short_name` is as missing as a null one, and
+            // `JSONValue.string` returns `""` for it: the fallback is decided
+            // on emptiness, not by a null-coalescing chain plus a later guard
+            // that dropped the whole record.
+            let candidates: [String?] = [
+                JSONValue.string(from: record["route_short_name"]),
+                JSONValue.string(from: record["route_id"]),
+            ]
+            guard let code = candidates.compactMap({ $0 }).first(where: { !$0.isEmpty }) else {
                 return nil
             }
             return FGCLine(
@@ -137,7 +143,10 @@ enum FGCParser {
     }
 
     static func trains(fromRecords records: [[String: Any]], stationNames: [String: String] = [:]) -> [FGCTrain] {
-        records.compactMap { record in
+        // The catalog decides whether `NO` is the not-stopped sentinel or a
+        // real station code (spec S3), so it is resolved once per payload.
+        let knownStationCodes = Set(stationNames.keys)
+        return records.compactMap { record in
             guard let id = JSONValue.string(from: record["id"]), !id.isEmpty,
                   let lineCode = JSONValue.string(from: record["lin"]), !lineCode.isEmpty,
                   let point = JSONValue.dictionary(from: record["geo_point_2d"]),
@@ -158,7 +167,10 @@ enum FGCParser {
                 position: GeoPoint(latitude: latitude, longitude: longitude),
                 nextStopCodes: FGCNetwork.nextStopCodes(from: JSONValue.string(from: record["properes_parades"])),
                 isOnTime: (JSONValue.string(from: record["en_hora"]) ?? "").caseInsensitiveCompare("True") == .orderedSame,
-                stoppedAtStopCode: (stoppedAt == nil || stoppedAt == "NO") ? nil : stoppedAt,
+                stoppedAtStopCode: FGCNetwork.stoppedAtStopCode(
+                    from: stoppedAt,
+                    knownStationCodes: knownStationCodes
+                ),
                 unitType: JSONValue.string(from: record["tipus_unitat"]),
                 occupancy: occupancy(from: record)
             )
@@ -312,6 +324,22 @@ enum FGCNetwork {
     }
 
     // MARK: - properes_parades (S3)
+
+    /// The feed's "this train is not stopped" value of `estacionat_a`.
+    static let notStoppedSentinel = "NO"
+
+    /// `estacionat_a` read as a stop code: nil for a missing value and for the
+    /// `"NO"` sentinel. `NO` is also a real station code of the catalog, so
+    /// the sentinel only counts as "not stopped" when no station of the
+    /// network uses that code; otherwise a train parked there would be
+    /// reported as running.
+    static func stoppedAtStopCode(from raw: String?, knownStationCodes: Set<String>) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+        if raw == notStoppedSentinel, !knownStationCodes.contains(raw) {
+            return nil
+        }
+        return raw
+    }
 
     /// Parses the semicolon-separated pseudo-JSON of `properes_parades`:
     /// `{"parada": "GR"};{"parada": "PR"}`. Each chunk is read on its own

@@ -74,6 +74,21 @@ final class FGCParserTests: XCTestCase {
         XCTAssertTrue(lines.allSatisfy { $0.colorHex == $0.colorHex.uppercased() })
     }
 
+    /// An empty `route_short_name` is as absent as a null one: the record must
+    /// fall back to `route_id` instead of being dropped, and only a route with
+    /// both values empty disappears.
+    func testEmptyRouteShortNameFallsBackToRouteID() {
+        let lines = FGCParser.routes(fromRecords: [
+            ["route_id": "X", "route_short_name": "", "route_long_name": "Xarxa"],
+            ["route_id": "Y", "route_short_name": "S1"],
+            ["route_id": "", "route_short_name": ""],
+        ])
+        XCTAssertEqual(lines.map(\.code), ["X", "S1"])
+        XCTAssertEqual(lines.first?.name, "Xarxa")
+        // A filled short name still wins over the route id.
+        XCTAssertEqual(lines.last?.name, "S1")
+    }
+
     // MARK: - S2: stations and the stop-code join
 
     func testStationsParseOrderedWithCodeAndName() throws {
@@ -159,6 +174,34 @@ final class FGCParserTests: XCTestCase {
         XCTAssertEqual(train.lineCode, "S8")
         XCTAssertEqual(train.nextStopCodes, ["ME"])
         XCTAssertNil(train.stoppedAtStopCode)
+    }
+
+    /// `"NO"` is both the feed's "not stopped" sentinel and a real station
+    /// code of the catalog (it sits between `CT` and `PN` on S2), so it only
+    /// reads as the sentinel when no station of the network uses that code.
+    func testStoppedAtNOSentinelDoesNotHideTheRealStation() throws {
+        let stationNames = FGCNetwork.stationNames(from: try allStations())
+        XCTAssertNotNil(stationNames["NO"], "The captured catalog really codes a station as NO")
+        let record: [String: Any] = [
+            "id": "t-no",
+            "lin": "S2",
+            "geo_point_2d": ["lon": 2.0902, "lat": 41.5708],
+            "dir": "D",
+            "origen": "PN",
+            "desti": "PC",
+            "properes_parades": #"{"parada": "CT"}"#,
+            "estacionat_a": "NO",
+            "en_hora": "True",
+        ]
+
+        let withCatalog = try XCTUnwrap(
+            FGCParser.trains(fromRecords: [record], stationNames: stationNames).first
+        )
+        XCTAssertEqual(withCatalog.stoppedAtStopCode, "NO")
+
+        // Without a catalog that knows `NO`, it stays the not-stopped sentinel.
+        let withoutCatalog = try XCTUnwrap(FGCParser.trains(fromRecords: [record]).first)
+        XCTAssertNil(withoutCatalog.stoppedAtStopCode)
     }
 
     func testMalformedRecordIsSkippedNotFatal() throws {

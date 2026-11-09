@@ -19,6 +19,29 @@ struct FavoriteArrival: Identifiable, Hashable {
     let statusIsOnTime: Bool?
 }
 
+/// Serializes the passes that refresh the favorites' arrivals (spec S12).
+///
+/// The screen refreshes from its 30 s loop and from a star or unstar, and both
+/// passes are away in their network calls at the same time. A generation
+/// counter makes the newest pass the owner of the snapshot: an older pass that
+/// finishes later discards its answer instead of replacing a newer one that
+/// already contains the place the rider just starred.
+struct ArrivalRefreshGeneration {
+    /// Generation of the newest pass; 0 before the first one.
+    private(set) var current = 0
+
+    /// Starts a pass and returns its generation.
+    mutating func begin() -> Int {
+        current += 1
+        return current
+    }
+
+    /// Whether the pass still owns the snapshot: false once a newer pass began.
+    func isCurrent(_ generation: Int) -> Bool {
+        generation == current
+    }
+}
+
 /// Fetches the next arrivals of the favorite places (spec S12): metro through
 /// the existing `TMBClient.metroArrivals` in one call per line covering all
 /// its favorite stations, bus through `busArrivals(stopCode:)` per stop, and
@@ -139,7 +162,9 @@ enum ExploreArrivals {
     // MARK: - FGC
 
     /// Trains of the shared state stopped at or announcing the station, in
-    /// feed order. Pure state reading: the RootView poller owns the refresh.
+    /// feed order. Pure state reading: whichever poller is alive owns the
+    /// refresh — `RootView` under the FGC and global modes, `ExploreScreen`
+    /// under the others — so this never starts a second one.
     @MainActor
     private static func addFGC(
         places: [Place],

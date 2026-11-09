@@ -46,9 +46,18 @@ struct FGCMapScreen: View {
     /// glide yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
+    /// Line the pending vehicle focus asked for. A focus owns only the one line
+    /// change it caused: any later change means the rider moved on and the
+    /// pending focus is dropped instead of disabling the reset (spec S11).
+    @State private var pendingVehicleFocusLine: String?
     /// Where the camera was commanded to last, so the continuous callback can
-    /// tell our own follow animation from a pan by the rider.
+    /// tell our own follow animation from a pan by the rider. Reset whenever
+    /// the follow is released, so a stale anchor cannot cancel the next one.
     @State private var followAnchor: GeoPoint?
+    /// Deadline of a camera flight started by a focus. While it is in the
+    /// future the camera is animating toward the focus, and the continuous
+    /// callbacks carry our own interpolated centres, not a rider pan.
+    @State private var focusFlightEndsAt: Date?
     /// Camera bearing in degrees clockwise from north: the train markers
     /// rotate against it so they keep facing along the track whatever the
     /// rider does with the map, exactly like the bus markers (spec S7).
@@ -145,17 +154,32 @@ struct FGCMapScreen: View {
             .onChange(of: router.pendingFocus) { _, destination in
                 applyFocus(destination)
             }
-            .onChange(of: selectedLineCode) { _, _ in
+            .onChange(of: selectedLineCode) { _, newCode in
                 // A new line is a new subject: drop the old train and refit —
                 // unless a focus just moved to this line and is about to open
-                // its sheet (spec S11).
-                if pendingVehicleFocusID == nil {
+                // its sheet (spec S11). Only the line change the focus asked
+                // for is exempt: a second change means the rider moved on, so
+                // a focus whose train never showed up is dropped here instead
+                // of disabling this reset for the rest of the session.
+                let focusOwnsThisChange = pendingVehicleFocusID != nil
+                    && pendingVehicleFocusLine == newCode
+                if !focusOwnsThisChange {
+                    pendingVehicleFocusID = nil
+                    pendingVehicleFocusLine = nil
                     selectedVehicle = nil
                     sheetVehicle = nil
                     followingVehicleID = nil
                     fitCamera()
                 }
                 refreshMapContent()
+            }
+            // A released follow drops its anchor: the next flight starts from
+            // no stale position (spec S8).
+            .onChange(of: followingVehicleID) { _, vehicleID in
+                if vehicleID == nil {
+                    followAnchor = nil
+                    focusFlightEndsAt = nil
+                }
             }
             // The layers themselves, not their count: a reload that returns the
             // same number of lines must refresh the dots and the coordinates
@@ -389,15 +413,19 @@ struct FGCMapScreen: View {
         }
         // Pan detection for the follow (spec S8): a change whose center is not
         // near the point we last commanded is the rider moving the map, so the
-        // camera releases the train. Zoom keeps the follow.
+        // camera releases the train. Zoom keeps the follow. A focus flight of
+        // our own carries interpolated centres far from the new anchor, so the
+        // callbacks are ignored until it lands.
         .onMapCameraChange(frequency: .continuous) { context in
             cameraSpan = context.region.span
+            guard !isFocusFlightInProgress else { return }
             guard followingVehicleID != nil, let anchor = followAnchor else { return }
             let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
             let center = context.region.center
             if abs(center.latitude - anchor.latitude) > tolerance
                 || abs(center.longitude - anchor.longitude) > tolerance {
                 followingVehicleID = nil
+                followAnchor = nil
             }
         }
         .overlay {
@@ -499,6 +527,7 @@ struct FGCMapScreen: View {
             resolvePendingPlaceFocus()
         case .vehicle(_, let lineCode, let vehicleID):
             pendingVehicleFocusID = vehicleID
+            pendingVehicleFocusLine = lineCode
             let changedLine = selectedLineCode != lineCode
             selectedLineCode = lineCode
             // A line change re-triggers through the glide tick; with the same
@@ -531,8 +560,12 @@ struct FGCMapScreen: View {
         guard let vehicleID = pendingVehicleFocusID,
               let vehicle = state.vehicles.first(where: { $0.id == vehicleID }) else { return }
         pendingVehicleFocusID = nil
+        pendingVehicleFocusLine = nil
         sheetVehicle = vehicle
         followingVehicleID = vehicle.id
+        // The follow starts at the train itself, not at whatever the previous
+        // follow left behind (spec S8).
+        followAnchor = vehicle.position
         centerCamera(on: vehicle.position)
     }
 
@@ -543,6 +576,9 @@ struct FGCMapScreen: View {
             longitudeDelta: Self.focusSpanDegrees
         )
         cameraSpan = span
+        // Our own animation moves the camera across the map: the pan detector
+        // must not read it as the rider dragging the map away.
+        focusFlightEndsAt = Date().addingTimeInterval(Self.focusFlightDuration)
         withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
             cameraPosition = .region(
                 MKCoordinateRegion(
@@ -605,6 +641,16 @@ struct FGCMapScreen: View {
     /// Floor of the pan-detection tolerance, in degrees: below it our own
     /// 10 Hz follow commands would read as the rider moving the map.
     private static let followPanToleranceDegrees = 0.002
+
+    /// How long a focus flight keeps the pan detector quiet: the 0.35 s camera
+    /// animation plus a margin for the callbacks that trail it.
+    private static let focusFlightDuration: TimeInterval = 0.5
+
+    /// Whether a focus flight started by `centerCamera` is still animating.
+    private var isFocusFlightInProgress: Bool {
+        guard let deadline = focusFlightEndsAt else { return false }
+        return Date() < deadline
+    }
 }
 
 /// Station dot on the FGC map: a hollow circle with the white center and the

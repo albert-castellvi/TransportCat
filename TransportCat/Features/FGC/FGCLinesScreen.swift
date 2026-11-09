@@ -224,7 +224,10 @@ private struct FGCLinesRow: View {
         .padding(.vertical, 4)
         .frame(minHeight: Self.rowMinHeight)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .topLeading) { trainMarkers }
+        // The overlay is the whole row, whatever height the content needed: a
+        // row that grows past `rowMinHeight` (a wrapped name, several trains, a
+        // larger Dynamic Type) keeps the markers on the rail dot.
+        .overlay { trainMarkers }
         .accessibilityElement(children: .contain)
     }
     /// The vertical rail with the station's hollow dot on it. The rail is
@@ -274,7 +277,8 @@ private struct FGCLinesRow: View {
     /// One S6 vehicle marker on the rail per train at this station, tappable
     /// to open the train sheet. Drawn at the dot's height: the overlay's
     /// frame is the whole row, so the vertical position is the row's center
-    /// measured from the top, where the rail dot sits.
+    /// measured from the top, where the rail dot sits — never a fixed band
+    /// anchored at the row's top, which drifts once the row grows.
     private var trainMarkers: some View {
         HStack(spacing: 2) {
             ForEach(trains) { displayed in
@@ -295,6 +299,6 @@ private struct FGCLinesRow: View {
             }
         }
         .padding(.leading, Self.spineCenterX - 11)
-        .frame(height: Self.rowMinHeight, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

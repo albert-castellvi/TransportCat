@@ -9,8 +9,24 @@ struct FGCStationSheet: View {
     let place: Place
 
     @Environment(\.dismiss) private var dismiss
+    /// The map mode that keeps the single `RootView` poller alive (spec S6):
+    /// under metro and bus nothing polls FGC, so the sheet owns the refresh of
+    /// the snapshot it reads.
+    @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
+    /// Whether the sheet's last refresh attempt failed. The shared flag says
+    /// what happened to the polling loop, which is not running under every
+    /// mode, so the sheet keeps its own answer and can offer a retry.
+    @State private var didFail = false
+    /// Whether a catch-up poll is in flight, so a retry cannot stack up.
+    @State private var isRefreshing = false
 
     private var state: FGCNetworkState { FGCNetworkState.shared }
+
+    /// Whether `RootView`'s `.task(id: mode)` is polling FGC right now (S6).
+    private var mapPollsFGC: Bool {
+        let mode = AppMode(rawValue: modeRaw) ?? .metro
+        return mode == .fgc || mode == .global
+    }
 
     /// Trains at or heading to the station (feed order).
     private var trainsHere: [FGCTrain] {
@@ -39,6 +55,7 @@ struct FGCStationSheet: View {
         NavigationStack {
             List {
                 accessibilitySection
+                refreshFailureSection
                 Section {
                     if trainsHere.isEmpty {
                         Text(emptyText)
@@ -62,25 +79,86 @@ struct FGCStationSheet: View {
                     FavoriteStarButton(place: place)
                 }
             }
-            // One-off catch-up when the app has never run the FGC poller: the
-            // RootView keeps the single poller loop while an FGC screen is
-            // visible (spec S6), so this sheet only tops the state up when it
-            // has never answered. `run()` is deliberately not called here.
+            // The sheet's own catch-up (the RootView poller is cancelled under
+            // the metro and bus modes, spec S6): refresh on appear and then on
+            // the same 30 s cadence, so a sheet left open never presents a
+            // snapshot nothing refreshes. A failed poll surfaces the retry
+            // section instead of the loading text.
             .task {
-                if state.lines.isEmpty {
-                    await state.loadTopology()
-                }
-                if state.arrivalsUpdatedAt == nil && !state.lastPollFailed {
-                    await state.poll()
+                while !Task.isCancelled {
+                    await refreshIfStale()
+                    do {
+                        try await Task.sleep(
+                            nanoseconds: FGCNetworkState.pollIntervalSeconds * 1_000_000_000
+                        )
+                    } catch {
+                        return
+                    }
                 }
             }
         }
     }
 
-    /// An honest statement per stage: nothing loaded yet, or the feed answered
-    /// and no train is near.
+    /// Surfaces a failed refresh with the action that retries it: the sheet
+    /// must never fall back to an endless "Carregant dades FGC…".
+    @ViewBuilder
+    private var refreshFailureSection: some View {
+        if didFail {
+            Section {
+                Label(
+                    "No s'han pogut actualitzar les dades de FGC.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                Button("Torna-ho a provar") {
+                    Task { await refresh() }
+                }
+                .disabled(isRefreshing)
+            }
+        }
+    }
+
+    /// Refreshes the shared snapshot when it is missing or older than one poll
+    /// interval, and never while the map's poller owns it. A topology that
+    /// never loads is a failure too: there is nothing to poll.
+    private func refreshIfStale() async {
+        if state.lines.isEmpty {
+            await state.loadTopology()
+        }
+        guard !state.lines.isEmpty else {
+            didFail = true
+            return
+        }
+        guard !mapPollsFGC else {
+            didFail = state.lastPollFailed
+            return
+        }
+        let isStale = state.arrivalsUpdatedAt.map {
+            Date().timeIntervalSince($0) >= TimeInterval(FGCNetworkState.pollIntervalSeconds)
+        } ?? true
+        guard isStale else {
+            didFail = state.lastPollFailed
+            return
+        }
+        await refresh()
+    }
+
+    /// One poll pass with the sheet's own failure flag. `poll()` keeps the
+    /// previous trains on failure, so a stale snapshot stays readable.
+    private func refresh() async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await state.poll()
+        didFail = state.lastPollFailed
+    }
+
+    /// An honest statement per stage: nothing loaded yet, a failed refresh, or
+    /// the feed answered and no train is near.
     private var emptyText: String {
-        state.arrivalsUpdatedAt == nil ? "Carregant dades FGC…" : "Cap tren proper ara mateix."
+        if didFail { return "No s'han pogut carregar les arribades de FGC." }
+        return state.arrivalsUpdatedAt == nil ? "Carregant dades FGC…" : "Cap tren proper ara mateix."
     }
 
     /// Line pill, destination and the punctuality label (spec S12).

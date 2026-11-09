@@ -78,7 +78,8 @@ struct FGCTrain: Equatable, Identifiable {
     let nextStopCodes: [String]
     /// `en_hora == "True"`.
     let isOnTime: Bool
-    /// `estacionat_a` when it is a stop code; nil for null and "NO".
+    /// `estacionat_a` when it is a stop code; nil for null, and for the
+    /// `"NO"` sentinel when the station catalog has no station with that code.
     let stoppedAtStopCode: String?
     /// `tipus_unitat` (rolling stock family).
     let unitType: String?
