@@ -98,10 +98,13 @@ final class TMBClient {
     /// One line's station feed, cached for the process: the code bridge of
     /// `metroArrivals(lineCode:places:)` asks for it on every arrivals pass.
     /// An empty answer is not cached, so a failed fetch is retried next pass.
+    /// `Place.lineCodes` holds display names ("L1") while the path needs the
+    /// `CODI_LINIA` ("1"), so a display name is mapped to its code first.
     @MainActor func stationFeed(lineCode: String) async -> [Station] {
-        if let cached = stationFeedCache[lineCode] { return cached }
-        guard let stations = try? await stations(lineCode: lineCode), !stations.isEmpty else { return [] }
-        stationFeedCache[lineCode] = stations
+        let code = MetroLine.allLines.first { $0.displayName == lineCode }?.code ?? lineCode
+        if let cached = stationFeedCache[code] { return cached }
+        guard let stations = try? await stations(lineCode: code), !stations.isEmpty else { return [] }
+        stationFeedCache[code] = stations
         return stations
     }
 

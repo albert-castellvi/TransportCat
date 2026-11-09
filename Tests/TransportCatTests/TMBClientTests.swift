@@ -110,6 +110,35 @@ final class TMBClientTests: XCTestCase {
         XCTAssertNil(fetched["metroStation:128"])
     }
 
+    /// #24: callers pass `Place.lineCodes`, which holds display names ("L1"),
+    /// but the station feed path needs the `CODI_LINIA` ("1").
+    func testPlaceRequestWithADisplayNameStillAsksWithTheLineStationCode() async throws {
+        let catalunya = Place(
+            kind: .metroStation,
+            code: "101",
+            name: "Catalunya",
+            position: GeoPoint(latitude: 41.385, longitude: 2.170),
+            lineCodes: ["L1"],
+            accessible: nil
+        )
+        var asked: String?
+        MockURLProtocol.requestHandler = { request in
+            let url = try XCTUnwrap(request.url)
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            if url.path.hasSuffix("/linies/metro/1/estacions") {
+                return (response, try Fixtures.data("places-metro-L1"))
+            }
+            asked = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "estacions" }?.value
+            return (response, Self.catalunyaArrivalsBody)
+        }
+
+        let fetched = try await client.metroArrivals(lineCode: "L1", places: [catalunya])
+
+        XCTAssertEqual(asked, "128", "a display name must still reach the line's station feed")
+        XCTAssertEqual(fetched[catalunya.id]?.count, 1)
+    }
+
     /// One L1 arrival at Catalunya (`CODI_ESTACIO` 128) in the i-Metro shape.
     private static let catalunyaArrivalsBody = Data("""
     {"timestamp":1793299483660,"linies":[{"codi_linia":1,"nom_linia":"L1","estacions":[{"codi_estacio":128,"linies_trajectes":[{"desti_trajecte":"Fondo","codi_trajecte":"0011","propers_trens":[{"codi_servei":"120","temps_arribada":1793299523660}]}]}]}]}

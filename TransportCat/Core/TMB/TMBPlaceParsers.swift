@@ -138,6 +138,7 @@ enum TMBPlaceParser {
     /// its `ID_ESTACIO`, so the match cannot land on a neighbouring station
     /// whose per-line code happens to equal it.
     static func stationCode(forStation station: Station, in stations: [Station]) -> Int {
+        guard !stations.isEmpty else { return station.code }
         if let id = station.id {
             return stationCode(forPlaceCode: id, name: station.name, in: stations)
         }

@@ -154,4 +154,11 @@ final class TMBPlaceParsersTests: XCTestCase {
         let station = FGCStation(code: "XX", name: "Sense punt", networkLine: 2, order: 1, point: nil)
         XCTAssertTrue(TMBPlaceParser.fgcPlaces(stations: [station], lines: []).isEmpty)
     }
+
+    /// #24: without a station feed, a line-feed station keeps its own
+    /// `CODI_ESTACIO` instead of being asked by its `ID_ESTACIO`.
+    func testStationCodeWithoutAFeedKeepsTheStationCode() {
+        let station = Station(code: 128, name: "Catalunya", orderInLine: 1, lineCode: "1", latitude: 41.385, longitude: 2.170, id: 101, accessible: true)
+        XCTAssertEqual(TMBPlaceParser.stationCode(forStation: station, in: []), 128)
+    }
 }
