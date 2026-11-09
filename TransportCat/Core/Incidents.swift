@@ -189,7 +189,7 @@ enum IncidentIndex {
     private static func endsInAbbreviation(_ head: Substring) -> Bool {
         guard let word = head.split(separator: " ").last else { return false }
         let stem = word
-            .trimmingCharacters(in: CharacterSet(charactersIn: ".", ",", "("))
+            .trimmingCharacters(in: CharacterSet(charactersIn: ".,("))
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "ca_ES"))
         return abbreviationStems.contains(stem)
     }
