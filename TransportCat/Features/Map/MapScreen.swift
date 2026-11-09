@@ -777,6 +777,16 @@ struct MapScreen: View {
             // station: the line change reloads the state, and the station
             // centering resolves with its topology (fitCamera path).
             selectedIncidentAlertID = nil
+            // #31: a station focus is a new subject even when the station
+            // belongs to the line already selected, where the `else` branch
+            // below changes no line and the line-change handler never runs.
+            // The train sheet and the follow would otherwise stay armed: the
+            // follow re-centers on every position tick and overrides the
+            // station centering, and the station sheet stays hidden behind
+            // the train's subject.
+            selectedTrain = nil
+            followingTrainID = nil
+            selectedVehicleID = nil
             if let line = place.lineCodes.first.flatMap(Self.metroLine(matching:)), line.code != selectedLineCode {
                 pendingPlace = place
                 selectedLineCode = line.code
@@ -867,6 +877,10 @@ struct MapScreen: View {
             return
         }
         pendingVehicleID = nil
+        // #31, mirror case: the train focus replaces the station sheet
+        // instead of arming a second subject behind it, which used to appear
+        // the moment the station sheet was dismissed.
+        selectedStation = nil
         followingTrainID = id
         selectedTrain = train
     }
