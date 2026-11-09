@@ -17,6 +17,10 @@ struct ExploreScreen: View {
     /// Whether the first arrivals refresh has finished, so the rows can tell
     /// "loading" from "nothing expected here".
     @State private var arrivalsLoaded = false
+    /// Generation of the arrivals refresh (spec S12): the 30 s loop and the
+    /// star toggle both refresh, and only the newest pass may write, so the
+    /// slower older one cannot replace fresh arrivals.
+    @State private var arrivalsGeneration = ArrivalRefreshGeneration()
     /// The map mode that keeps `RootView`'s single FGC poller alive (spec S6).
     /// Under metro and bus that task is cancelled, so this screen refreshes the
     /// shared FGC snapshot itself (spec S12).
@@ -128,11 +132,17 @@ struct ExploreScreen: View {
     }
 
     /// One refresh pass over the favorite places. A cancelled pass throws away
-    /// its answer instead of racing the next one.
+    /// its answer, and so does a pass a newer one has already replaced: only
+    /// the newest generation writes the snapshot.
     @MainActor
     private func refreshFavoriteArrivals() async {
+        let generation = arrivalsGeneration.begin()
         let places = favorites.favoritePlaces
-        defer { if !Task.isCancelled { arrivalsLoaded = true } }
+        defer {
+            if !Task.isCancelled, arrivalsGeneration.isCurrent(generation) {
+                arrivalsLoaded = true
+            }
+        }
         guard !places.isEmpty else {
             favoriteArrivals = [:]
             return
@@ -144,7 +154,7 @@ struct ExploreScreen: View {
             fgcState: fgc,
             busLines: busStore.lines
         )
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled, arrivalsGeneration.isCurrent(generation) else { return }
         favoriteArrivals = loaded
     }
 
