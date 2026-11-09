@@ -411,8 +411,12 @@ struct StationDetailView: View {
     private func refresh() async {
         do {
             let client = try TMBClient.fromBundle()
-            let fetched = try await client.metroArrivals(lineCode: line.code, stationCodes: [station.code])
-            arrivals = fetched[station.code] ?? []
+            // The sheet's code is the catalog's `ID_ESTACIO` when it came from a
+            // place and the line feed's `CODI_ESTACIO` when it did not; asking
+            // with the place lets the client bridge the two code spaces and
+            // answer under the same place (spec S1).
+            let fetched = try await client.metroArrivals(lineCode: line.code, places: [favoritePlace])
+            arrivals = fetched[favoritePlace.id] ?? []
             errorMessage = nil
             hasLoaded = true
             syncScheduledReminders()
@@ -432,7 +436,7 @@ struct StationDetailView: View {
         // whose `code` is the `ID_ESTACIO`. The accesses feed and the schedule
         // pack want `CODI_ESTACIO`, so resolve it against the line's stations.
         let feed = (try? await client.stations(lineCode: line.code)) ?? []
-        let stationCode = Self.resolveStationCode(station, in: feed)
+        let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
 
         accesses = (try? await client.stationAccesses(forStationCode: stationCode)) ?? []
 
@@ -442,17 +446,6 @@ struct StationDetailView: View {
         let now = Date()
         timetableDirections = ScheduleTimetable.firstLast(line: schedule, stopCode: stationCode, date: now)
         timetableDepartures = ScheduleTimetable.departures(line: schedule, stopCode: stationCode, from: now)
-    }
-
-    /// The `CODI_ESTACIO` of `station` as the line's own feed knows it: the
-    /// code when the feed has it, else the match by `ID_ESTACIO`, else by
-    /// name. With no feed at all the sheet's code is the best guess.
-    private static func resolveStationCode(_ station: Station, in feed: [Station]) -> Int {
-        guard !feed.isEmpty else { return station.code }
-        if feed.contains(where: { $0.code == station.code }) { return station.code }
-        if let byId = feed.first(where: { $0.id == station.code || $0.id == station.id }) { return byId.code }
-        if let byName = feed.first(where: { $0.name == station.name }) { return byName.code }
-        return station.code
     }
 }
 

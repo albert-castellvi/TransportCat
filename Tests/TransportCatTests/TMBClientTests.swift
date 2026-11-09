@@ -77,6 +77,44 @@ final class TMBClientTests: XCTestCase {
         ])
     }
 
+    /// #24: the place catalog stores the line-independent `ID_ESTACIO`
+    /// (`places-metro-L1` has Catalunya with `CODI_ESTACIO` 128 and
+    /// `ID_ESTACIO` 101), while i-Metro keys both its query and its answer by
+    /// the per-line `CODI_ESTACIO`. The bridge must translate the request and
+    /// still answer under the place code the caller holds.
+    func testPlaceRequestAsksWithTheLineStationCodeAndAnswersUnderThePlace() async throws {
+        let catalunya = Place(
+            kind: .metroStation,
+            code: "101",
+            name: "Catalunya",
+            position: GeoPoint(latitude: 41.385, longitude: 2.170),
+            lineCodes: ["L1"],
+            accessible: nil
+        )
+        var asked: String?
+        MockURLProtocol.requestHandler = { request in
+            let url = try XCTUnwrap(request.url)
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            if url.path.hasSuffix("/linies/metro/1/estacions") {
+                return (response, try Fixtures.data("places-metro-L1"))
+            }
+            asked = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first { $0.name == "estacions" }?.value
+            return (response, Self.catalunyaArrivalsBody)
+        }
+
+        let fetched = try await client.metroArrivals(lineCode: "1", places: [catalunya])
+
+        XCTAssertEqual(asked, "128", "the request must carry the per-line CODI_ESTACIO")
+        XCTAssertEqual(fetched[catalunya.id]?.count, 1, "the answer must stay keyed by the place")
+        XCTAssertNil(fetched["metroStation:128"])
+    }
+
+    /// One L1 arrival at Catalunya (`CODI_ESTACIO` 128) in the i-Metro shape.
+    private static let catalunyaArrivalsBody = Data("""
+    {"timestamp":1793299483660,"linies":[{"codi_linia":1,"nom_linia":"L1","estacions":[{"codi_estacio":128,"linies_trajectes":[{"desti_trajecte":"Fondo","codi_trajecte":"0011","propers_trens":[{"codi_servei":"120","temps_arribada":1793299523660}]}]}]}]}
+    """.utf8)
+
     func testLineGeometryRequestPath() async throws {
         var capturedPath: String?
         MockURLProtocol.requestHandler = { request in

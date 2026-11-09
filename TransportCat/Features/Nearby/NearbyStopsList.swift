@@ -107,10 +107,11 @@ struct NearbyStopsList: View {
 
         switch place.kind {
         case .metroStation:
-            guard let code = Int(place.code) else { return [] }
             for lineCode in place.lineCodes {
-                if let fetched = try? await client.metroArrivals(lineCode: lineCode, stationCodes: [code]) {
-                    metro.append(contentsOf: fetched[code] ?? [])
+                // Asked as a place: the client bridges the catalog's
+                // `ID_ESTACIO` to the per-line `CODI_ESTACIO` the feed keys by.
+                if let fetched = try? await client.metroArrivals(lineCode: lineCode, places: [place]) {
+                    metro.append(contentsOf: fetched[place.id] ?? [])
                 }
             }
         case .busStop:

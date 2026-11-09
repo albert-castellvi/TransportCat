@@ -28,16 +28,17 @@ enum NextArrivalsFetcher {
     ) async -> [NextArrival] {
         switch place.kind {
         case .metroStation:
-            guard let stationCode = Int(place.code) else { return [] }
             // The i-Metro feed answers per line; one request per line serving
-            // the station, like the favorite rows of Explora do.
+            // the station, like the favorite rows of Explora do. The place is
+            // asked as a place: the client bridges its `ID_ESTACIO` to the
+            // per-line `CODI_ESTACIO` the feed keys by.
             var fetched: [Arrival] = []
             for lineCode in place.lineCodes {
                 guard let arrivals = try? await client.metroArrivals(
                     lineCode: lineCode,
-                    stationCodes: [stationCode]
+                    places: [place]
                 ) else { continue }
-                fetched.append(contentsOf: arrivals[stationCode] ?? [])
+                fetched.append(contentsOf: arrivals[place.id] ?? [])
             }
             return metroSelection(fetched, now: now)
         case .busStop:
