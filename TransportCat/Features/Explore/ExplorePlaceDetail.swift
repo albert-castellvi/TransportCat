@@ -108,9 +108,13 @@ enum ExplorePlaceBridge {
 /// sheet, the bus stop sheet or the FGC station sheet, each closed by the
 /// operator's own "Tancar", plus the shared "Veure al mapa" bar that sends the
 /// rider to the map focused on this place.
+@MainActor
 struct ExplorePlaceDetailSheet: View {
     let place: Place
 
+    /// Bus alerts of the line the stop belongs to, exactly as the bus map and
+    /// the bus diagram read them (spec S7).
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -123,10 +127,12 @@ struct ExplorePlaceDetailSheet: View {
                 )
                 .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
             case .busStop:
+                let stop = ExplorePlaceBridge.busStop(for: place)
+                let line = ExplorePlaceBridge.busLine(for: place)
                 BusStopSheet(
-                    stop: ExplorePlaceBridge.busStop(for: place),
-                    line: ExplorePlaceBridge.busLine(for: place),
-                    incidents: []
+                    stop: stop,
+                    line: line,
+                    incidents: incidents(for: stop, line: line)
                 )
                 .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
             case .fgcStation:
@@ -134,6 +140,19 @@ struct ExplorePlaceDetailSheet: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
             }
         }
+    }
+
+    /// Incidents of one stop, derived the way `BusDiagramScreen` derives them:
+    /// from the active alerts already in the model, for the line the stop was
+    /// opened under. A literal empty list hid every disruption of a stop
+    /// reached from Explore (bug #61).
+    private func incidents(for stop: BusStop, line: BusLine) -> [StationIncident] {
+        let lineCode = String(line.code)
+        return IncidentIndex.incidents(
+            for: app.activeBusAlerts(affecting: lineCode),
+            stations: [stop.asStation(lineCode: lineCode)],
+            lineCode: lineCode
+        )[stop.code] ?? []
     }
 
     /// "Veure al mapa": closes the sheet and asks the router to focus the map
