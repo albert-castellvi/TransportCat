@@ -26,9 +26,15 @@ enum FGCParser {
 
     static func routes(fromRecords records: [[String: Any]]) -> [FGCLine] {
         records.compactMap { record in
-            guard let code = JSONValue.string(from: record["route_short_name"])
-                    ?? JSONValue.string(from: record["route_id"]),
-                  !code.isEmpty else {
+            // An empty `route_short_name` is as missing as a null one, and
+            // `JSONValue.string` returns `""` for it: the fallback is decided
+            // on emptiness, not by a null-coalescing chain plus a later guard
+            // that dropped the whole record.
+            let candidates: [String?] = [
+                JSONValue.string(from: record["route_short_name"]),
+                JSONValue.string(from: record["route_id"]),
+            ]
+            guard let code = candidates.compactMap({ $0 }).first(where: { !$0.isEmpty }) else {
                 return nil
             }
             return FGCLine(
