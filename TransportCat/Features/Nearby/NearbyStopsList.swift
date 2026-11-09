@@ -60,7 +60,13 @@ struct NearbyStopsList: View {
         }
         while !Task.isCancelled {
             await refresh()
-            arrivalsLoaded = true
+            // Only a pass that had a location fix can tell "loading" from
+            // "nothing around": on a cold start the first pass often runs
+            // before the first fix and returns empty, which must not turn into
+            // the definitive "no stop within a kilometre" (spec S10).
+            if LocationService.shared.location != nil {
+                arrivalsLoaded = true
+            }
             do {
                 try await Task.sleep(nanoseconds: Self.arrivalsRefreshIntervalNanoseconds)
             } catch {
