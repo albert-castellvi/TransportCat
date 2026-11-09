@@ -438,7 +438,16 @@ struct StationDetailView: View {
         let feed = (try? await client.stations(lineCode: line.code)) ?? []
         let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
 
-        accesses = (try? await client.stationAccesses(forStationCode: stationCode)) ?? []
+        // The access endpoint is keyed by `CODI_GRUP_ESTACIO`, one code per
+        // physical station, so the line's own value wins over the per-line
+        // offset: at an interchange the offset can only fit one of the lines
+        // (spec S17).
+        let feedGroupCode = feed.first { $0.code == stationCode }?.groupCode ?? station.groupCode
+        let groupCode = TMBAccessParser.groupStationCode(
+            forStationCode: stationCode,
+            feedGroupCode: feedGroupCode
+        )
+        accesses = (try? await client.stationAccesses(groupStationCode: groupCode)) ?? []
 
         guard let lineCode = Int(line.code),
               let schedule = await ScheduleStore.shared.line(mode: .metro, code: lineCode) else { return }
