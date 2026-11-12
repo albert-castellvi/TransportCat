@@ -160,3 +160,56 @@ enum PlannerFormat {
         }?.name
     }
 }
+
+// MARK: - Current-location conflict resolution
+
+/// Resolves the conflict when the rider picks "La meva ubicació" for one
+/// endpoint but the other endpoint is also the current location. The explicit
+/// choice is preserved, and the opposite endpoint is cleared so the two
+/// never match (#96 remaining item).
+///
+/// - Parameters:
+///   - existingOrigin: the current origin value.
+///   - existingDestination: the current destination value.
+///   - proposedEndpoint: the endpoint the rider just tapped.
+///   - target: which endpoint the sheet was editing.
+/// - Returns: a tuple `(origin, destination)` reflecting the rule.
+///
+/// Rule:
+///   - If the proposed endpoint is current location and the *other*
+///     endpoint is already current location → clear the other one.
+///   - Otherwise → return the inputs unchanged.
+func resolveCurrentLocationConflict(
+    existingOrigin: PlannerEndpoint?,
+    existingDestination: PlannerEndpoint?,
+    proposedEndpoint: PlannerEndpoint,
+    target: PlannerPickerTarget
+) -> (origin: PlannerEndpoint?, destination: PlannerEndpoint?) {
+    guard proposedEndpoint.isCurrentLocation else {
+        // A manual place: no conflict.
+        return (existingOrigin, existingDestination)
+    }
+
+    let otherIsCurrentLocation: Bool = {
+        switch target {
+        case .origin:
+            return existingDestination?.isCurrentLocation ?? false
+        case .destination:
+            return existingOrigin?.isCurrentLocation ?? false
+        }
+    }()
+
+    guard otherIsCurrentLocation else {
+        // No conflict: the other endpoint is either nil or a manual place.
+        // Let the caller update the target endpoint only.
+        return (existingOrigin, existingDestination)
+    }
+
+    // Conflict: clear the opposite endpoint.
+    switch target {
+    case .origin:
+        return (nil, existingDestination)
+    case .destination:
+        return (existingOrigin, nil)
+    }
+}

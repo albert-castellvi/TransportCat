@@ -42,10 +42,14 @@ struct PlannerScreen: View {
                 title: target.sheetTitle,
                 allowsCurrentLocation: target.allowsCurrentLocation
             ) { endpoint in
-                switch target {
-                case .origin: origin = endpoint
-                case .destination: destination = endpoint
-                }
+                let (newOrigin, newDestination) = resolveCurrentLocationConflict(
+                    existingOrigin: origin,
+                    existingDestination: destination,
+                    proposedEndpoint: endpoint,
+                    target: target
+                )
+                origin = newOrigin
+                destination = newDestination
             }
         }
         .task {
@@ -63,9 +67,12 @@ struct PlannerScreen: View {
     /// Uses the first fix as the origin while the rider has not picked one
     /// (spec S16). Re-run on every fix: on a cold start, or after Explora
     /// stopped the service on its way out, `currentLocation()` is still nil
-    /// when the screen appears.
+    /// when the screen appears. Does not overwrite an origin the rider
+    /// cleared by choosing the current location as destination instead.
     private func adoptCurrentLocation() {
-        guard origin == nil, let current = PlannerEndpoint.currentLocation() else { return }
+        guard origin == nil, destination?.isCurrentLocation == false,
+              let current = PlannerEndpoint.currentLocation()
+        else { return }
         origin = current
     }
 
@@ -294,5 +301,5 @@ enum PlannerPickerTarget: String, Identifiable {
 
     var id: String { rawValue }
     var sheetTitle: String { self == .origin ? "Origen" : "Destinació" }
-    var allowsCurrentLocation: Bool { self == .origin }
+    var allowsCurrentLocation: Bool { true }
 }
