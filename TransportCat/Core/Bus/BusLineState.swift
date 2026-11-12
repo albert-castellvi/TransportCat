@@ -70,6 +70,10 @@ final class BusLineState {
     /// Poll cycle, in seconds. iBus updates on the order of tens of seconds,
     /// so 20 s keeps a line visible without hammering the API (spec S5).
     static let pollIntervalSeconds: UInt64 = 20
+    /// First pause before retrying a failed topology load, and the cap the
+    /// delay doubles up to (#67).
+    static let topologyRetryInitialSeconds: UInt64 = 5
+    static let topologyRetryMaxSeconds: UInt64 = 60
     /// Stop requests per poll, both directions together (spec S5).
     static let maxRequestsPerPoll = 30
     /// Stop requests allowed in flight at once.
@@ -110,11 +114,24 @@ final class BusLineState {
         return arrivalsByStop.values.allSatisfy(\.isEmpty)
     }
 
-    /// Long-running task body: load topology once, then poll until cancelled
-    /// (the bus screen's `.task` cancels on disappear, spec S5).
+    /// Long-running task body: load topology, retrying while it has no
+    /// directions, then poll until cancelled (the bus screen's `.task` cancels
+    /// on disappear, spec S5).
     func run() async {
-        if directions.isEmpty {
+        // #67: a failed first load used to end the task for good, leaving the
+        // error overlay until the rider picked another line. Retry with a
+        // growing, capped delay while the line still has no directions and the
+        // screen is alive.
+        var retryDelay = Self.topologyRetryInitialSeconds
+        while !Task.isCancelled && directions.isEmpty {
             await loadTopology()
+            guard directions.isEmpty, !Task.isCancelled else { break }
+            do {
+                try await Task.sleep(nanoseconds: retryDelay * 1_000_000_000)
+            } catch {
+                return
+            }
+            retryDelay = min(retryDelay * 2, Self.topologyRetryMaxSeconds)
         }
         guard !directions.isEmpty else { return }
         // 10 Hz ticker between polls, like the metro line: the buses move
@@ -166,7 +183,7 @@ final class BusLineState {
                 publishDirections(stops: cached.stops, routes: cached.routes)
                 Self.log.info("Bus line \(self.line.name, privacy: .public): \(cached.stops.count) stops (offline cache)")
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = "No s'ha pogut carregar la línia. Torna-ho a provar."
             }
         }
     }
