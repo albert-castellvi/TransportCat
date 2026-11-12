@@ -439,7 +439,7 @@ struct FGCMapScreen: View {
             }
         }
         // Attribution of the feed drawn here (spec S10).
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottomTrailing) {
             Text("Dades: FGC · CC BY 4.0")
                 .font(.caption2)
                 .foregroundStyle(.secondary)

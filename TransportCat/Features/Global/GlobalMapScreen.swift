@@ -355,7 +355,7 @@ struct GlobalMapScreen: View {
             }
         }
         // Attribution of the feeds drawn here (spec S10 wording).
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottomTrailing) {
             Text("Dades: TMB · FGC (CC BY 4.0)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
