@@ -78,7 +78,8 @@ struct FGCTrain: Equatable, Identifiable {
     let nextStopCodes: [String]
     /// `en_hora == "True"`.
     let isOnTime: Bool
-    /// `estacionat_a` when it is a stop code; nil for null and "NO".
+    /// `estacionat_a`: a stop code, nil when the feed sends null. "NO" is a real
+    /// stop (Sabadell Nord), not a "not stopped" marker.
     let stoppedAtStopCode: String?
     /// `tipus_unitat` (rolling stock family).
     let unitType: String?

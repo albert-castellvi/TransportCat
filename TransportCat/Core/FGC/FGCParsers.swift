@@ -164,7 +164,7 @@ enum FGCParser {
                 position: GeoPoint(latitude: latitude, longitude: longitude),
                 nextStopCodes: FGCNetwork.nextStopCodes(from: JSONValue.string(from: record["properes_parades"])),
                 isOnTime: (JSONValue.string(from: record["en_hora"]) ?? "").caseInsensitiveCompare("True") == .orderedSame,
-                stoppedAtStopCode: (stoppedAt == nil || stoppedAt == "NO") ? nil : stoppedAt,
+                stoppedAtStopCode: stoppedAt?.isEmpty == false ? stoppedAt : nil,
                 unitType: JSONValue.string(from: record["tipus_unitat"]),
                 occupancy: occupancy(from: record)
             )

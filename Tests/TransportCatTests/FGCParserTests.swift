@@ -176,6 +176,18 @@ final class FGCParserTests: XCTestCase {
         XCTAssertNil(train.stoppedAtStopCode)
     }
 
+    func testTrainParkedAtSabadellNordKeepsItsStopCode() throws {
+        let json = """
+        {"total_count":1,"results":[
+          {"id":"parked","lin":"S2","geo_point_2d":{"lon":2.09,"lat":41.56},"dir":"A","origen":"PC",
+           "desti":"PN","properes_parades":"{\\"parada\\": \\"PN\\"}","estacionat_a":"NO",
+           "en_hora":"True","tipus_unitat":"112"}
+        ]}
+        """
+        let trains = try FGCParser.trains(from: Data(json.utf8))
+        XCTAssertEqual(trains.first?.stoppedAtStopCode, "NO")
+    }
+
     func testMalformedRecordIsSkippedNotFatal() throws {
         let json = """
         {"total_count":3,"results":[
