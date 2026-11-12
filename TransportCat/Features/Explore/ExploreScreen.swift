@@ -44,6 +44,29 @@ struct ExploreScreen: View {
         !trimmedQuery.isEmpty
     }
 
+    /// A failed first load with no cached copy leaves the search and "A prop"
+    /// empty; their empty states would blame the rider's query or the radius,
+    /// so the store's own error is shown instead (#66).
+    private var catalogFailed: Bool {
+        catalog.places.isEmpty && catalog.errorMessage != nil
+    }
+
+    @ViewBuilder
+    private var catalogErrorSection: some View {
+        if let message = catalog.errorMessage {
+            Section {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Reintenta") {
+                    guard let client = app.client else { return }
+                    Task { await catalog.reload(client: client) }
+                }
+                .disabled(catalog.isLoading)
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -58,11 +81,16 @@ struct ExploreScreen: View {
                         )
                     }
                 }
-                if hasQuery {
+                if catalogFailed {
+                    catalogErrorSection
+                }
+                if hasQuery, !catalogFailed {
                     searchResultsSections
                 }
                 favoritesSection
-                nearbySection
+                if !catalogFailed {
+                    nearbySection
+                }
             }
             .navigationTitle("Explora")
             .navigationBarTitleDisplayMode(.inline)
