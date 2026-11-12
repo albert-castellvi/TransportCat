@@ -24,13 +24,19 @@ final class IncidentWatcherTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func alert(id: String, lineCodes: [String], text: String? = nil) -> ServiceAlert {
+    private func alert(
+        id: String,
+        lineCodes: [String],
+        text: String? = nil,
+        begins: Date? = nil,
+        ends: Date? = nil
+    ) -> ServiceAlert {
         ServiceAlert(
             id: id,
             lineCodes: lineCodes,
             stationNames: [],
-            beginDate: nil,
-            endDate: nil,
+            beginDate: begins,
+            endDate: ends,
             text: text
         )
     }
@@ -99,6 +105,30 @@ final class IncidentWatcherTests: XCTestCase {
             seen: []
         )
         XCTAssertTrue(fresh.isEmpty)
+    }
+
+    /// #71: the feed lists scheduled disruptions long before they start and
+    /// keeps expired ones for a while. Notifying either would store its id as
+    /// seen and silence the notification when the disruption is really on.
+    func testNewAlertsSkipsAlertsNotInForce() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let current = [
+            alert(id: "future", lineCodes: ["1"], begins: now.addingTimeInterval(3_600)),
+            alert(id: "expired", lineCodes: ["1"], ends: now.addingTimeInterval(-3_600)),
+            alert(
+                id: "active",
+                lineCodes: ["1"],
+                begins: now.addingTimeInterval(-60),
+                ends: now.addingTimeInterval(3_600)
+            ),
+        ]
+        let fresh = IncidentWatcher.newAlerts(
+            current: current,
+            favoriteLines: ["1"],
+            seen: [],
+            now: now
+        )
+        XCTAssertEqual(fresh.map(\.id), ["active"])
     }
 
     // MARK: - favoriteLineCodes
