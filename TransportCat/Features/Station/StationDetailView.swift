@@ -27,6 +27,9 @@ struct StationDetailView: View {
     @State private var timetableDirections: [TimetableDirection] = []
     @State private var timetableDepartures: [TimetableDeparture] = []
     @State private var timetableTimeZone = TimeZone.autoupdatingCurrent
+    /// One client per sheet: its station-feed cache is per instance, so a new
+    /// client on every refresh refetched the line's stations each poll (#74).
+    @State private var client: TMBClient?
     @Environment(\.dismiss) private var dismiss
 
     /// Minutes before the arrival the rider may be warned by (spec S13).
@@ -422,7 +425,7 @@ struct StationDetailView: View {
 
     private func refresh() async {
         do {
-            let client = try TMBClient.fromBundle()
+            let client = try sheetClient()
             // The sheet's code is the catalog's `ID_ESTACIO` when it came from a
             // place and the line feed's `CODI_ESTACIO` when it did not. Resolve
             // it against the line's stations; without that feed the station
@@ -440,11 +443,18 @@ struct StationDetailView: View {
         }
     }
 
+    private func sheetClient() throws -> TMBClient {
+        if let client { return client }
+        let created = try TMBClient.fromBundle()
+        client = created
+        return created
+    }
+
     /// Loads the slow-changing extras of the sheet once per presentation:
     /// the named accesses (S17) and the timetable (S19). Every failure is
     /// silent: the sections simply stay hidden.
     private func loadStationData() async {
-        guard let client = try? TMBClient.fromBundle() else { return }
+        guard let client = try? sheetClient() else { return }
         // The sheet arrives with two kinds of station: the line feed's, whose
         // `code` is `CODI_ESTACIO`, and the place catalog's synthetic one,
         // whose `code` is the `ID_ESTACIO`. The accesses feed and the schedule
