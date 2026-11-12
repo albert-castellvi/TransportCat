@@ -442,7 +442,7 @@ struct BusMapScreen: View {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
                     FacilityStationIcon(kind: mark.kind)
                         .offset(x: 12, y: -12)
-                        .accessibilityLabel("Incidència d'instal·lació a la parada amb codi \(mark.stationCode)")
+                        .accessibilityLabel(facilityAccessibilityText(mark, state: state))
                 }
             }
             ForEach(state.positions) { position in
@@ -646,6 +646,20 @@ struct BusMapScreen: View {
             return stop.name
         }
         return nil
+    }
+
+    /// #99: VoiceOver names where the mark is — the stop it sits next to
+    /// — not the stop code the mark carries. Falls back to no stop name when
+    /// the line state no longer lists that code.
+    private func facilityAccessibilityText(
+        _ mark: FacilityStationMark,
+        state: BusLineState
+    ) -> String {
+        if let name = state.directions.flatMap(\.stops)
+            .first(where: { $0.code == mark.stationCode })?.name {
+            return "Incidència d'instal·lació a la parada \(name)"
+        }
+        return "Incidència d'instal·lació en una parada"
     }
 
     /// Glass card of a run's amber badge (spec S7): the alert's text and time
