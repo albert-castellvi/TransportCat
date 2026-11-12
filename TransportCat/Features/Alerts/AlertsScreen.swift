@@ -1,24 +1,36 @@
 import SwiftUI
 
-/// How the Avisos screen reads one alerts feed snapshot (spec S11): the
-/// "Tot funciona" empty state appears when no SERVICE alert is shown, and
-/// facility alerts stay reachable through a count row that leads to them.
-/// Pure and Foundation-only so `NetworkArtTests` covers the decision.
+/// How the Avisos screen reads the alerts feeds (spec S11): the "Tot
+/// funciona" empty state appears when no SERVICE alert is shown by either
+/// feed, and facility alerts stay reachable through a count row that leads to
+/// them. Pure and Foundation-only so `NetworkArtTests` covers the decision.
 struct AlertsStateSummary: Equatable {
-    /// Alerts that interrupt the service, in feed order.
+    /// Metro alerts that interrupt the service, in feed order.
     let serviceAlerts: [ServiceAlert]
-    /// Alerts for elevators, escalators and corridors, in feed order.
+    /// Metro alerts for elevators, escalators and corridors, in feed order.
     let facilityAlerts: [ServiceAlert]
+    /// Bus alerts, in feed order (UX-15).
+    let busServiceAlerts: [ServiceAlert]
 
-    init(alerts: [ServiceAlert]) {
+    /// - Parameters:
+    ///   - alerts: the metro feed, as `AppModel.alerts` publishes it.
+    ///   - busAlerts: the bus feed, as `AppModel.busAlerts` publishes it.
+    init(alerts: [ServiceAlert], busAlerts: [ServiceAlert] = []) {
         self.serviceAlerts = alerts.filter { $0.severity == .service }
         self.facilityAlerts = alerts.filter { $0.severity == .facility }
+        // The bus feed publishes its disruptions under
+        // `categories.messageType` (ALTERATION, SERVICE_MESSAGE), never the
+        // metro feed's TRAFFIC / INFRASTRUCTURE pair, so `severity` would file
+        // every bus alert as a facility notice. Every alert of that feed is a
+        // trip-changing disruption (cancelled stops, detoured routes) and the
+        // bus map treats it as one, so the screen lists them all as service.
+        self.busServiceAlerts = busAlerts
     }
 
-    /// No service alert across the shown operators: the screen shows the
-    /// network motif instead of the alert list.
+    /// No service alert across the shown operators, metro and bus alike: the
+    /// screen shows the network motif instead of the alert list.
     var showsEmptyState: Bool {
-        serviceAlerts.isEmpty
+        serviceAlerts.isEmpty && busServiceAlerts.isEmpty
     }
 
     /// How many facility alerts the count row leads to.
@@ -39,7 +51,7 @@ struct AlertsStateSummary: Equatable {
     static let facilitySubtitle = "No afecten la circulació"
 }
 
-/// Service status: active disruptions across the whole metro network.
+/// Service status: active disruptions of the metro and the bus network.
 struct AlertsScreen: View {
     @EnvironmentObject private var app: AppModel
     /// Incident alerts for the rider's favorite lines (spec S14), off by
@@ -71,7 +83,7 @@ struct AlertsScreen: View {
                         }
                     }
                 }
-                let summary = AlertsStateSummary(alerts: app.alerts)
+                let summary = AlertsStateSummary(alerts: app.alerts, busAlerts: app.busAlerts)
                 if let message = app.missingCredentialsMessage {
                     ConfigurationNotice(message: message)
                         .listRowBackground(Color.clear)
@@ -86,6 +98,17 @@ struct AlertsScreen: View {
                     // count row instead of joining this list (#95).
                     ForEach(summary.serviceAlerts) { alert in
                         AlertRow(alert: alert)
+                    }
+                }
+                // The bus incidents the bus map's "Veure a Avisos" promises to
+                // show (UX-15): metro first, then the bus feed under its own
+                // header. Kept outside the state chain so a failed metro feed
+                // never hides a bus disruption that did load.
+                if !summary.busServiceAlerts.isEmpty {
+                    Section("Bus") {
+                        ForEach(summary.busServiceAlerts) { alert in
+                            AlertRow(alert: alert)
+                        }
                     }
                 }
                 // The count row leads to the facility notices in every state.
@@ -121,9 +144,9 @@ struct AlertsScreen: View {
             VStack(spacing: 8) {
                 Text("Tot funciona")
                     .font(.title2.weight(.bold))
-                // This screen reads the metro alerts feed only, so the copy
-                // claims nothing about bus or FGC.
-                Text("Cap incidència de servei al metro.")
+                // The screen reads the metro and bus feeds, so the copy claims
+                // nothing about FGC, which has no alert channel of its own.
+                Text("Cap incidència de servei al metro ni al bus.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

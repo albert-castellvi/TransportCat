@@ -238,4 +238,57 @@ final class NetworkArtTests: XCTestCase {
         XCTAssertEqual(AlertsStateSummary.facilityTitle(count: 0), "0 instal·lacions fora de servei")
         XCTAssertEqual(AlertsStateSummary.facilitySubtitle, "No afecten la circulació")
     }
+
+    // MARK: - Avisos with the bus feed (UX-15)
+
+    /// A bus alert as `BusAlertParser` builds it: its kind travels in
+    /// `categories.messageType`, so `severity` files it as a facility notice.
+    private func busAlert(id: String, typeName: String) -> ServiceAlert {
+        ServiceAlert(
+            id: id,
+            lineCodes: ["212"],
+            stationNames: [],
+            beginDate: nil,
+            endDate: nil,
+            text: "Desviament",
+            effectType: "ALTERATION",
+            typeName: typeName
+        )
+    }
+
+    func testBusOnlyFeedHidesEmptyState() {
+        let summary = AlertsStateSummary(
+            alerts: [],
+            busAlerts: [busAlert(id: "b", typeName: "Modificació del recorregut")]
+        )
+        XCTAssertFalse(summary.showsEmptyState)
+        XCTAssertEqual(summary.busServiceAlerts.map(\.id), ["b"])
+        XCTAssertTrue(summary.serviceAlerts.isEmpty)
+    }
+
+    func testBusAlertsNeverJoinTheMetroOrFacilityGroups() {
+        let bus = busAlert(id: "b", typeName: "Modificació del recorregut")
+        let summary = AlertsStateSummary(alerts: [service, facility], busAlerts: [bus])
+        XCTAssertEqual(summary.serviceAlerts, [service])
+        XCTAssertEqual(summary.facilityAlerts, [facility])
+        XCTAssertEqual(summary.busServiceAlerts, [bus])
+        XCTAssertEqual(summary.facilityCount, 1)
+    }
+
+    func testBothFeedsEmptyShowsEmptyState() {
+        let summary = AlertsStateSummary(alerts: [], busAlerts: [])
+        XCTAssertTrue(summary.showsEmptyState)
+        XCTAssertTrue(summary.busServiceAlerts.isEmpty)
+    }
+
+    func testFacilityOnlyMetroFeedKeepsEmptyStateBesideBusAlerts() {
+        // The facility row and the empty state are metro-side decisions; a bus
+        // alert is a service one, so the empty state cannot appear with it.
+        let summary = AlertsStateSummary(
+            alerts: [facility],
+            busAlerts: [busAlert(id: "b", typeName: "Parada anul·lada")]
+        )
+        XCTAssertFalse(summary.showsEmptyState)
+        XCTAssertEqual(summary.facilityCount, 1)
+    }
 }
