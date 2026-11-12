@@ -60,7 +60,8 @@ enum ScheduleTimetable {
     /// of its service day (spec S19: "the rest of the service day"). Sorted
     /// by time; equal instants keep direction order so the list is stable.
     static func departures(line: ScheduleLine, stopCode: Int, from: Date) -> [TimetableDeparture] {
-        line.runs(on: from)
+        var seen = Set<String>()
+        return line.runs(on: from)
             .compactMap { run -> TimetableDeparture? in
                 guard let time = departure(of: run, at: stopCode), time >= from else { return nil }
                 return TimetableDeparture(directionID: run.directionID, headsign: run.headsign, time: time)
@@ -69,6 +70,9 @@ enum ScheduleTimetable {
                 if lhs.time != rhs.time { return lhs.time < rhs.time }
                 return lhs.directionID < rhs.directionID
             }
+            // Two runs of one direction at the same second are one row for the
+            // rider, and the row id (direction + instant) must be unique.
+            .filter { seen.insert($0.id).inserted }
     }
 
     /// "05:03" — a 24-hour clock in the pack's own time zone, so a run that
