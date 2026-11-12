@@ -8,6 +8,7 @@ import XCTest
 /// as `TEST_RUNNER_TOUR`), separated by `;`:
 ///
 ///     tap:<label or identifier>   tap the first element whose label contains the text
+///                                 ("Label#2" taps the third matching button)
 ///     tapxy:<x>,<y>               tap a normalized screen point (0...1)
 ///     press:<x>,<y>               long-press a normalized screen point
 ///     sbtap:<label>               tap a SpringBoard element (permission alert, banner)
@@ -36,8 +37,12 @@ final class TourUITests: XCTestCase {
             switch parts[0] {
             case "tap":
                 // Buttons first: a label is often repeated by a container.
-                let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR identifier == %@", argument, argument)
-                let button = app.buttons.matching(predicate).firstMatch
+                // "Label#2" picks the third match (0-based), for rows that repeat a control.
+                let pieces = argument.components(separatedBy: "#")
+                let label = pieces[0]
+                let index = pieces.count > 1 ? Int(pieces[1]) ?? 0 : 0
+                let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR identifier == %@", label, label)
+                let button = app.buttons.matching(predicate).element(boundBy: index)
                 let element = button.waitForExistence(timeout: 5)
                     ? button
                     : app.descendants(matching: .any).matching(predicate).firstMatch
