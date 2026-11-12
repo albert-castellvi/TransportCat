@@ -63,8 +63,9 @@ final class TourUITests: XCTestCase {
             case "sbtap":
                 // System alerts (permissions) and notification banners live in SpringBoard.
                 let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-                let target = springboard.descendants(matching: .any)
-                    .matching(NSPredicate(format: "label CONTAINS[c] %@", argument)).firstMatch
+                // Exact label: "Permitir" must not match "No permitir".
+                let target = springboard.buttons
+                    .matching(NSPredicate(format: "label ==[c] %@", argument)).firstMatch
                 XCTAssertTrue(target.waitForExistence(timeout: 10), "no SpringBoard element matching '\(argument)'")
                 target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             case "home":
