@@ -11,6 +11,9 @@ struct ArrivalLiveActivity: Widget {
             ArrivalActivityLockScreenView(context: context)
                 .activityBackgroundTint(Color(hex: "0B1220"))
                 .activitySystemActionForegroundColor(.white)
+                // Tapping the card opens the place it is tracking, not
+                // whichever screen the app was last left on (F4).
+                .widgetURL(context.attributes.placeURL)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -34,7 +37,7 @@ struct ArrivalLiveActivity: Widget {
                         Text(context.attributes.placeName)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        if context.state.isStale {
+                        if context.isStale {
                             Text("Actualitzant…")
                         }
                     }
@@ -71,12 +74,17 @@ private struct ArrivalActivityLockScreenView: View {
                     Image(systemName: "mappin.and.ellipse")
                     Text(context.attributes.placeName)
                         .lineLimit(1)
-                    if context.state.isStale {
+                    // `context.isStale` flips on its own when the activity's
+                    // `staleDate` passes; a flag stored in the state could
+                    // only change with a push we may never send (F6).
+                    if context.isStale {
                         Text("· Actualitzant…")
                     }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                // Where the rider is, on a locked phone.
+                .privacySensitive()
             }
             Spacer(minLength: 6)
             ArrivalActivityCountdown(context: context)
@@ -84,10 +92,7 @@ private struct ArrivalActivityLockScreenView: View {
         }
         .padding(14)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(context.attributes.lineName) cap a \(context.attributes.destination), "
-                + "a \(context.attributes.placeName)"
-        )
+        .accessibilityLabel(ArrivalActivityStyle.spokenCard(context))
     }
 }
 
@@ -111,19 +116,38 @@ private struct ArrivalActivityBadge: View {
     }
 }
 
-/// `Text(timerInterval:)` countdown to the arrival, replaced by "Ara" once it
-/// has passed or the feed went stale (spec S20).
+/// The countdown, in the words the app uses everywhere else: "ara" or
+/// "N min" (F5).
 private struct ArrivalActivityCountdown: View {
     let context: ActivityViewContext<ArrivalActivityAttributes>
 
     var body: some View {
-        if context.state.isStale || context.state.arrivalDate <= Date() {
-            Text("Ara")
-                .monospacedDigit()
-        } else {
-            Text(timerInterval: Date.now...context.state.arrivalDate, countsDown: true)
-                .monospacedDigit()
-                .multilineTextAlignment(.trailing)
-        }
+        Text(ArrivalActivityStyle.countdown(context))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .multilineTextAlignment(.trailing)
+    }
+}
+
+/// Wording of the Live Activity, shared by the views above so the pixels and
+/// the VoiceOver label can never disagree.
+enum ArrivalActivityStyle {
+    /// "ara" once the arrival is due, "N min" before it. The app refreshes the
+    /// activity after every arrivals load, so the minutes advance with the
+    /// data; a missing refresh is what `isStale` is for.
+    static func countdown(
+        _ context: ActivityViewContext<ArrivalActivityAttributes>,
+        now: Date = Date()
+    ) -> String {
+        ArrivalBoard.minutesText(until: context.state.arrivalDate, now: now)
+    }
+
+    /// One sentence, with the number: "L1 cap a Fondo, estació Catalunya, 3 min".
+    static func spokenCard(_ context: ActivityViewContext<ArrivalActivityAttributes>) -> String {
+        let attributes = context.attributes
+        return "\(attributes.lineName) cap a \(attributes.destination), "
+            + "\(attributes.placeWord) \(attributes.placeName), "
+            + countdown(context)
     }
 }

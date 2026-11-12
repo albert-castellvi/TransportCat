@@ -128,6 +128,10 @@ targets:
       - path: TransportCat/Core/Places/PlaceCatalogStore.swift
       - path: TransportCat/Core/Places/PlaceIndex.swift
       - path: TransportCat/Core/Favorites/FavoritesStore.swift
+      # The widget's link to a place, and the age wording it shows. Both are
+      # Foundation-only and shared with the app.
+      - path: TransportCat/Core/Navigation/DeepLink.swift
+      - path: TransportCat/Core/Freshness.swift
       - path: TransportCat/Core/ColorFromHex.swift
       - path: TransportCat/Core/HexLuminance.swift
       # The network motif of the icon, drawn faintly behind the widget.

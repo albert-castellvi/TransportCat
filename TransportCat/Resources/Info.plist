@@ -4,6 +4,19 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ca</string>
+	<!-- Spec S20: widgets and the Live Activity open a place in the app. The
+	     link is transportcat://place/<kind>/<code>, parsed by DeepLink. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>cat.transport.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>transportcat</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>TransportCat</string>
 	<key>CFBundleExecutable</key>

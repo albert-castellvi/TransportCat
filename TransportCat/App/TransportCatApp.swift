@@ -44,6 +44,12 @@ struct TransportCatApp: App {
                     // surface hard-coding dark fills, which made sheets
                     // unreadable under system light-mode text (#89).
                     .preferredColorScheme(.dark)
+                    // Spec S20: a widget row or the Live Activity opens the
+                    // place it draws. The routing rules are the router's, which
+                    // already knows how to focus the map on a place.
+                    .onOpenURL { url in
+                        MainActor.assumeIsolated { open(deepLink: url) }
+                    }
                     .onReceive(AppModel.shared.$alerts) { alerts in
                         IncidentWatcher.shared.handleAlertsUpdate(metro: alerts)
                     }
@@ -52,6 +58,27 @@ struct TransportCatApp: App {
                     }
             }
         }
+    }
+
+    /// Opens the place a widget or the Live Activity pointed at (spec S20).
+    ///
+    /// The catalog copy is preferred: it carries every line serving the place
+    /// and its coordinates. A cold launch whose link arrives before the catalog
+    /// has loaded still opens the place, built from the link's own kind, code
+    /// and name, and the map resolves the focus by code.
+    @MainActor
+    private func open(deepLink url: URL) {
+        guard let target = DeepLink.target(from: url) else { return }
+        let id = "\(target.kind.rawValue):\(target.code)"
+        let place = PlaceCatalogStore.shared.place(id: id) ?? Place(
+            kind: target.kind,
+            code: target.code,
+            name: target.name ?? target.code,
+            position: GeoPoint(latitude: 0, longitude: 0),
+            lineCodes: [],
+            accessible: nil
+        )
+        AppRouter.shared.open(.place(place))
     }
 }
 

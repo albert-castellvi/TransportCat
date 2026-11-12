@@ -48,6 +48,11 @@ final class ArrivalActivityController {
 
     /// Starts tracking one arrival and returns the new activity id, or nil
     /// when Live Activities are unavailable.
+    ///
+    /// - Parameter minutes: the feed's own countdown, still passed by the
+    ///   sheets and deliberately not stored: the views read the countdown from
+    ///   `arrivalDate`, so a stale minute label can never outlive the date a
+    ///   refresh moved.
     @discardableResult
     func start(
         placeID: String,
@@ -79,7 +84,7 @@ final class ArrivalActivityController {
         )
         let staleDate = arrivalDate.addingTimeInterval(Self.staleInterval)
         let content = ActivityContent(
-            state: Self.state(arrivalDate: arrivalDate, minutes: minutes),
+            state: ArrivalActivityAttributes.ContentState(arrivalDate: arrivalDate),
             staleDate: staleDate
         )
 
@@ -103,10 +108,7 @@ final class ArrivalActivityController {
             .first(where: { $0.id == id }) else { return }
         let staleDate = arrivalDate.addingTimeInterval(Self.staleInterval)
         let content = ActivityContent(
-            state: Self.state(
-                arrivalDate: arrivalDate,
-                minutes: Self.minutes(until: arrivalDate)
-            ),
+            state: ArrivalActivityAttributes.ContentState(arrivalDate: arrivalDate),
             staleDate: staleDate
         )
         scheduleEnd(of: activity, at: staleDate)
@@ -144,20 +146,5 @@ final class ArrivalActivityController {
             await activity.end(nil, dismissalPolicy: .after(date))
             self?.endTasks[activity.id] = nil
         }
-    }
-
-    private static func state(arrivalDate: Date, minutes: Int?) -> ArrivalActivityAttributes.ContentState {
-        ArrivalActivityAttributes.ContentState(
-            arrivalDate: arrivalDate,
-            minutes: minutes,
-            isStale: arrivalDate.timeIntervalSinceNow < -60
-        )
-    }
-
-    /// Rounded-up minutes left, the same reading as the sheets.
-    private static func minutes(until date: Date) -> Int? {
-        let seconds = date.timeIntervalSinceNow
-        guard seconds > 0 else { return 0 }
-        return Int(ceil(seconds / 60))
     }
 }
