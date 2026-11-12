@@ -15,7 +15,8 @@ import SwiftUI
 /// and bus lines differ in two concrete ways (no pre-rendered
 /// `station-`/`terminal-` markers, arrivals per direction), so this file
 /// carries its own `Bus`-prefixed copies of that geometry instead of reopening
-/// it.
+/// it. The pure layout math (`ParadesRowGeometry`) and the row-height probe
+/// (`ParadesRowHeightProbe`) carry no metro/bus difference and are shared.
 struct BusDiagramScreen: View {
     @EnvironmentObject private var app: AppModel
     /// Catalog and selection state, shared with the bus map so both screens
@@ -32,6 +33,12 @@ struct BusDiagramScreen: View {
     /// Stop whose sheet is open. `BusStop` is `Identifiable` with a key that
     /// includes the direction, so `sheet(item:)` can use it directly.
     @State private var selectedStop: BusStop?
+    /// Heights the rows report once rendered (`ParadesRowHeightProbe` in the
+    /// metro file): the bus overlay places the buses from these, so a row
+    /// that grew past its planned minimum (large Dynamic Type) keeps its bus
+    /// on the stop marker. Cleared per line so values of the previous line
+    /// never leak into the new one.
+    @State private var measuredRowHeights: [Int: CGFloat] = [:]
 
     init() {}
 
@@ -58,6 +65,7 @@ struct BusDiagramScreen: View {
             // task would exit through the guard and never re-run.
             .task(id: store.selectedLine?.code) {
                 guard let client = app.client, let line = store.selectedLine else { return }
+                measuredRowHeights = [:]
                 let state = BusLineState(line: line, client: client)
                 self.lineState = state
                 await state.run()
@@ -255,12 +263,17 @@ struct BusDiagramScreen: View {
                 .onTapGesture { selectedStop = row.stop }
             }
         }
+        // The rows report their rendered heights upward, and the overlay
+        // below reads the same measurements: both always agree on where a
+        // row starts and ends, even when it grew past its planned minimum.
+        .onPreferenceChange(ParadesRowHeightKey.self) { measuredRowHeights = $0 }
         .overlay(alignment: .topLeading) {
             BusTrainOverlay(
                 direction: direction,
                 line: state.line,
                 rows: rows,
-                positions: state.positions.filter { $0.directionID == direction.id }
+                positions: state.positions.filter { $0.directionID == direction.id },
+                measuredHeights: measuredRowHeights
             )
             .allowsHitTesting(false)
         }
@@ -344,6 +357,9 @@ private struct BusDiagramRowPlan: Identifiable {
 
     var id: Int { index }
 
+    /// Planned minimum height: `baseHeight` plus one incident line each. A
+    /// row whose text needs more room grows past it, and the bus overlay
+    /// learns the real height through `ParadesRowHeightKey`.
     var height: CGFloat {
         BusDiagramRow.baseHeight + BusDiagramRow.incidentLineHeight * CGFloat(incidents.count)
     }
@@ -358,8 +374,9 @@ private struct BusDiagramRow: View {
     let isNearest: Bool
     let hereText: String?
 
-    /// Height of a row without incidents; its center is where the stop marker
-    /// sits, so a bus at a stop is drawn on that marker (spec S9).
+    /// Minimum height of a row without incidents; the stop marker sits at
+    /// the row's REAL center, so a bus arriving at the stop is drawn on that
+    /// marker (spec S9) even when the row grew past the minimum.
     static let baseHeight: CGFloat = 66
     static let incidentLineHeight: CGFloat = 18
     static let horizontalPadding: CGFloat = 16
@@ -374,7 +391,6 @@ private struct BusDiagramRow: View {
     static let markerStrokeWidth: CGFloat = 3
     static let textLeading: CGFloat = 52
 
-    static var markerCenterY: CGFloat { baseHeight / 2 }
     static var spineCenterX: CGFloat { Self.markerColumnLeading + Self.markerColumnWidth / 2 }
 
     private var incidents: [StationIncident] { row.incidents }
@@ -387,7 +403,11 @@ private struct BusDiagramRow: View {
             .padding(.leading, Self.textLeading)
             .padding(.trailing, Self.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: height)
+            // A row grows with its content (the FGC rows' pattern): the
+            // planned height is only the minimum, so a wrapped name or street
+            // at a larger Dynamic Type never clips, and the spine overlay
+            // below re-anchors the marker to the row's real center.
+            .frame(minHeight: height)
             .background {
                 // Branches of different view types: a builder, not a ternary.
                 if isNearest {
@@ -397,6 +417,7 @@ private struct BusDiagramRow: View {
                 }
             }
             .overlay(alignment: .topLeading) { spineColumn }
+            .background { ParadesRowHeightProbe(index: row.index) }
             .contentShape(Rectangle())
     }
 
@@ -407,7 +428,7 @@ private struct BusDiagramRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.stop.name)
                         .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
+                        .lineLimit(2)
                     HStack(spacing: 8) {
                         if let hereText {
                             HStack(spacing: 5) {
@@ -423,14 +444,14 @@ private struct BusDiagramRow: View {
                             Text(row.stop.address)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                                .lineLimit(2)
                         }
                     }
                 }
                 Spacer(minLength: 8)
                 timesColumn
             }
-            .frame(height: Self.baseHeight)
+            .frame(minHeight: Self.baseHeight)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityText)
             ForEach(incidents) { incident in
@@ -506,12 +527,23 @@ private struct BusDiagramRow: View {
         }
     }
 
-    /// The rail through the whole row and the stop marker centered on it. The
-    /// rail is continuous across rows of different heights because every
-    /// segment ends at a row edge, where the neighbour's own segment starts.
+    /// The rail through the whole row and the stop marker centered on it,
+    /// measured against the row's REAL height (the whole-row overlay pattern
+    /// the FGC rows use): the marker sits at the center the row's content is
+    /// centered on, and every segment still ends at a row edge, where the
+    /// neighbour's own segment starts. At the default text size the row is
+    /// exactly its planned height, so nothing moves.
     private var spineColumn: some View {
-        let lineTop = row.isFirst ? Self.markerCenterY : CGFloat(0)
-        let lineBottom = row.isLast ? Self.markerCenterY : height
+        GeometryReader { geo in
+            spineColumn(height: geo.size.height)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func spineColumn(height: CGFloat) -> some View {
+        let markerCenterY = height / 2
+        let lineTop = row.isFirst ? markerCenterY : CGFloat(0)
+        let lineBottom = row.isLast ? markerCenterY : height
         return ZStack(alignment: .top) {
             Color.clear
                 .frame(width: Self.markerColumnWidth, height: height)
@@ -520,10 +552,11 @@ private struct BusDiagramRow: View {
                 .frame(width: Self.spineWidth, height: max(lineBottom - lineTop, 0))
                 .offset(y: lineTop)
             marker
-                .padding(.top, Self.markerCenterY - markerSizeUsed / 2)
+                .padding(.top, markerCenterY - markerSizeUsed / 2)
         }
         .frame(width: Self.markerColumnWidth, height: height, alignment: .top)
         .padding(.leading, Self.markerColumnLeading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The two end stops of a direction get the larger, line-colored dot; the
@@ -618,6 +651,11 @@ private struct BusTrainOverlay: View {
     let line: BusLine
     let rows: [BusDiagramRowPlan]
     let positions: [BusPosition]
+    /// Heights measured on screen (`ParadesRowHeightProbe`): the buses are
+    /// placed from the real rows, so a row that grew past its minimum keeps
+    /// its buses on the stop markers. Falls back to the planned minimum per
+    /// row until the measurement lands.
+    let measuredHeights: [Int: CGFloat]
 
     var body: some View {
         // A ZStack so each `.position` is measured from the top-leading corner
@@ -640,26 +678,21 @@ private struct BusTrainOverlay: View {
 
     private func placements() -> [BusDiagramPlacement] {
         guard !rows.isEmpty else { return [] }
-        // Cumulative top of every row, taken from the same plan the rows are
-        // drawn from: a fractional index therefore lands on the right pixel.
-        var tops: [CGFloat] = []
-        tops.reserveCapacity(rows.count)
-        var top: CGFloat = 0
-        for row in rows {
-            tops.append(top)
-            top += row.height
+        // Cumulative top of every row and each row's real height, taken from
+        // the same numbers the rows render with: a fractional index therefore
+        // lands on the right pixel even when a row grew past its minimum.
+        let planned = rows.map(\.height)
+        let tops = ParadesRowGeometry.tops(planned: planned, measured: measuredHeights)
+        let heights = planned.enumerated().map { index, plannedHeight in
+            ParadesRowGeometry.rowHeight(planned: plannedHeight, measured: measuredHeights[index])
         }
-        let lastIndex = rows.count - 1
         return positions.map { position in
-            // The fractional stop index is clamped to the row range first: the
-            // fraction is then always inside the row it belongs to, so the
-            // last stop maps to its own marker instead of one row past it.
+            // The fractional stop index is clamped to the row range first (in
+            // `ParadesRowGeometry.vehicleY`): the fraction is then always
+            // inside the row it belongs to, so the last stop maps to its own
+            // marker instead of one row past it.
             let rawIndex = direction.stopIndexPosition(atRouteDistance: position.train.routeDistance)
-            let index = min(max(rawIndex, 0), Double(lastIndex))
-            let lower = Int(index)
-            let fraction = index - Double(lower)
-            let y = tops[lower] + CGFloat(fraction) * rows[lower].height
-                + BusDiagramRow.baseHeight / 2
+            let y = ParadesRowGeometry.vehicleY(tops: tops, heights: heights, position: rawIndex) ?? 0
             return BusDiagramPlacement(
                 id: position.id,
                 y: y,

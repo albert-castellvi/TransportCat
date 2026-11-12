@@ -37,6 +37,12 @@ struct DiagramScreen: View {
     /// cards pushed the timeline below the fold, so several alerts collapse
     /// into one row.
     @State private var showsServiceCards = false
+    /// Heights the rows report once rendered (`ParadesRowHeightProbe`): the
+    /// train overlay places the trains from these, so a row that grew past
+    /// its planned minimum (large Dynamic Type) keeps its trains on the rail
+    /// dots. Cleared per line so values of the previous line never leak into
+    /// the new one.
+    @State private var measuredRowHeights: [Int: CGFloat] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var selectedLine: MetroLine {
@@ -60,6 +66,7 @@ struct DiagramScreen: View {
             .task(id: selectedLineCode) {
                 // A new line starts with its alert summary collapsed (#91).
                 showsServiceCards = false
+                measuredRowHeights = [:]
                 // The interchange badges read the places catalog (fix F1); a
                 // disk read, no request, when nothing has loaded it yet.
                 if PlaceCatalogStore.shared.places.isEmpty {
@@ -186,8 +193,12 @@ struct DiagramScreen: View {
                 .onTapGesture { selectedStation = row.station }
             }
         }
+        // The rows report their rendered heights upward, and the overlay
+        // below reads the same measurements: both always agree on where a
+        // row starts and ends, even when it grew past its planned minimum.
+        .onPreferenceChange(ParadesRowHeightKey.self) { measuredRowHeights = $0 }
         .overlay(alignment: .topLeading) {
-            TrainOverlay(state: state, line: selectedLine, rows: rows)
+            TrainOverlay(state: state, line: selectedLine, rows: rows, measuredHeights: measuredRowHeights)
                 .allowsHitTesting(false)
         }
     }
@@ -313,6 +324,9 @@ private struct ParadesStationRow: Identifiable {
 
     var id: Int { index }
 
+    /// Planned minimum height of the row (`ParadesMetroRow.baseHeight`): a
+    /// row whose content needs more room grows past it, and the train
+    /// overlay learns the real height through `ParadesRowHeightKey`.
     var height: CGFloat { ParadesMetroRow.baseHeight }
 }
 
@@ -370,7 +384,6 @@ private struct ParadesMetroRow: View {
     static let markerSize: CGFloat = 26
     static let railWidth: CGFloat = 5
 
-    static var markerCenterY: CGFloat { baseHeight / 2 }
     static var railCenterX: CGFloat { horizontalPadding + markerSize / 2 }
 
     private var incidents: [StationIncident] { row.incidents }
@@ -386,9 +399,14 @@ private struct ParadesMetroRow: View {
             .padding(.leading, Self.horizontalPadding + Self.markerSize + 12)
             .padding(.trailing, Self.horizontalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: row.height)
+            // A row grows with its content (the FGC rows' pattern):
+            // `baseHeight` is only the minimum, so a wrapped name or a larger
+            // Dynamic Type never clips the third content line, and the rail
+            // overlay below re-anchors the marker to the row's real center.
+            .frame(minHeight: row.height)
             .background(isNearest ? Color(hex: "409CFF").opacity(0.12) : Color.clear)
             .overlay(alignment: .topLeading) { railColumn }
+            .background { ParadesRowHeightProbe(index: row.index) }
             .contentShape(Rectangle())
     }
 
@@ -397,7 +415,7 @@ private struct ParadesMetroRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.station.name)
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(2)
                 if !interchangeCodes.isEmpty {
                     badgesRow
                 }
@@ -495,32 +513,41 @@ private struct ParadesMetroRow: View {
     // MARK: - Rail
 
     /// The rail through the whole row and the hollow station marker centered
-    /// on it. The rail is continuous across rows because every segment ends at
-    /// a row edge, where the neighbour's own segment starts; the edge leaving
-    /// this station is dotted when the run is affected (spec S8).
+    /// on it, measured against the row's REAL height (the whole-row overlay
+    /// pattern the FGC rows use): the marker sits at the center the row's
+    /// content is centered on, and the rail still runs from it down to the
+    /// row's bottom edge, where the neighbour's own segment starts. At the
+    /// default text size the row is exactly `baseHeight`, so nothing moves.
     private var railColumn: some View {
-        let lineTop = CGFloat(0)
-        let lineBottom = row.height
+        GeometryReader { geo in
+            railColumn(height: geo.size.height)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func railColumn(height: CGFloat) -> some View {
+        let markerCenterY = height / 2
         return ZStack(alignment: .top) {
             Color.clear
-                .frame(width: Self.markerSize, height: row.height)
+                .frame(width: Self.markerSize, height: height)
             // The edge below the marker: solid, or dotted on an affected run.
             if edgeAffected {
                 DottedRail()
                     .stroke(lineColor, style: StrokeStyle(lineWidth: Self.railWidth, lineCap: .round, dash: [0.1, 8]))
-                    .frame(width: Self.railWidth, height: max(lineBottom - Self.markerCenterY, 0))
-                    .offset(y: Self.markerCenterY)
+                    .frame(width: Self.railWidth, height: max(height - markerCenterY, 0))
+                    .offset(y: markerCenterY)
             } else {
                 Rectangle()
                     .fill(lineColor)
-                    .frame(width: Self.railWidth, height: max(lineBottom - Self.markerCenterY, 0))
-                    .offset(y: Self.markerCenterY)
+                    .frame(width: Self.railWidth, height: max(height - markerCenterY, 0))
+                    .offset(y: markerCenterY)
             }
             marker
-                .padding(.top, Self.markerCenterY - Self.markerSize / 2)
+                .padding(.top, markerCenterY - Self.markerSize / 2)
         }
-        .frame(width: Self.markerSize, height: row.height, alignment: .top)
+        .frame(width: Self.markerSize, height: height, alignment: .top)
         .padding(.leading, Self.horizontalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Hollow station dot (S6): white fill, line-coloured ring; the two ends
@@ -561,6 +588,69 @@ private struct DottedRail: Shape {
         path.move(to: CGPoint(x: rect.midX, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
         return path
+    }
+}
+
+/// Measured height of the Parades rows, keyed by row index: each row reports
+/// its rendered height, so the vehicle overlays compute their positions from
+/// the real layout instead of the planned minimum. Internal because the bus
+/// timeline (`BusDiagramScreen.swift`) shares it.
+struct ParadesRowHeightKey: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] { [:] }
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+/// The one-row probe that feeds `ParadesRowHeightKey`: a background
+/// GeometryReader measures the row without influencing its layout.
+struct ParadesRowHeightProbe: View {
+    let index: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            Color.clear.preference(key: ParadesRowHeightKey.self, value: [index: geo.size.height])
+        }
+    }
+}
+
+/// Pure layout math of the Parades timelines, shared by the metro and bus
+/// screens: the rows' cumulative tops and the y of a vehicle marker, always
+/// computed from the same numbers the rows render with, so rows and vehicles
+/// cannot drift apart when a row grows past its planned minimum.
+enum ParadesRowGeometry {
+    /// Height of one row: the height measured on screen when known, else the
+    /// planned minimum.
+    static func rowHeight(planned: CGFloat, measured: CGFloat?) -> CGFloat {
+        measured ?? planned
+    }
+
+    /// Cumulative top of every row, from the planned minima and the heights
+    /// measured on screen (row index → measured height). A measured height
+    /// wins: the neighbours sit at the grown row's real edges.
+    static func tops(planned: [CGFloat], measured: [Int: CGFloat]) -> [CGFloat] {
+        var result: [CGFloat] = []
+        result.reserveCapacity(planned.count)
+        var top: CGFloat = 0
+        for (index, plannedHeight) in planned.enumerated() {
+            result.append(top)
+            top += rowHeight(planned: plannedHeight, measured: measured[index])
+        }
+        return result
+    }
+
+    /// Y of a vehicle at the fractional row index `position`: the top of its
+    /// row, plus the fraction of that row's real height, plus half the height
+    /// — the marker center of the row it lands on. The index is clamped into
+    /// the row range first, so the fraction always stays inside one row and
+    /// the last stop maps to its own marker instead of one row past it.
+    static func vehicleY(tops: [CGFloat], heights: [CGFloat], position: Double) -> CGFloat? {
+        guard let last = heights.indices.last else { return nil }
+        let clamped = min(max(position, 0), Double(last))
+        let lower = Int(clamped)
+        let fraction = clamped - Double(lower)
+        let height = heights[lower]
+        return tops[lower] + CGFloat(fraction) * height + height / 2
     }
 }
 
@@ -625,7 +715,8 @@ private struct ServiceCard: View, Identifiable {
     }
 }
 
-/// A train placed in the timeline: its y already comes from the rows' heights.
+/// A vehicle placed in the timeline: its y already comes from the rows'
+/// real heights.
 private struct DiagramTrain: Identifiable {
     let id: String
     let colorHex: String
@@ -643,6 +734,11 @@ private struct TrainOverlay: View {
     let state: LineState
     let line: MetroLine
     let rows: [ParadesStationRow]
+    /// Heights measured on screen (`ParadesRowHeightProbe`): the trains are
+    /// placed from the real rows, so a row that grew past its minimum keeps
+    /// its trains on the dots. Falls back to the planned minimum per row
+    /// until the measurement lands.
+    let measuredHeights: [Int: CGFloat]
 
     var body: some View {
         let trains = trainPlacements()
@@ -666,27 +762,21 @@ private struct TrainOverlay: View {
 
     private func trainPlacements() -> [DiagramTrain] {
         guard let engine = state.engine, !rows.isEmpty else { return [] }
-        // Cumulative top of every row, taken from the same plan the rows are
-        // drawn from: a fractional index therefore lands on the right pixel.
-        var tops: [CGFloat] = []
-        tops.reserveCapacity(rows.count)
-        var top: CGFloat = 0
-        for row in rows {
-            tops.append(top)
-            top += row.height
+        // Cumulative top of every row and each row's real height, taken from
+        // the same numbers the rows render with: a fractional index therefore
+        // lands on the right pixel even when a row grew past its minimum.
+        let planned = rows.map(\.height)
+        let tops = ParadesRowGeometry.tops(planned: planned, measured: measuredHeights)
+        let heights = planned.enumerated().map { index, plannedHeight in
+            ParadesRowGeometry.rowHeight(planned: plannedHeight, measured: measuredHeights[index])
         }
-        let lastIndex = rows.count - 1
         return state.positions.map { position in
             // The engine index is clamped to the station range first: the
             // fractional part is then always inside the row it belongs to, so
             // the last station maps to its own marker instead of one row past
             // it (S2, S6).
             let rawIndex = engine.stationIndexPosition(atRouteDistance: position.routeDistance)
-            let index = min(max(rawIndex, 0), Double(lastIndex))
-            let lower = Int(index)
-            let fraction = index - Double(lower)
-            let y = tops[lower] + CGFloat(fraction) * rows[lower].height
-                + ParadesMetroRow.baseHeight / 2
+            let y = ParadesRowGeometry.vehicleY(tops: tops, heights: heights, position: rawIndex) ?? 0
             let trainLine = MetroLine.line(forCode: position.lineCode) ?? line
             return DiagramTrain(
                 id: position.id,
