@@ -449,7 +449,10 @@ struct StationDetailView: View {
         // `code` is `CODI_ESTACIO`, and the place catalog's synthetic one,
         // whose `code` is the `ID_ESTACIO`. The accesses feed and the schedule
         // pack want `CODI_ESTACIO`, so resolve it against the line's stations.
-        let feed = (try? await client.stations(lineCode: line.code)) ?? []
+        // Reuse the cached feed `refresh()` fills; an empty feed means the code
+        // could not be resolved, and the accesses and timetable stay hidden.
+        let feed = await client.stationFeed(lineCode: line.code)
+        guard !feed.isEmpty else { return }
         let stationCode = TMBPlaceParser.stationCode(forStation: station, in: feed)
 
         // The access endpoint is keyed by `CODI_GRUP_ESTACIO`, one code per

@@ -5,7 +5,7 @@ import Foundation
 /// station. The map draws one `IncidentBadge` for it at the badge's station,
 /// and the tap opens a glass card listing `alerts`.
 struct GlobalIncidentBadge: Identifiable, Equatable {
-    /// "metro:<station code>", the id of the station the badge sits on.
+    /// The line-independent station identity the badge sits on.
     let id: String
     let stationCode: Int
     let stationName: String
@@ -37,11 +37,11 @@ enum GlobalIncidentBadges {
     ///   - incidentStations: stations with active incidents, in feed order,
     ///     as `GlobalNetworkState.refreshIncidents` publishes them.
     ///   - orderOfStation: the position of a station inside a line, looked up
-    ///     by the line code and the station code from the loaded line states;
-    ///     nil falls back to feed order.
+    ///     by the line code and the station's line-independent id from the
+    ///     loaded line states; nil falls back to feed order.
     static func badges(
         from incidentStations: [GlobalIncidentStation],
-        orderOfStation: (_ lineCode: String, _ stationCode: Int) -> Int?
+        orderOfStation: (_ lineCode: String, _ stationID: String) -> Int?
     ) -> [GlobalIncidentBadge] {
         guard !incidentStations.isEmpty else { return [] }
 
@@ -67,7 +67,7 @@ enum GlobalIncidentBadges {
         for lineCode in lineOrder {
             var best: (order: Int, stationIndex: Int)?
             for assignment in assignmentsByLine[lineCode] ?? [] {
-                let order = orderOfStation(lineCode, incidentStations[assignment.stationIndex].stationCode) ?? Int.max
+                let order = orderOfStation(lineCode, incidentStations[assignment.stationIndex].id) ?? Int.max
                 if let current = best {
                     if order < current.order
                         || (order == current.order && assignment.stationIndex < current.stationIndex) {
@@ -88,15 +88,15 @@ enum GlobalIncidentBadges {
             var alerts: [ServiceAlert] = []
             var alertIDs: Set<String> = []
         }
-        var groupsByStation: [Int: Group] = [:]
-        var groupOrder: [Int] = []
+        var groupsByStation: [String: Group] = [:]
+        var groupOrder: [String] = []
         for lineCode in lineOrder {
             guard let stationIndex = firstStationByLine[lineCode] else { continue }
             let incident = incidentStations[stationIndex]
             let lineName = MetroLine.line(forCode: lineCode)?.displayName ?? lineCode
-            var group = groupsByStation[incident.stationCode] ?? Group(stationIndex: stationIndex)
+            var group = groupsByStation[incident.id] ?? Group(stationIndex: stationIndex)
             if group.lineNames.isEmpty {
-                groupOrder.append(incident.stationCode)
+                groupOrder.append(incident.id)
             }
             group.lineNames.append(lineName)
             for assignment in assignmentsByLine[lineCode] ?? []
@@ -105,11 +105,11 @@ enum GlobalIncidentBadges {
                 group.alertIDs.insert(assignment.alert.id)
                 group.alerts.append(assignment.alert)
             }
-            groupsByStation[incident.stationCode] = group
+            groupsByStation[incident.id] = group
         }
 
-        return groupOrder.compactMap { stationCode in
-            guard let group = groupsByStation[stationCode] else { return nil }
+        return groupOrder.compactMap { stationID in
+            guard let group = groupsByStation[stationID] else { return nil }
             let incident = incidentStations[group.stationIndex]
             return GlobalIncidentBadge(
                 id: incident.id,

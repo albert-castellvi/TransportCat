@@ -21,9 +21,9 @@ final class GlobalIncidentBadgesTests: XCTestCase {
     private typealias LineOrder = [String: [(code: Int, orderInLine: Int)]]
 
     /// The order lookup the map passes into the helper.
-    private func orderLookup(_ order: LineOrder) -> (String, Int) -> Int? {
-        { lineCode, stationCode in
-            order[lineCode]?.first { $0.code == stationCode }?.orderInLine
+    private func orderLookup(_ order: LineOrder) -> (String, String) -> Int? {
+        { lineCode, stationID in
+            order[lineCode]?.first { "metro:\($0.code)" == stationID }?.orderInLine
         }
     }
 
@@ -214,6 +214,26 @@ final class GlobalIncidentBadgesTests: XCTestCase {
         XCTAssertEqual(badges.count, 1)
         XCTAssertEqual(badges.first?.badgeText, "2 línies")
         XCTAssertEqual(badges.first?.alerts.map(\.id), ["a1"])
+    }
+
+    /// An interchange served by two lines is one physical station: the badges
+    /// merge on the line-independent identity even though the per-line codes
+    /// differ (Catalunya is 128 on L1 and 324 on L3).
+    func testInterchangeAcrossLinesMergesIntoOneBadge() {
+        let l1Catalunya = serviceAlert(id: "a1", lineCodes: ["1"])
+        let l3Catalunya = serviceAlert(id: "a2", lineCodes: ["3"])
+        let stations = [
+            station(id: "g6660128", code: 128, name: "Catalunya", latitude: 41.385, longitude: 2.17, alerts: [l1Catalunya]),
+            station(id: "g6660128", code: 324, name: "Catalunya", latitude: 41.385, longitude: 2.17, alerts: [l3Catalunya]),
+        ]
+        let badges = GlobalIncidentBadges.badges(from: stations, orderOfStation: orderLookup([:]))
+
+        XCTAssertEqual(badges.count, 1)
+        let badge = badges[0]
+        XCTAssertEqual(badge.id, "g6660128")
+        XCTAssertEqual(badge.lineNames, [lineName("1"), lineName("3")])
+        XCTAssertEqual(badge.badgeText, "2 línies")
+        XCTAssertEqual(badge.alerts.map(\.id), ["a1", "a2"])
     }
 
     /// Three lines on one station read "3 línies", and the grouped count of
