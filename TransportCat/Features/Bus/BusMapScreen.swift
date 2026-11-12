@@ -950,7 +950,12 @@ struct BusMapScreen: View {
             _ = selectLineServing(place)
             return
         }
-        guard let state = lineState, !state.directions.isEmpty else { return }
+        // The mounted state must be the selected line's: the catalog selection
+        // changes before the new line's state loads, so a resolution here
+        // would look the stop up in the line being left and give up on it
+        // (#76). The new state's directions change re-runs this.
+        guard let state = lineState, !state.directions.isEmpty,
+              state.line.code == store.selectedLine?.code else { return }
         if let stop = preferredStop(code: stopCode, in: state) {
             pendingPlaceFocus = nil
             selectedStop = stop
@@ -996,7 +1001,10 @@ struct BusMapScreen: View {
     /// Opens the bus sheet with follow on once the focused vehicle exists in
     /// the feed (spec S11, S10).
     private func resolvePendingVehicleFocus() {
-        guard let vehicleID = pendingVehicleFocusID, let state = lineState else { return }
+        // Same rule as the place focus (#76): resolve only against the state
+        // of the line that is selected now.
+        guard let vehicleID = pendingVehicleFocusID, let state = lineState,
+              state.line.code == store.selectedLine?.code else { return }
         guard let position = state.positions.first(where: { $0.id == vehicleID || $0.train.id == vehicleID }) else {
             return
         }
