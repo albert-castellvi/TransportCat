@@ -561,8 +561,8 @@ struct GlobalMapScreen: View {
     /// the station order — every trigger is a throttled, human-scale event.
     /// A selection whose badge vanished quietly closes its card.
     private func refreshIncidentBadges() {
-        incidentBadges = GlobalIncidentBadges.badges(from: state.incidentStations) { lineCode, stationCode in
-            state.lineStates[lineCode]?.stations.first { $0.code == stationCode }?.orderInLine
+        incidentBadges = GlobalIncidentBadges.badges(from: state.incidentStations) { lineCode, stationID in
+            state.lineStates[lineCode]?.stations.first { StationGroupKey.key(for: $0) == stationID }?.orderInLine
         }
         if let badge = selectedBadge, !incidentBadges.contains(badge) {
             selectedBadge = nil

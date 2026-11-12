@@ -7,7 +7,8 @@ import Observation
 /// color of the first line in `MetroLine.allLines` order so the set is stable
 /// across rebuilds.
 struct GlobalStationDot: Identifiable, Hashable {
-    /// "metro:<station code>", unique across the map.
+    /// The line-independent station identity from `StationGroupKey`, unique
+    /// across the map.
     let id: String
     let name: String
     let colorHex: String
@@ -18,13 +19,33 @@ struct GlobalStationDot: Identifiable, Hashable {
 /// draws a warning marker for it and taps open the incident card with exactly
 /// the alerts that cover the station.
 struct GlobalIncidentStation: Identifiable, Hashable {
-    /// "metro:<station code>", unique across the map.
+    /// The line-independent station identity from `StationGroupKey`, unique
+    /// across the map.
     let id: String
+    /// Per-line `CODI_ESTACIO` of the first line that reported the station.
     let stationCode: Int
     let name: String
     let position: GeoPoint
     /// The covering alerts, in feed order.
     let alerts: [ServiceAlert]
+}
+
+/// A line-independent identity of one physical metro station (spec S8): the
+/// `CODI_GRUP_ESTACIO` when the line feed carries it, else the normalized name
+/// plus the position rounded to three decimals (~100 m) — the offline station
+/// snapshots drop the group code, so the fallback keeps an interchange served
+/// by several lines together. The per-line `Station.code` is never part of the
+/// key, because it differs per line.
+enum StationGroupKey {
+    static func key(for station: Station) -> String {
+        if let groupCode = station.groupCode {
+            return "g\(groupCode)"
+        }
+        let name = PlaceIndex.normalized(station.name)
+        let latitude = Int((station.latitude * 1000).rounded())
+        let longitude = Int((station.longitude * 1000).rounded())
+        return "n\(name):\(latitude):\(longitude)"
+    }
 }
 
 /// Live state of the whole metro network for the global mode (spec S8).
@@ -58,7 +79,8 @@ final class GlobalNetworkState {
     /// Route polylines of the favorite bus lines, ids "bus:<code>". Fetched
     /// once per favorite set, never per poll (spec S8).
     private(set) var busLineLayers: [MapLineLayer] = []
-    /// Station dots of every metro line, deduped by station code.
+    /// Station dots of every metro line, deduped by the line-independent
+    /// station group.
     private(set) var stationDots: [GlobalStationDot] = []
     /// Live metro trains of all lines (FGC trains come from
     /// `FGCNetworkState.shared`; bus vehicles are not drawn, spec S8).
@@ -135,26 +157,27 @@ final class GlobalNetworkState {
     /// the filter runs over the already-loaded stations, no network.
     func refreshIncidents() {
         let alerts = AppModel.shared.alerts
-        var merged: [Int: (name: String, position: GeoPoint, alertIDs: Set<String>)] = [:]
+        var merged: [String: (name: String, position: GeoPoint, alertIDs: Set<String>, stationCode: Int)] = [:]
         for line in MetroLine.allLines {
             guard let state = lineStates[line.code], !state.stations.isEmpty else { continue }
             let incidents = IncidentIndex.incidents(for: alerts, stations: state.stations, lineCode: line.code)
             guard !incidents.isEmpty else { continue }
             for station in state.stations {
                 guard let items = incidents[station.code] else { continue }
-                var entry = merged[station.code]
-                    ?? (station.name, GeoPoint(latitude: station.latitude, longitude: station.longitude), Set<String>())
+                let key = StationGroupKey.key(for: station)
+                var entry = merged[key]
+                    ?? (station.name, GeoPoint(latitude: station.latitude, longitude: station.longitude), Set<String>(), station.code)
                 entry.2.formUnion(items.map(\.alertID))
-                merged[station.code] = entry
+                merged[key] = entry
             }
         }
-        incidentStations = merged.keys.sorted().compactMap { code in
-            guard let entry = merged[code] else { return nil }
+        incidentStations = merged.keys.sorted().compactMap { key in
+            guard let entry = merged[key] else { return nil }
             let covering = alerts.filter { entry.2.contains($0.id) }
             guard !covering.isEmpty else { return nil }
             return GlobalIncidentStation(
-                id: "metro:\(code)",
-                stationCode: code,
+                id: key,
+                stationCode: entry.3,
                 name: entry.name,
                 position: entry.position,
                 alerts: covering
@@ -231,7 +254,7 @@ final class GlobalNetworkState {
     private func rebuildMetroLayersAndDots() {
         var layers: [MapLineLayer] = []
         var dots: [GlobalStationDot] = []
-        var seenStations: Set<Int> = []
+        var seenStations: Set<String> = []
         for line in MetroLine.allLines {
             guard let state = lineStates[line.code] else { continue }
             if let geometry = state.geometry, !geometry.points.isEmpty {
@@ -244,10 +267,11 @@ final class GlobalNetworkState {
                     polylines: [geometry.points]
                 ))
             }
-            for station in state.stations.sorted(by: { $0.orderInLine < $1.orderInLine })
-            where seenStations.insert(station.code).inserted {
+            for station in state.stations.sorted(by: { $0.orderInLine < $1.orderInLine }) {
+                let key = StationGroupKey.key(for: station)
+                guard seenStations.insert(key).inserted else { continue }
                 dots.append(GlobalStationDot(
-                    id: "metro:\(station.code)",
+                    id: key,
                     name: station.name,
                     colorHex: line.colorHex,
                     position: GeoPoint(latitude: station.latitude, longitude: station.longitude)
