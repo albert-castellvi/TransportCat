@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The "A prop teu" sheet over the map (spec S13, mockup `V6Nearby`): the
 /// reusable nearby list (`NearbyStopsList`, the same component the Tot screen
@@ -13,6 +14,7 @@ struct NearbySheet: View {
     // presenting hierarchy's environment.
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     private var location: LocationService { LocationService.shared }
 
@@ -21,12 +23,17 @@ struct NearbySheet: View {
             header
             if isLocationDenied {
                 // Same wording the Tot screen shows: a denied permission is a
-                // normal state, never a prompt loop.
-                Text("Activa la ubicació a Configuració per veure què tens a prop.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
+                // normal state, never a prompt loop. The button leads to the
+                // Settings page that can turn it back on (#98).
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Activa la ubicació a Configuració per veure què tens a prop.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Obre Configuració", action: openSettings)
+                        .font(.footnote)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
@@ -77,5 +84,12 @@ struct NearbySheet: View {
 
     private var isLocationDenied: Bool {
         location.authorization == .denied || location.authorization == .restricted
+    }
+
+    /// Opens the app's Settings page so a denied location permission can be
+    /// turned back on without leaving the app (#98).
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 }

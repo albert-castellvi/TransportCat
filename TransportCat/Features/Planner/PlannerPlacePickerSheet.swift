@@ -1,5 +1,6 @@
 import CoreLocation
 import SwiftUI
+import UIKit
 
 /// Searchable place sheet shared by the planner's origin and destination rows
 /// (spec S16). The origin version also offers "La meva ubicació", enabled as
@@ -11,6 +12,7 @@ struct PlannerPlacePickerSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var app: AppModel
+    @Environment(\.openURL) private var openURL
     @State private var query = ""
 
     private var catalog: PlaceCatalogStore { PlaceCatalogStore.shared }
@@ -65,9 +67,13 @@ struct PlannerPlacePickerSheet: View {
                 Label("Activa la ubicació", systemImage: "location.circle")
             }
         } else if location.authorization == .denied || location.authorization == .restricted {
-            Text("Activa la ubicació a Configuració per sortir de la teva posició.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Activa la ubicació a Configuració per sortir de la teva posició.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Obre Configuració", action: openSettings)
+                    .font(.footnote)
+            }
         } else {
             // Authorized but still searching: the row waits for the first fix.
             Label("Cercant la teva ubicació…", systemImage: "location")
@@ -102,5 +108,12 @@ struct PlannerPlacePickerSheet: View {
         } header: {
             Text("Estacions i parades")
         }
+    }
+
+    /// Opens the app's Settings page so a denied location permission can be
+    /// turned back on without leaving the app (#98).
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 }
