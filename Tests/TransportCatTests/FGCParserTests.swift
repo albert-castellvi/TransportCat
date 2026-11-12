@@ -116,6 +116,31 @@ final class FGCParserTests: XCTestCase {
         XCTAssertNil(FGCNetwork.stopPoint(for: "ZZ", in: stops))
     }
 
+    /// #87: a bare prefix is another stop, and two platform rows must not make
+    /// the join depend on the order the catalog happened to return.
+    func testStopCodeJoinNeedsAPlatformBoundaryAndSortsCandidates() throws {
+        let unrelated = FGCStop(
+            id: "GRX",
+            name: "Un altre lloc",
+            point: GeoPoint(latitude: 40.0, longitude: 1.0)
+        )
+        XCTAssertNil(FGCNetwork.stopPoint(for: "GR", in: [unrelated]))
+
+        let expected = GeoPoint(latitude: 41.3991, longitude: 2.1527)
+        let platforms = [
+            FGCStop(id: "GR2", name: "Gràcia 2", point: GeoPoint(latitude: 41.5, longitude: 2.3)),
+            FGCStop(id: "GR1", name: "Gràcia 1", point: expected),
+        ]
+        XCTAssertEqual(FGCNetwork.stopPoint(for: "GR", in: platforms), expected)
+
+        // The same sorted rule feeds the station join.
+        let joined = FGCNetwork.stations(
+            [FGCStation(code: "GR", name: "Gràcia", networkLine: 1, order: 1, point: nil)],
+            points: FGCNetwork.stopIndex(platforms)
+        )
+        XCTAssertEqual(joined.first?.point, expected)
+    }
+
     func testStationJoinAttachesCoordinatesToStations() throws {
         let stations = FGCNetwork.stations(
             try allStations(),
