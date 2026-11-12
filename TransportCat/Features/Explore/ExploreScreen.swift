@@ -377,39 +377,14 @@ struct ExploreScreen: View {
                     Button("Obre Configuració", action: openSettings)
                         .font(.footnote)
                 }
-            } else if let position = service.location {
-                nearbyRows(position: position)
             } else {
-                ProgressView("Cercant la teva ubicació…")
+                // The same list the "A prop teu" sheet and the Tot screen host
+                // (spec S10/S13); tapping opens Explora's own detail sheet
+                // instead of the router hand-off the sheet uses.
+                NearbyStopsList { place in
+                    selectedPlace = place
+                }
             }
-        }
-    }
-
-    /// The ten nearest places within one kilometer (spec S12), with distance
-    /// and walking minutes in the caption.
-    @ViewBuilder
-    private func nearbyRows(position: GeoPoint) -> some View {
-        let found = PlaceIndex.nearest(
-            to: position,
-            places: catalog.places,
-            limit: ExploreFormatting.nearbyLimit,
-            maxDistance: ExploreFormatting.nearbyRadiusMeters
-        )
-        if found.isEmpty {
-            Text("No tens cap estació ni parada a menys d'un quilòmetre.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        ForEach(found) { item in
-            Button {
-                selectedPlace = item.place
-            } label: {
-                ExplorePlaceRow(
-                    place: item.place,
-                    caption: ExploreFormatting.nearbyCaption(meters: item.distance)
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 

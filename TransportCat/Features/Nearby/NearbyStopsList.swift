@@ -3,11 +3,11 @@ import SwiftUI
 /// "A prop teu" list (spec S10, mockup `V4Tot`): the nearest stops with the
 /// next arrivals per line, sorted by walking time, one card per stop.
 ///
-/// Reusable by design: the Tot screen hosts it inline (S10) and the nearby
-/// sheet hosts the same view (S13, T5). The caller supplies the places and
-/// the arrival values; the list owns the loading of the places catalog and
-/// the location start through the callbacks below, so the host decides the
-/// poll lifecycle.
+/// Reusable by design: the Tot screen hosts it inline (S10), the nearby
+/// sheet hosts the same view (S13, T5) and Explora embeds it under its
+/// "A prop" section. The caller supplies the tap action; the list owns the
+/// loading of the places catalog and the arrival refresh loop, so the host
+/// decides the location poll lifecycle.
 struct NearbyStopsList: View {
     @EnvironmentObject private var app: AppModel
 
@@ -22,11 +22,17 @@ struct NearbyStopsList: View {
     /// "loading" from "nothing around".
     @State private var arrivalsLoaded = false
 
+    /// Called with the tapped place; nil (the default) keeps the router
+    /// hand-off the sheet and the Tot screen use.
+    private let onSelect: ((Place) -> Void)?
+
     /// Refresh period of the nearby arrivals (nanoseconds): the same 30 s the
     /// favorites' arrivals of Explora use.
     private static let arrivalsRefreshIntervalNanoseconds: UInt64 = 30_000_000_000
 
-    init() {}
+    init(onSelect: ((Place) -> Void)? = nil) {
+        self.onSelect = onSelect
+    }
 
     var body: some View {
         Group {
@@ -36,11 +42,15 @@ struct NearbyStopsList: View {
                 } else {
                     ForEach(entries) { entry in
                         Button {
-                            // The router switches to the tab that is already on
-                            // screen, so the sheet has to close for the map to
-                            // handle the focus (#92).
-                            AppRouter.shared.isNearbyPresented = false
-                            AppRouter.shared.open(.place(entry.place))
+                            if let onSelect {
+                                onSelect(entry.place)
+                            } else {
+                                // The router switches to the tab that is already on
+                                // screen, so the sheet has to close for the map to
+                                // handle the focus (#92).
+                                AppRouter.shared.isNearbyPresented = false
+                                AppRouter.shared.open(.place(entry.place))
+                            }
                         } label: {
                             NearbyStopCard(entry: entry)
                         }
