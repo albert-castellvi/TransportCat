@@ -239,7 +239,7 @@ struct DiagramScreen: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Mostra o amaga la llista d'avisos")
-            .accessibilityAddTraits(showsServiceCards ? .isExpanded : [])
+            .accessibilityValue(showsServiceCards ? "Desplegat" : "Plegat")
             .padding(.horizontal, 16)
             .padding(.top, 8)
             if showsServiceCards {
