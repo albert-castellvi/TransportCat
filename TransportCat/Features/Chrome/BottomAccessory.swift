@@ -134,8 +134,8 @@ private struct MetroLineChip: View {
                 if let termini {
                     Text(termini)
                         .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
                 if hasServiceAlert {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -241,8 +241,8 @@ private struct BusAccessoryControls: View {
                     BusBadge(line: line, width: 46)
                     Text(line.description)
                         .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
