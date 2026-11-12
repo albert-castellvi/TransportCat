@@ -402,7 +402,7 @@ struct MapScreen: View {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
                     FacilityStationIcon(kind: mark.kind)
                         .offset(x: 12, y: -12)
-                        .accessibilityLabel("Incidència d'instal·lació a l'estació amb codi \(mark.stationCode)")
+                        .accessibilityLabel(facilityAccessibilityText(mark, state: state))
                 }
             }
             ForEach(state.positions) { position in
@@ -497,6 +497,19 @@ struct MapScreen: View {
     }
 
     // MARK: - Incidents on the map (S7)
+
+    /// #99: VoiceOver names where the mark is — the station it sits next to
+    /// — not the per-line station code the mark carries. Falls back to no
+    /// station name when the line state no longer lists that code.
+    private func facilityAccessibilityText(
+        _ mark: FacilityStationMark,
+        state: LineState
+    ) -> String {
+        if let name = state.stations.first(where: { $0.code == mark.stationCode })?.name {
+            return "Incidència d'instal·lació a l'estació \(name)"
+        }
+        return "Incidència d'instal·lació en una estació"
+    }
 
     /// Everything the map draws besides the position markers, derived from the
     /// line's topology and the alerts feed (spec S8). Called when either

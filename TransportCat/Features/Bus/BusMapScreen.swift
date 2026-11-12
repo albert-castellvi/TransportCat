@@ -71,6 +71,10 @@ struct BusMapScreen: View {
     /// vehicle id that is not in the feed yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
+    /// Whether the source strip shows (#94): it lives behind a tap on the
+    /// status capsule, because pinned over the map it covered the Apple Maps
+    /// attribution, which must stay visible.
+    @State private var showsSourceStrip = false
     /// Latitude span on screen, which decides whether the stop dots of the
     /// direction on screen are drawn at all (spec S3).
     @State private var latitudeSpan: Double = BusMapScreen.initialRegion.span.latitudeDelta
@@ -116,9 +120,19 @@ struct BusMapScreen: View {
             // the map fills the screen under the status bar, and the v2
             // chrome lives in overlays (spec S1).
             .overlay(alignment: .topLeading) {
-                statusCapsule
-                    .padding(.leading, 16)
-                    .padding(.top, 8)
+                Button {
+                    showsSourceStrip.toggle()
+                } label: {
+                    statusCapsule
+                }
+                .buttonStyle(.plain)
+                // VoiceOver keeps the chip's own text and gets the action on
+                // top (#94).
+                .accessibilityHint(showsSourceStrip
+                    ? "Amaga d'on provenen les positions"
+                    : "Mostra d'on provenen les positions")
+                .padding(.leading, 16)
+                .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
                 locationButton
@@ -442,7 +456,7 @@ struct BusMapScreen: View {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: mark.latitude, longitude: mark.longitude)) {
                     FacilityStationIcon(kind: mark.kind)
                         .offset(x: 12, y: -12)
-                        .accessibilityLabel("Incidència d'instal·lació a la parada amb codi \(mark.stationCode)")
+                        .accessibilityLabel(facilityAccessibilityText(mark, state: state))
                 }
             }
             ForEach(state.positions) { position in
@@ -507,10 +521,12 @@ struct BusMapScreen: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if state.totalStopCount > 0 {
+            if state.totalStopCount > 0, showsSourceStrip {
                 sourceStrip(state: state)
+                    .transition(AppMotion.chipTransition)
             }
         }
+        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: showsSourceStrip)
         .onChange(of: state.directions.map(\.id)) { _, ids in
             // The shared storage resolves against the new directions (spec
             // S4), so the clamp the old local `@State` needed is gone.
@@ -648,6 +664,20 @@ struct BusMapScreen: View {
         return nil
     }
 
+    /// #99: VoiceOver names where the mark is — the stop it sits next to
+    /// — not the stop code the mark carries. Falls back to no stop name when
+    /// the line state no longer lists that code.
+    private func facilityAccessibilityText(
+        _ mark: FacilityStationMark,
+        state: BusLineState
+    ) -> String {
+        if let name = state.directions.flatMap(\.stops)
+            .first(where: { $0.code == mark.stationCode })?.name {
+            return "Incidència d'instal·lació a la parada \(name)"
+        }
+        return "Incidència d'instal·lació en una parada"
+    }
+
     /// Glass card of a run's amber badge (spec S7): the alert's text and time
     /// and a jump to the Avisos tab. The badge's text already carries the
     /// line, so the card repeats it as its badge.
@@ -701,14 +731,11 @@ struct BusMapScreen: View {
 
     private static func dayText(_ date: Date) -> String {
         // The format the former incident sheet printed, as plain text.
-        Self.incidentDayFormatter.string(from: date)
+        MapScreen.alertDayFormatter.string(from: date)
     }
 
-    private static let incidentDayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yyyy"
-        return formatter
-    }()
+    // No formatter of its own (#80): the bus card prints the same "dd/MM/yyyy"
+    // Gregorian day the metro map's pinned formatter renders.
 
     /// Incidents of one stop from the bus alerts feed (spec S7). Both
     /// directions are mapped to `Station` values because the same physical stop
@@ -923,7 +950,12 @@ struct BusMapScreen: View {
             _ = selectLineServing(place)
             return
         }
-        guard let state = lineState, !state.directions.isEmpty else { return }
+        // The mounted state must be the selected line's: the catalog selection
+        // changes before the new line's state loads, so a resolution here
+        // would look the stop up in the line being left and give up on it
+        // (#76). The new state's directions change re-runs this.
+        guard let state = lineState, !state.directions.isEmpty,
+              state.line.code == store.selectedLine?.code else { return }
         if let stop = preferredStop(code: stopCode, in: state) {
             pendingPlaceFocus = nil
             selectedStop = stop
@@ -969,7 +1001,10 @@ struct BusMapScreen: View {
     /// Opens the bus sheet with follow on once the focused vehicle exists in
     /// the feed (spec S11, S10).
     private func resolvePendingVehicleFocus() {
-        guard let vehicleID = pendingVehicleFocusID, let state = lineState else { return }
+        // Same rule as the place focus (#76): resolve only against the state
+        // of the line that is selected now.
+        guard let vehicleID = pendingVehicleFocusID, let state = lineState,
+              state.line.code == store.selectedLine?.code else { return }
         guard let position = state.positions.first(where: { $0.id == vehicleID || $0.train.id == vehicleID }) else {
             return
         }

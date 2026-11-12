@@ -123,16 +123,13 @@ struct MetroLinePickerSheet: View {
                     .resizable()
                     .scaledToFit()
                     .frame(height: 30)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(line.displayName)
-                        .font(.subheadline.weight(.semibold))
-                    if let termini = terminiByCode[line.code] {
-                        Text(termini)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
+                // The terminus pair names the row once it is in the cache;
+                // the line code stays only for lines the app has never
+                // loaded, because the badge already reads "L1" next to it
+                // (#100).
+                Text(terminiByCode[line.code] ?? line.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
                 Spacer(minLength: 0)
                 if line.code == selectedLineCode {
                     Image(systemName: "checkmark")
