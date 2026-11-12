@@ -1,7 +1,9 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
-/// The three layouts of the "Properes arribades" widget (spec S20).
+/// The layouts of the "Properes arribades" widget (spec S20): one board per
+/// place on the home screen, the first place on the lock screen.
 struct ArrivalWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
@@ -9,90 +11,171 @@ struct ArrivalWidgetView: View {
 
     var body: some View {
         Group {
-            switch family {
-            case .accessoryRectangular:
+            if family == .accessoryRectangular {
                 accessoryRectangular
-            case .systemMedium:
-                medium
-            default:
-                small
+            } else {
+                home
             }
         }
         .containerBackground(for: .widget) { background }
     }
 
-    // MARK: - Home-screen families
+    // MARK: - Layout rules
 
-    private var small: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            header
-            if let message = emptyMessage {
-                Spacer(minLength: 0)
-                Text(message)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                Spacer(minLength: 0)
-            } else {
-                ForEach(Array(entry.arrivals.prefix(2).enumerated()), id: \.offset) { _, arrival in
-                    row(arrival, showsDestination: true)
-                }
-                Spacer(minLength: 0)
-            }
+    private var boards: [PlaceBoard] {
+        Array(entry.boards.prefix(ArrivalTimelineProvider.maxPlaces(for: family)))
+    }
+
+    /// Two places on the medium size sit side by side.
+    private var inColumns: Bool {
+        family == .systemMedium && boards.count > 1
+    }
+
+    /// Full-width rows have room for the following arrival and the fetch time.
+    private var isWide: Bool {
+        family != .systemSmall && !inColumns
+    }
+
+    private var rowsPerBoard: Int {
+        switch family {
+        case .systemLarge: return max(2, 10 / max(boards.count, 1) - 1)
+        case .systemMedium: return inColumns ? 3 : 4
+        default: return 3
         }
     }
 
-    private var medium: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header
-            if let message = emptyMessage {
-                Spacer(minLength: 0)
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-            } else {
-                ForEach(Array(entry.arrivals.prefix(3).enumerated()), id: \.offset) { _, arrival in
-                    row(arrival, showsDestination: true)
+    private func rows(of board: PlaceBoard, limit: Int) -> [ArrivalBoardRow] {
+        ArrivalBoard.rows(board.arrivals, fetched: entry.fetched, at: entry.date, limit: limit)
+    }
+
+    // MARK: - Home-screen families
+
+    private var home: some View {
+        Group {
+            if boards.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("TransportCat")
+                        .font(.caption.weight(.semibold))
+                        .opacity(0.75)
+                    Spacer(minLength: 0)
+                    Text("Tria una estació")
+                        .font(.headline)
+                    Text("Mantén premut el widget per editar-lo.")
+                        .font(.caption2)
+                        .opacity(0.7)
                 }
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else if inColumns {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(Array(boards.enumerated()), id: \.offset) { index, board in
+                        boardView(board, showsReload: index == boards.count - 1)
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(boards.enumerated()), id: \.offset) { index, board in
+                        boardView(board, showsReload: index == 0)
+                    }
+                }
             }
         }
+        .foregroundStyle(.white)
+    }
+
+    private func boardView(_ board: PlaceBoard, showsReload: Bool) -> some View {
+        let shown = rows(of: board, limit: rowsPerBoard)
+        return VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 4) {
+                Text(board.name)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .opacity(0.75)
+                Spacer(minLength: 0)
+                if showsReload { reloadButton }
+            }
+            if shown.isEmpty {
+                Text("Sense arribades")
+                    .font(.caption2)
+                    .opacity(0.6)
+            } else {
+                ForEach(shown, id: \.self) { row in
+                    rowView(row)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// Asks for fresh arrivals; the wide layouts also say when the data is from.
+    private var reloadButton: some View {
+        Button(intent: ReloadArrivalsIntent()) {
+            HStack(spacing: 3) {
+                if isWide {
+                    Text(entry.fetched, style: .time)
+                }
+                Image(systemName: "arrow.clockwise")
+            }
+            .font(.caption2.weight(.semibold))
+            .opacity(0.7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Actualitza")
+    }
+
+    private func rowView(_ row: ArrivalBoardRow) -> some View {
+        HStack(spacing: 6) {
+            lineBadge(row.line, compact: false)
+            Text(row.destination)
+                .font(.caption)
+                .lineLimit(1)
+                .opacity(0.9)
+            Spacer(minLength: 2)
+            countdown(row.next, font: .system(.subheadline, design: .rounded).weight(.bold))
+                .frame(width: 46, alignment: .trailing)
+            if isWide {
+                Text(row.following.map { "· " + ArrivalWidgetStyle.minutesText(until: $0, now: entry.date) } ?? "")
+                    .font(.caption2)
+                    .lineLimit(1)
+                    .opacity(0.6)
+                    .frame(width: 52, alignment: .leading)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Línia \(row.line) cap a \(row.destination), "
+                + ArrivalWidgetStyle.minutesText(until: row.next, now: entry.date)
+        )
     }
 
     // MARK: - Lock-screen family
 
     private var accessoryRectangular: some View {
         VStack(alignment: .leading, spacing: 3) {
-            if let name = entry.placeName {
-                Text(name)
+            if let board = boards.first {
+                let shown = rows(of: board, limit: 2)
+                Text(board.name)
                     .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .widgetAccentable()
-            }
-            if let message = emptyMessage {
-                Text(message)
-                    .font(.caption2)
-                    .lineLimit(2)
-            } else if let arrival = entry.arrivals.first {
-                HStack(spacing: 5) {
-                    lineBadge(arrival, compact: true)
-                    Text(arrival.destination)
+                if shown.isEmpty {
+                    Text("Sense arribades")
                         .font(.caption2)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    countdown(arrival, font: .caption2.weight(.semibold))
                 }
-                ForEach(Array(entry.arrivals.dropFirst().prefix(1).enumerated()), id: \.offset) { _, next in
+                ForEach(shown, id: \.self) { row in
                     HStack(spacing: 5) {
-                        lineBadge(next, compact: true)
-                        Text(next.destination)
+                        lineBadge(row.line, compact: true)
+                        Text(row.destination)
                             .font(.caption2)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        countdown(next, font: .caption2)
+                        countdown(row.next, font: .caption2.weight(.semibold))
+                            .frame(width: 38, alignment: .trailing)
                     }
                 }
+            } else {
+                Text("Tria una estació")
+                    .font(.caption2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -100,85 +183,120 @@ struct ArrivalWidgetView: View {
 
     // MARK: - Shared pieces
 
-    /// Station or stop name, the same on every family.
-    private var header: some View {
-        Text(entry.placeName ?? "TransportCat")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-    }
-
-    /// "Tria una estació" until a place is configured, "Sense arribades" when
-    /// the feed answers with nothing (spec S20).
-    private var emptyMessage: String? {
-        guard entry.hasPlace else { return "Tria una estació" }
-        return entry.arrivals.isEmpty ? "Sense arribades" : nil
-    }
-
-    private func row(_ arrival: NextArrival, showsDestination: Bool) -> some View {
-        HStack(spacing: 6) {
-            lineBadge(arrival, compact: false)
-            if showsDestination {
-                Text(arrival.destination)
-                    .font(.caption)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            countdown(arrival, font: .caption.weight(.semibold))
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Línia \(arrival.line) cap a \(arrival.destination), "
-                + ArrivalWidgetStyle.minutesText(until: arrival.date, now: Date())
-        )
-    }
-
-    /// Countdown of one arrival, from the wall clock instead of the entry date.
+    /// Countdown of one arrival, from the wall clock.
     ///
-    /// `Text(timerInterval:)` is a self-updating text: the widget keeps counting
-    /// down between reloads, which WidgetKit only grants within its own budget,
-    /// so the number is never frozen at fetch time (bug #30). An arrival that
-    /// the last fetch already saw as due (or that an old entry renders as past)
-    /// reads "ara", the same word `ArrivalWidgetStyle.minutesText` uses.
+    /// `Text(timerInterval:)` is a self-updating text, so the number is never
+    /// frozen at fetch time (bug #30). WidgetKit renders an entry ahead of its
+    /// date, so "due" is judged against the entry date, not the render clock.
     @ViewBuilder
-    private func countdown(_ arrival: NextArrival, font: Font) -> some View {
-        if ArrivalWidgetStyle.isDue(arrival.date) {
+    private func countdown(_ date: Date, font: Font) -> some View {
+        if ArrivalWidgetStyle.isDue(date, now: entry.date) {
             Text("ara")
-                .font(font.monospacedDigit())
+                .font(font)
         } else {
-            Text(timerInterval: Date.now...arrival.date, countsDown: true)
+            Text(timerInterval: entry.date...date, countsDown: true)
                 .font(font.monospacedDigit())
+                .multilineTextAlignment(.trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
     }
 
     /// Line code on its brand color, the same badge the app draws.
-    private func lineBadge(_ arrival: NextArrival, compact: Bool) -> some View {
-        let hex = ArrivalWidgetStyle.colorHex(for: arrival.line)
-        return Text(arrival.line)
-            .font(.system(size: compact ? 8 : 9, weight: .bold))
+    private func lineBadge(_ line: String, compact: Bool) -> some View {
+        let hex = ArrivalWidgetStyle.colorHex(for: line)
+        return Text(line)
+            .font(.system(size: compact ? 8 : 11, weight: .bold))
             .foregroundStyle(Color(hex: HexLuminance.isLight(hex) ? "000000" : "FFFFFF"))
-            .padding(.horizontal, compact ? 3 : 4)
-            .padding(.vertical, 1)
-            .background(Capsule().fill(Color(hex: hex)))
             .lineLimit(1)
+            .padding(.horizontal, compact ? 3 : 5)
+            .padding(.vertical, compact ? 1 : 2)
+            .frame(minWidth: compact ? 0 : 28)
+            .background(Capsule().fill(Color(hex: hex)).widgetAccentable())
     }
 
-    /// The widget background. The lock-screen family draws on the system
-    /// material, so it asks for a clear background.
-    private var background: Color {
-        family == .accessoryRectangular ? .clear : Color(hex: "0B1220")
+    // MARK: - Background
+
+    private static let glowCenters: [UnitPoint] = [.topLeading, .bottomTrailing, .topTrailing, .bottomLeading]
+
+    /// Colors of the lines on screen, so the backdrop follows the widget's own
+    /// places; the icon palette when none of them has a brand color.
+    private var glowHexes: [String] {
+        var hexes: [String] = []
+        for board in boards {
+            for row in rows(of: board, limit: rowsPerBoard) {
+                let hex = ArrivalWidgetStyle.colorHex(for: row.line)
+                if hex != ArrivalWidgetStyle.neutralHex, !hexes.contains(hex) {
+                    hexes.append(hex)
+                }
+            }
+        }
+        return hexes.isEmpty
+            ? Array(NetworkArtGeometry.lineHexes.prefix(3))
+            : Array(hexes.prefix(Self.glowCenters.count))
+    }
+
+    /// The app's dark canvas with a soft glow per line and the network motif
+    /// faint on top. The lock-screen family draws on the system material, and
+    /// the tinted and clear home-screen styles drop this view by themselves.
+    @ViewBuilder
+    private var background: some View {
+        if family == .accessoryRectangular {
+            Color.clear
+        } else {
+            ZStack {
+                Color(hex: "0B1220")
+                GeometryReader { geometry in
+                    let radius = max(geometry.size.width, geometry.size.height) * 0.7
+                    ZStack {
+                        ForEach(Array(glowHexes.enumerated()), id: \.offset) { index, hex in
+                            RadialGradient(
+                                colors: [Color(hex: hex).opacity(0.5), Color(hex: hex).opacity(0)],
+                                center: Self.glowCenters[index],
+                                startRadius: 0,
+                                endRadius: radius
+                            )
+                        }
+                    }
+                }
+                NetworkArt(.illustration)
+                    .aspectRatio(
+                        NetworkArtGeometry.designWidth / NetworkArtGeometry.designHeight,
+                        contentMode: .fill
+                    )
+                    .opacity(0.14)
+                    .blur(radius: 1)
+                LinearGradient(
+                    colors: [.black.opacity(0), .black.opacity(0.3)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .environment(\.colorScheme, .dark)
+        }
     }
 }
 
 /// Pure presentation helpers of the widget (spec S20).
 enum ArrivalWidgetStyle {
-    /// Brand color of a display line code: metro lines have one, everything
-    /// else (bus, FGC) gets a neutral tile because the catalog is not in the
-    /// widget.
+    /// Tile of a line the widget has no brand color for (FGC, unknown buses).
+    static let neutralHex = "6B7280"
+
+    /// Brand color of a display line code. Metro lines carry their own.
     static func colorHex(for line: String) -> String {
-        MetroLine.allLines
-            .first { $0.displayName == line || $0.code == line }?
-            .colorHex ?? "6B7280"
+        if let metro = MetroLine.allLines.first(where: { $0.displayName == line || $0.code == line }) {
+            return metro.colorHex
+        }
+        // ponytail: bus color by network family, not the catalog's
+        // COLOR_LINIA; share the bus catalog with the widget if one is wrong.
+        if Int(line) != nil { return "D8232A" }
+        guard line.count > 1, line.dropFirst().allSatisfy(\.isNumber) else { return neutralHex }
+        switch line.first {
+        case "H": return "1F4E9E"
+        case "V": return "6FA53A"
+        case "D": return "8E3A97"
+        default: return neutralHex
+        }
     }
 
     /// Whether an arrival is due: the 30-second grace the countdown reads

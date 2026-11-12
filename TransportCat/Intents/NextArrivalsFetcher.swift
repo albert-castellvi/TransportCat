@@ -24,7 +24,8 @@ enum NextArrivalsFetcher {
         for place: Place,
         client: TMBClient,
         fgcClient: FGCClient = FGCClient(),
-        now: Date = Date()
+        now: Date = Date(),
+        limit: Int = maxArrivals
     ) async -> [NextArrival] {
         switch place.kind {
         case .metroStation:
@@ -40,29 +41,34 @@ enum NextArrivalsFetcher {
                 ) else { continue }
                 fetched.append(contentsOf: arrivals[place.id] ?? [])
             }
-            return metroSelection(fetched, now: now)
+            return metroSelection(fetched, now: now, limit: limit)
         case .busStop:
             guard let stopCode = Int(place.code),
                   let arrivals = try? await client.busArrivals(stopCode: stopCode)
             else { return [] }
-            return busSelection(arrivals, now: now)
+            return busSelection(arrivals, now: now, limit: limit)
         case .fgcStation:
             // Station names so the dialog says "cap a Terrassa" instead of the
             // `desti` code; a failed catalog call leaves the codes.
             let names = (try? await fgcClient.stations()).map { FGCNetwork.stationNames(from: $0) } ?? [:]
             guard let trains = try? await fgcClient.liveTrains(stationNames: names) else { return [] }
-            return fgcSelection(trains, stationCode: place.code, now: now)
+            return fgcSelection(trains, stationCode: place.code, now: now, limit: limit)
         }
     }
 
     // MARK: - Pure selection
 
     /// Metro arrivals soonest first; a missing countdown sorts last and lands
-    /// on `now`. At most `maxArrivals`.
-    static func metroSelection(_ arrivals: [Arrival], now: Date) -> [NextArrival] {
+    /// on `now`. At most `limit`: three for the spoken dialog, more for the
+    /// widget, which groups them by line and direction.
+    static func metroSelection(
+        _ arrivals: [Arrival],
+        now: Date,
+        limit: Int = maxArrivals
+    ) -> [NextArrival] {
         arrivals
             .sorted { ($0.seconds ?? .max) < ($1.seconds ?? .max) }
-            .prefix(maxArrivals)
+            .prefix(limit)
             .map { arrival in
                 NextArrival(
                     line: arrival.lineCode,
@@ -73,10 +79,14 @@ enum NextArrivalsFetcher {
     }
 
     /// Bus arrivals soonest first, with the commercial line name.
-    static func busSelection(_ arrivals: [BusArrival], now: Date) -> [NextArrival] {
+    static func busSelection(
+        _ arrivals: [BusArrival],
+        now: Date,
+        limit: Int = maxArrivals
+    ) -> [NextArrival] {
         arrivals
             .sorted { $0.seconds < $1.seconds }
-            .prefix(maxArrivals)
+            .prefix(limit)
             .map { arrival in
                 NextArrival(
                     line: arrival.lineName,
@@ -91,12 +101,13 @@ enum NextArrivalsFetcher {
     static func fgcSelection(
         _ trains: [FGCTrain],
         stationCode: String,
-        now: Date
+        now: Date,
+        limit: Int = maxArrivals
     ) -> [NextArrival] {
         trains
             .filter { $0.stoppedAtStopCode == stationCode || $0.nextStopCodes.contains(stationCode) }
             .sorted { rank($0, stationCode: stationCode) < rank($1, stationCode: stationCode) }
-            .prefix(maxArrivals)
+            .prefix(limit)
             .map { train in
                 NextArrival(
                     line: FGCNetwork.baseLineCode(for: train.lineCode),
