@@ -244,6 +244,14 @@ enum FGCNetwork {
         }
     }
 
+    /// Lines de-duplicated by code, keeping the first occurrence: a repeated
+    /// code would publish two map layers with the same id, and the picker would
+    /// show the line twice (#88).
+    static func uniqueLines(_ lines: [FGCLine]) -> [FGCLine] {
+        var seen: Set<String> = []
+        return lines.filter { seen.insert($0.code).inserted }
+    }
+
     // MARK: - Stop-code join (S2)
 
     /// The stop catalog read as a join source: coordinates per stop code

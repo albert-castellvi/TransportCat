@@ -183,18 +183,22 @@ final class FGCNetworkState {
         loadedStations: [FGCStation],
         persist: Bool
     ) {
+        // #88: one line per code. A repeated route would otherwise create two
+        // `lineLayers` with the same id and duplicate `ForEach` identities in
+        // the maps and the picker.
+        let uniqueLines = FGCNetwork.uniqueLines(loadedLines)
         if persist {
-            OfflineCache.saveFGCTopology(lines: loadedLines, stations: loadedStations)
+            OfflineCache.saveFGCTopology(lines: uniqueLines, stations: loadedStations)
         }
-        lines = loadedLines
+        lines = uniqueLines
         stations = loadedStations
         stationNamesByCode = FGCNetwork.stationNames(from: loadedStations)
         // A repeated line code must not trap (a trap skips the offline fallback).
         geometryByLine = Dictionary(
-            loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) },
+            uniqueLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) },
             uniquingKeysWith: { first, _ in first }
         )
-        lineLayers = loadedLines.map { line in
+        lineLayers = uniqueLines.map { line in
             MapLineLayer(
                 id: line.code,
                 operator: "FGC",
