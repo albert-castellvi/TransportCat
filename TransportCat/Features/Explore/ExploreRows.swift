@@ -149,7 +149,7 @@ struct ExplorePlaceRow: View {
             if place.accessible == true {
                 Image(systemName: "figure.roll")
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel("Accesible")
+                    .accessibilityLabel("Accessible")
             }
             if FavoritesStore.shared.isFavorite(place) {
                 Image(systemName: "star.fill")
