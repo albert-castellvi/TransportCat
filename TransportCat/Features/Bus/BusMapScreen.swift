@@ -71,6 +71,10 @@ struct BusMapScreen: View {
     /// vehicle id that is not in the feed yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
+    /// Whether the source strip shows (#94): it lives behind a tap on the
+    /// status capsule, because pinned over the map it covered the Apple Maps
+    /// attribution, which must stay visible.
+    @State private var showsSourceStrip = false
     /// Latitude span on screen, which decides whether the stop dots of the
     /// direction on screen are drawn at all (spec S3).
     @State private var latitudeSpan: Double = BusMapScreen.initialRegion.span.latitudeDelta
@@ -116,9 +120,19 @@ struct BusMapScreen: View {
             // the map fills the screen under the status bar, and the v2
             // chrome lives in overlays (spec S1).
             .overlay(alignment: .topLeading) {
-                statusCapsule
-                    .padding(.leading, 16)
-                    .padding(.top, 8)
+                Button {
+                    showsSourceStrip.toggle()
+                } label: {
+                    statusCapsule
+                }
+                .buttonStyle(.plain)
+                // VoiceOver keeps the chip's own text and gets the action on
+                // top (#94).
+                .accessibilityHint(showsSourceStrip
+                    ? "Amaga d'on provenen les positions"
+                    : "Mostra d'on provenen les positions")
+                .padding(.leading, 16)
+                .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
                 locationButton
@@ -507,10 +521,12 @@ struct BusMapScreen: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if state.totalStopCount > 0 {
+            if state.totalStopCount > 0, showsSourceStrip {
                 sourceStrip(state: state)
+                    .transition(AppMotion.chipTransition)
             }
         }
+        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: showsSourceStrip)
         .onChange(of: state.directions.map(\.id)) { _, ids in
             // The shared storage resolves against the new directions (spec
             // S4), so the clamp the old local `@State` needed is gone.
