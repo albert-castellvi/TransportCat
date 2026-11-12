@@ -134,9 +134,11 @@ struct PlannerLegRow: View {
                 HStack(spacing: 8) {
                     PlannerLegBadge(leg: leg)
                     if let headsign = leg.headsign {
+                        // The headsign is the leg's identity, so it wraps like
+                        // the from→to line underneath (UX-09).
                         Text("cap a \(headsign)")
                             .font(.subheadline)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                     } else if leg.isWalk {
                         Text(walkingDetail)
                             .font(.subheadline)

@@ -128,13 +128,13 @@ struct PlannerScreen: View {
                     .foregroundStyle(iconColor)
                 Text(endpoint?.label ?? placeholder)
                     .foregroundStyle(endpoint == nil ? .secondary : .primary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 if let detail = endpoint?.detailLabel {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .accessibilityLabel(target.sheetTitle)
