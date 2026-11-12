@@ -66,4 +66,30 @@ final class GlobalNetworkStateTests: XCTestCase {
             StationGroupKey.key(for: station(324, id: 301, groupCode: nil, lat: 41.38502, lon: 2.17005))
         )
     }
+
+    /// One failed favorite fetch must not blank the routes already drawn: the
+    /// previous layer stays, the failed code is not marked fetched, and the
+    /// next pass retries it.
+    func testBusLayerPassKeepsFailedRouteAndRetriesIt() {
+        let previous = MapLineLayer(
+            id: "bus:212",
+            operator: "Bus",
+            code: "212",
+            colorHex: "CE1126",
+            textColorHex: "FFFFFF",
+            polylines: [[GeoPoint(latitude: 41.38, longitude: 2.17)]]
+        )
+        let pass = GlobalNetworkState.busLayerPass(
+            favorites: [212, 7],
+            previousLayers: [previous],
+            fetchedRoutePolylines: [
+                7: [[GeoPoint(latitude: 41.39, longitude: 2.18)]],
+            ],
+            lines: []
+        )
+
+        XCTAssertEqual(pass.fetchedCodes, [7])
+        XCTAssertEqual(pass.layers.map(\.id), ["bus:212", "bus:7"])
+        XCTAssertEqual(pass.layers.first, previous)
+    }
 }

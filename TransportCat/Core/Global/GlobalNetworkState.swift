@@ -326,23 +326,51 @@ final class GlobalNetworkState {
         await BusCatalogStore.shared.load(client: client)
         let favorites = BusCatalogStore.shared.favorites
         guard favorites != fetchedBusCodes else { return }
-        fetchedBusCodes = favorites
 
-        var layers: [MapLineLayer] = []
+        var routePolylines: [Int: [[GeoPoint]]] = [:]
         for code in favorites {
             guard let routes = try? await client.busRoutes(lineCode: code) else { continue }
-            let polylines = routes.map(\.geometry.points).filter { !$0.isEmpty }
+            routePolylines[code] = routes.map(\.geometry.points).filter { !$0.isEmpty }
+        }
+        let pass = Self.busLayerPass(
+            favorites: favorites,
+            previousLayers: busLineLayers,
+            fetchedRoutePolylines: routePolylines,
+            lines: BusCatalogStore.shared.lines
+        )
+        busLineLayers = pass.layers
+        fetchedBusCodes = pass.fetchedCodes
+    }
+
+    /// Folds one bus favorites pass into the layer set (spec S8): a favorite
+    /// whose routes arrived replaces its layer, a favorite whose fetch failed
+    /// keeps the layer it already had, and only the codes that answered count
+    /// as fetched so the next pass retries the rest. Pure for the tests.
+    static func busLayerPass(
+        favorites: [Int],
+        previousLayers: [MapLineLayer],
+        fetchedRoutePolylines: [Int: [[GeoPoint]]],
+        lines: [BusLine]
+    ) -> (layers: [MapLineLayer], fetchedCodes: [Int]) {
+        var layersByCode: [Int: MapLineLayer] = [:]
+        for layer in previousLayers {
+            if let code = Int(layer.code) { layersByCode[code] = layer }
+        }
+        var fetchedCodes: [Int] = []
+        for code in favorites {
+            guard let polylines = fetchedRoutePolylines[code] else { continue }
+            fetchedCodes.append(code)
             guard !polylines.isEmpty else { continue }
-            let line = BusCatalogStore.shared.lines.first { $0.code == code }
-            layers.append(MapLineLayer(
+            let line = lines.first { $0.code == code }
+            layersByCode[code] = MapLineLayer(
                 id: "bus:\(code)",
                 operator: "Bus",
                 code: String(code),
                 colorHex: line?.colorHex ?? Self.unthemedColorHex,
                 textColorHex: line?.textColorHex ?? "FFFFFF",
                 polylines: polylines
-            ))
+            )
         }
-        busLineLayers = layers
+        return (favorites.compactMap { layersByCode[$0] }, fetchedCodes)
     }
 }
