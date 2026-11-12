@@ -127,11 +127,20 @@ struct RootView: View {
         // and the context control of the mode on screen. It reads only shared
         // state and static catalog data, so showing it on every tab adds no
         // poller and never duplicates one.
+        // #90: the accessory only acts on Mapa and Parades — over Avisos,
+        // Explora and the planner it floats over content it cannot change —
+        // so the tab bar hosts it only there.
         .tabViewBottomAccessory {
-            // Injected explicitly: the accessory is hosted by the tab bar, and
-            // its metro chip reads `AppModel` through `@EnvironmentObject`.
-            BottomAccessory()
-                .environmentObject(app)
+            switch router.selectedTab {
+            case .map, .lines:
+                // Injected explicitly: the accessory is hosted by the tab
+                // bar, and its metro chip reads `AppModel` through
+                // `@EnvironmentObject`.
+                BottomAccessory()
+                    .environmentObject(app)
+            case .alerts, .explore:
+                EmptyView()
+            }
         }
         .environmentObject(app)
         .onAppear { syncFrameMonitoring() }
