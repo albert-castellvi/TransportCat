@@ -57,6 +57,17 @@ struct MapScreen: View {
     // no instance context, so the spelled-out type name is the form that is
     // guaranteed to compile.
     @State private var cameraPosition: MapCameraPosition = .region(MapScreen.barcelonaRegion)
+    /// Which station markers the camera zoom calls for (issue #93): above the
+    /// `MetroStationZoom` threshold stations are small dots with no capsule
+    /// and no name, so the whole-line view of a long line does not stack the
+    /// capsules over the trains and the incident marks. The initial value
+    /// matches the initial camera region; `MetroStationZoom`'s hysteresis
+    /// decides every change afterwards, and the band is stored only when it
+    /// changes, so a camera wobble around the threshold never re-diffs the
+    /// map content.
+    @State private var stationBand: MetroStationBand = MetroStationZoom.band(
+        forLatitudeSpan: MapScreen.barcelonaRegion.span.latitudeDelta
+    )
 
     private var selectedLine: MetroLine {
         MetroLine.line(forCode: selectedLineCode) ?? MetroLine.allLines[0]
@@ -347,11 +358,21 @@ struct MapScreen: View {
             // so `ForEach(state.stations)` produced duplicate identities and
             // the annotation glitches that come with them (#59).
             ForEach(Array(state.stations.enumerated()), id: \.offset) { _, station in
-                Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
+                // No name on the annotation title while zoomed out (issue
+                // #93): the dot band draws no capsule and no name.
+                Annotation(stationBand == .dots ? "" : station.name, coordinate: CLLocationCoordinate2D(latitude: station.latitude, longitude: station.longitude)) {
                     Button {
                         selectedStation = station
                     } label: {
-                        if mapOverlay.interchangeLineCodes[station.code]?.isEmpty == false {
+                        if stationBand == .dots {
+                            // Zoomed out (issue #93): the small dot of the
+                            // global map, with the station's name kept for
+                            // VoiceOver and the same 44 pt touch target the
+                            // detailed markers have, so the station sheet
+                            // stays reachable at every zoom.
+                            ZoomedOutStationDot(colorHex: selectedLine.colorHex)
+                                .accessibilityLabel("Estació \(station.name)")
+                        } else if mapOverlay.interchangeLineCodes[station.code]?.isEmpty == false {
                             InterchangeCapsule()
                         } else {
                             HollowStationDot(
@@ -436,6 +457,16 @@ struct MapScreen: View {
         // so the camera releases the train. Zoom keeps the follow.
         .onMapCameraChange(frequency: .continuous) { context in
             cameraSpan = context.region.span
+            // Issue #93: the station band goes through `MetroStationZoom`'s
+            // hysteresis and is stored only when it changes, so the camera
+            // callbacks cannot re-diff the map content on their own.
+            let nextBand = MetroStationZoom.band(
+                forLatitudeSpan: context.region.span.latitudeDelta,
+                previous: stationBand
+            )
+            if nextBand != stationBand {
+                stationBand = nextBand
+            }
             guard followingTrainID != nil, let anchor = followAnchor else { return }
             let tolerance = max(Self.followPanToleranceDegrees, cameraSpan.latitudeDelta * 0.05)
             let center = context.region.center
@@ -1015,6 +1046,22 @@ private struct IncidentRunLayer: Identifiable {
 
     /// Identity of the run it draws, so the overlay survives a re-derivation.
     var id: Int { run.id }
+}
+
+/// Small station dot of the zoomed-out band (issue #93): the same 10 pt ring
+/// the global map's `StationDot` draws — filled with the line colour, white
+/// stroke — with no capsule and no name. The 44 pt frame is the touch target.
+private struct ZoomedOutStationDot: View {
+    let colorHex: String
+
+    var body: some View {
+        Circle()
+            .fill(Color(hex: colorHex))
+            .frame(width: 10, height: 10)
+            .overlay(Circle().stroke(.white, lineWidth: 1.5))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+    }
 }
 
 /// Hollow station dot on the map (spec S6, mockup `V3Markers`): white with a
