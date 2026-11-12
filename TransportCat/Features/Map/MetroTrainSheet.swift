@@ -83,20 +83,27 @@ struct MetroTrainSheet: View {
                         Text(station.name)
                             .font(.subheadline)
                         Spacer(minLength: 8)
-                        Text(Arrival.countdownText(seconds: train.secondsToArrival))
+                        let seconds = train.secondsToArrival
+                        let time = seconds <= ParadesTimeline.imminentThresholdSeconds
+                            ? ParadesTimeText.now
+                            : ParadesTimeText.minutes(Arrival.countdownText(seconds: seconds))
+                        Text(time.text)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(time.isImminent ? Color(hex: "30D158") : .secondary)
                             .monospacedDigit()
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(
-                        "Pròxima estació \(station.name), arriba en \(Arrival.countdownText(seconds: train.secondsToArrival))"
+                        "Pròxima estació \(station.name), arriba en \(time.text)"
                     )
                 }
             }
 
             Button {
-                followingTrainID = followingTrainID == trainID ? nil : trainID
+                withAnimation {
+                    followingTrainID = followingTrainID == trainID ? nil : trainID
+                }
+                .sensoryFeedback(.selection, followingTrainID == train ? nil : .selection)
             } label: {
                 Label(
                     followingTrainID == trainID ? "Deixar de seguir" : "Seguir",

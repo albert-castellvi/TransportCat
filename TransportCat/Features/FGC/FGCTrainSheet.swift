@@ -64,7 +64,7 @@ struct FGCTrainSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text(train.isOnTime ? "Puntual" : "Amb retard")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                        .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
                 }
                 Spacer(minLength: 0)
             }
@@ -77,7 +77,10 @@ struct FGCTrainSheet: View {
 
             if allowFollow {
                 Button {
-                    followingVehicleID = followingVehicleID == trainID ? nil : trainID
+                    withAnimation {
+                        followingVehicleID = followingVehicleID == trainID ? nil : trainID
+                    }
+                    .sensoryFeedback(.selection, followingVehicleID == train ? nil : .selection)
                 } label: {
                     Label(
                         followingVehicleID == trainID ? "Deixar de seguir" : "Seguir",
