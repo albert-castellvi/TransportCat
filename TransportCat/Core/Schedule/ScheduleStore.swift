@@ -125,10 +125,14 @@ final class ScheduleStore: Sendable {
     }
 
     /// The cached copy of a line file, or nil when it is missing or was
-    /// downloaded for a different `feedVersion`.
+    /// downloaded for a different `feedVersion`. An empty version from the
+    /// builder means the same as an absent one (#85): the file is still the
+    /// copy of the pack in force.
     private func cachedLine(_ pack: SchedulePack, file: String) -> ScheduleLine? {
         guard let data = data(of: file) else { return nil }
-        if let version = pack.feedVersion, storedVersion(of: file) != version { return nil }
+        if let version = pack.feedVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !version.isEmpty,
+           storedVersion(of: file) != version { return nil }
         return try? ScheduleLine.decode(data, timeZone: pack.timeZone)
     }
 
