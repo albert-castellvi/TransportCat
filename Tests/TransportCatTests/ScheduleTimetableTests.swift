@@ -194,6 +194,19 @@ final class ScheduleTimetableTests: XCTestCase {
         XCTAssertEqual(departures.map(\.directionID), [0, 1])
     }
 
+    func testRunsAtTheSameSecondYieldOneDeparturePerDirection() throws {
+        let pack = try pack(
+            startsDir0: [[18000, 18000]],
+            startsDir1: [[]],
+            datesJSON: "\"20261030\":0"
+        )
+        let line = try XCTUnwrap(pack.line(mode: .metro, code: 1))
+        let departures = ScheduleTimetable.departures(line: line, stopCode: 111, from: date(2026, 10, 30, 0, 0))
+
+        XCTAssertEqual(departures.count, 1)
+        XCTAssertEqual(Set(departures.map(\.id)).count, departures.count)
+    }
+
     func testDeparturesSortTiesByDirection() throws {
         // Direction 0 leaves 112 at start + 120; direction 1 leaves it at
         // start + 60. Starts 21600 and 21660 both leave 112 at 21720, so the

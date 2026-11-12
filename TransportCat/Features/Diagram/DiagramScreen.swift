@@ -631,7 +631,8 @@ private struct TrainOverlay: View {
             return DiagramTrain(
                 id: position.id,
                 colorHex: trainLine.colorHex,
-                heading: position.heading,
+                // Schematic rail: forward runs down it, like the bus diagram.
+                heading: position.forward ? 180 : 0,
                 isEstimated: position.isTheoretical,
                 y: y
             )

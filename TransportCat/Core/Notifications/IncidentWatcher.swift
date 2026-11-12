@@ -167,14 +167,20 @@ final class IncidentWatcher {
         let body = AlertText.cleaned(alert.text)
             ?? AlertText.effect(for: alert)
             ?? "Obre TransportCat per saber-ne més."
+        // Ask first, then take the date: the grant can outlast the one second
+        // of lead, which left the trigger in the past.
+        let granted = await ArrivalReminder.shared.ensurePermissionGranted()
         // One second ahead: `schedule` refuses a date already past, and a
         // zero-date trigger is not guaranteed to fire immediately.
-        let scheduled = await ArrivalReminder.shared.schedule(
-            id: Self.notificationIDPrefix + alert.id,
-            title: Self.title(for: alert, isBus: isBus, busNames: busNames),
-            body: body,
-            at: Date().addingTimeInterval(1)
-        )
+        var scheduled = false
+        if granted {
+            scheduled = await ArrivalReminder.shared.schedule(
+                id: Self.notificationIDPrefix + alert.id,
+                title: Self.title(for: alert, isBus: isBus, busNames: busNames),
+                body: body,
+                at: Date().addingTimeInterval(1)
+            )
+        }
         seenIDs = Self.appendingSeen(seenIDs, id: alert.id)
         defaults.set(seenIDs, forKey: Self.seenKey)
         return scheduled

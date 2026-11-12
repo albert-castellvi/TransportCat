@@ -172,8 +172,10 @@ final class FGCNetworkState {
         lines = loadedLines
         stations = loadedStations
         stationNamesByCode = FGCNetwork.stationNames(from: loadedStations)
+        // A repeated line code must not trap (a trap skips the offline fallback).
         geometryByLine = Dictionary(
-            uniqueKeysWithValues: loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) }
+            loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) },
+            uniquingKeysWith: { first, _ in first }
         )
         lineLayers = loadedLines.map { line in
             MapLineLayer(
