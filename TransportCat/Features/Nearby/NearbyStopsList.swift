@@ -35,7 +35,16 @@ struct NearbyStopsList: View {
                     emptyText(hasLoaded: arrivalsLoaded)
                 } else {
                     ForEach(entries) { entry in
-                        NearbyStopCard(entry: entry)
+                        Button {
+                            // The router switches to the tab that is already on
+                            // screen, so the sheet has to close for the map to
+                            // handle the focus (#92).
+                            AppRouter.shared.isNearbyPresented = false
+                            AppRouter.shared.open(.place(entry.place))
+                        } label: {
+                            NearbyStopCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             } else {
@@ -75,7 +84,9 @@ struct NearbyStopsList: View {
         }
     }
 
-    /// One refresh pass: re-sort the nearby entries and fetch their arrivals.
+    /// One refresh pass: fetch every stop's arrivals in parallel and re-sort
+    /// the entries. The old loop awaited one stop after another, so the last
+    /// card waited for every request above it (#92).
     @MainActor
     private func refresh() async {
         let nearby = NearbyStops.entries(
@@ -87,23 +98,33 @@ struct NearbyStopsList: View {
             return
         }
 
-        var withRows: [NearbyStopEntry] = []
-        for var entry in nearby {
-            let rows = await arrivalsRows(for: entry.place)
-            entry = NearbyStopEntry(
+        let rowsByPlace = await withTaskGroup(of: (id: String, rows: [NearbyLineRow]).self) { group in
+            for entry in nearby {
+                group.addTask {
+                    let rows = await self.arrivalsRows(for: entry.place)
+                    return (id: entry.place.id, rows: rows)
+                }
+            }
+            var collected: [String: [NearbyLineRow]] = [:]
+            for await result in group {
+                collected[result.id] = result.rows
+            }
+            return collected
+        }
+        let withRows = nearby.map { entry in
+            NearbyStopEntry(
                 place: entry.place,
                 distanceMeters: entry.distanceMeters,
                 walkingMinutes: entry.walkingMinutes,
-                rows: rows
+                rows: rowsByPlace[entry.place.id] ?? []
             )
-            withRows.append(entry)
         }
         entries = NearbyStops.sorted(withRows)
     }
 
     /// The arrival rows of one place, through the same fetchers Explora uses:
-    /// metro per line in one call, bus per stop, FGC read-only from the shared
-    /// state (no second poller, no new endpoint).
+    /// metro one call per line in parallel, bus per stop, FGC read-only from
+    /// the shared state (no second poller, no new endpoint).
     @MainActor
     private func arrivalsRows(for place: Place) async -> [NearbyLineRow] {
         guard let client = app.client else { return [] }
@@ -113,12 +134,22 @@ struct NearbyStopsList: View {
 
         switch place.kind {
         case .metroStation:
-            for lineCode in place.lineCodes {
-                // Asked as a place: the client bridges the catalog's
-                // `ID_ESTACIO` to the per-line `CODI_ESTACIO` the feed keys by.
-                if let fetched = try? await client.metroArrivals(lineCode: lineCode, places: [place]) {
-                    metro.append(contentsOf: fetched[place.id] ?? [])
+            // One request per line serving the stop, all in flight together.
+            metro = await withTaskGroup(of: [Arrival].self) { group in
+                for lineCode in place.lineCodes {
+                    group.addTask {
+                        // Asked as a place: the client bridges the catalog's
+                        // `ID_ESTACIO` to the per-line `CODI_ESTACIO` the feed
+                        // keys by.
+                        let fetched = try? await client.metroArrivals(lineCode: lineCode, places: [place])
+                        return fetched?[place.id] ?? []
+                    }
                 }
+                var all: [Arrival] = []
+                for await arrivals in group {
+                    all.append(contentsOf: arrivals)
+                }
+                return all
             }
         case .busStop:
             if let code = Int(place.code) {
@@ -154,17 +185,24 @@ struct NearbyStopsList: View {
     }
 }
 
-/// One stop card of the list (mockup `V4Tot`): the place name with its
-/// walking caption, and one row per line with the two next directions.
+/// One stop card of the list (mockup `V4Tot`): the place name with its mode,
+/// direction and walking captions, and one row per line with the next
+/// directions.
 private struct NearbyStopCard: View {
     let entry: NearbyStopEntry
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text(entry.place.name)
-                    .font(.subheadline.weight(.bold))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.place.name)
+                        .font(.subheadline.weight(.bold))
+                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 8)
                 Text(ExploreFormatting.nearbyCaption(meters: entry.distanceMeters))
                     .font(.caption.weight(.semibold))
@@ -186,7 +224,22 @@ private struct NearbyStopCard: View {
         .padding(.bottom, 6)
         .background(RoundedRectangle(cornerRadius: 22).fill(Color(hex: "1C1D21")))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(entry.place.name), \(ExploreFormatting.nearbyCaption(meters: entry.distanceMeters))")
+        .accessibilityLabel("\(entry.place.name), \(subtitle), \(ExploreFormatting.nearbyCaption(meters: entry.distanceMeters))")
+    }
+
+    /// Mode cue ("Metro", "Bus", "FGC") and, once the arrivals are in, the
+    /// direction served here: two bus stops called "Riera Blanca - Santa
+    /// Eulàlia" are otherwise indistinguishable (#92).
+    private var subtitle: String {
+        let mode: String
+        switch entry.place.kind {
+        case .metroStation: mode = "Metro"
+        case .busStop: mode = "Bus"
+        case .fgcStation: mode = "FGC"
+        }
+        guard let direction = entry.rows.first?.firstDestination,
+              !direction.isEmpty, direction != "—" else { return mode }
+        return "\(mode) · cap a \(direction)"
     }
 }
 
@@ -198,8 +251,17 @@ private struct NearbyLineRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             LineBadge(text: row.lineLabel, colorHex: row.colorHex, textColorHex: row.textColorHex)
-            directionColumn(destination: row.firstDestination, time: row.firstTime)
-            directionColumn(destination: row.secondDestination, time: row.secondTime)
+            if repeatsDestination {
+                // Two buses of this line head to the same place: one
+                // destination, both countdowns side by side (#92).
+                directionColumn(
+                    destination: row.firstDestination,
+                    times: [row.firstTime] + [row.secondTime].compactMap { $0 }
+                )
+            } else {
+                directionColumn(destination: row.firstDestination, times: [row.firstTime])
+                directionColumn(destination: row.secondDestination, times: row.secondTime.map { [$0] } ?? [])
+            }
         }
         .padding(.vertical, 8)
         .overlay(alignment: .top) {
@@ -211,17 +273,27 @@ private struct NearbyLineRowView: View {
         .accessibilityLabel(accessibilityText)
     }
 
+    /// Whether both columns would repeat the same destination.
+    private var repeatsDestination: Bool {
+        guard let second = row.secondDestination, !second.isEmpty else { return false }
+        return second == row.firstDestination
+    }
+
     @ViewBuilder
-    private func directionColumn(destination: String?, time: String?) -> some View {
+    private func directionColumn(destination: String?, times: [String]) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(destination ?? "")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-            Text(time ?? "")
-                .font(.callout.weight(.bold))
-                .monospacedDigit()
-                .foregroundStyle(time == "ara" ? Color(hex: "30D158") : Color.primary)
+            HStack(spacing: 8) {
+                ForEach(0..<times.count, id: \.self) { index in
+                    Text(times[index])
+                        .font(.callout.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(times[index] == "ara" ? Color(hex: "30D158") : Color.primary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -232,7 +304,9 @@ private struct NearbyLineRowView: View {
             parts.append("cap a \(row.firstDestination) en \(row.firstTime)")
         }
         if let destination = row.secondDestination, let time = row.secondTime, !destination.isEmpty, !time.isEmpty {
-            parts.append("i cap a \(destination) en \(time)")
+            parts.append(destination == row.firstDestination
+                ? "i en \(time)"
+                : "i cap a \(destination) en \(time)")
         }
         return parts.joined(separator: ", ")
     }
