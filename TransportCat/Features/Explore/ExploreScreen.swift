@@ -297,11 +297,19 @@ struct ExploreScreen: View {
     @ViewBuilder
     private func favoritePlaceRow(_ place: Place) -> some View {
         let arrivals = favoriteArrivals[place.id] ?? []
+        let modeLabel = modeLabel(for: place.kind)
         VStack(alignment: .leading, spacing: 6) {
             Button {
                 selectedPlace = place
             } label: {
-                ExplorePlaceRow(place: place)
+                // When arrivals are present, the line codes show in the
+                // arrival rows; avoid printing the code twice. Pass the
+                // mode word only as a standalone caption so the code is
+                // never repeated.
+                let caption = arrivals.isEmpty
+                    ? (modeLabel.isEmpty ? nil : "\(modeLabel) \(place.lineCodes.joined(separator: " · "))")
+                    : ""
+                ExplorePlaceRow(place: place, caption: caption.isEmpty ? nil : caption)
             }
             .buttonStyle(.plain)
             if arrivals.isEmpty {
@@ -329,7 +337,21 @@ struct ExploreScreen: View {
         guard arrivalsLoaded else { return "Carregant arribades…" }
         return failedFavoriteIDs.contains(place.id)
             ? "No s'han pogut carregar les arribades."
-            : "Sense arribades ara mateix."
+            : NearbyStops.emptyArrivalText(
+                isBusStop: place.kind == .busStop,
+                lineCodes: place.lineCodes,
+                busDirections: nil
+            )
+    }
+
+    /// Mode word for a place: "Metro", "Bus", or "FGC". Empty for unknown
+    /// kinds so the caller can gate the caption.
+    private func modeLabel(for kind: PlaceKind) -> String {
+        switch kind {
+        case .metroStation: return "Metro"
+        case .busStop: return "Bus"
+        case .fgcStation: return "FGC"
+        }
     }
 
     /// Favorite metro/FGC lines from `FavoritesStore` plus the catalog's own
@@ -384,6 +406,9 @@ struct ExploreScreen: View {
                 NearbyStopsList { place in
                     selectedPlace = place
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
         }
     }

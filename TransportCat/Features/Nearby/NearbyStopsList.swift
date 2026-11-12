@@ -242,7 +242,12 @@ private struct NearbyStopCard: View {
                 NearbyLineRowView(row: row)
             }
             if entry.rows.isEmpty {
-                Text("Sense arribades")
+                let text = NearbyStops.emptyArrivalText(
+                    isBusStop: entry.place.kind == .busStop,
+                    lineCodes: entry.place.lineCodes,
+                    busDirections: nil
+                )
+                Text(text)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
@@ -253,7 +258,7 @@ private struct NearbyStopCard: View {
         .padding(.bottom, 6)
         .background(RoundedRectangle(cornerRadius: 22).fill(Color(hex: "1C1D21")))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(entry.place.name), \(subtitle), \(ExploreFormatting.nearbyCaption(meters: entry.distanceMeters))")
+        .accessibilityLabel(entry.place.name)
     }
 
     /// Mode cue ("Metro", "Bus", "FGC") and, once the arrivals are in, the
