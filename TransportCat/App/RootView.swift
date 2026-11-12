@@ -130,18 +130,10 @@ struct RootView: View {
         // #90: the accessory only acts on Mapa and Parades — over Avisos,
         // Explora and the planner it floats over content it cannot change —
         // so the tab bar hosts it only there.
-        .tabViewBottomAccessory {
-            switch router.selectedTab {
-            case .map, .lines:
-                // Injected explicitly: the accessory is hosted by the tab
-                // bar, and its metro chip reads `AppModel` through
-                // `@EnvironmentObject`.
-                BottomAccessory()
-                    .environmentObject(app)
-            case .alerts, .explore:
-                EmptyView()
-            }
-        }
+        .modifier(ModeAccessory(
+            isShown: router.selectedTab == .map || router.selectedTab == .lines,
+            app: app
+        ))
         .environmentObject(app)
         .onAppear { syncFrameMonitoring() }
         .onDisappear {
@@ -208,5 +200,34 @@ private struct RetainedMode: ViewModifier {
             .opacity(isActive ? 1 : 0)
             .allowsHitTesting(isActive)
             .accessibilityHidden(!isActive)
+    }
+}
+
+/// Hosts the bottom accessory only where it acts (#90). The system modifier
+/// that hides the accessory slot exists from iOS 26.1; on 26.0 the slot gets
+/// empty content instead.
+private struct ModeAccessory: ViewModifier {
+    let isShown: Bool
+    let app: AppModel
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: isShown) {
+                accessory
+            }
+        } else {
+            content.tabViewBottomAccessory {
+                if isShown {
+                    accessory
+                }
+            }
+        }
+    }
+
+    /// Injected explicitly: the accessory is hosted by the tab bar, and its
+    /// metro chip reads `AppModel` through `@EnvironmentObject`.
+    private var accessory: some View {
+        BottomAccessory()
+            .environmentObject(app)
     }
 }
