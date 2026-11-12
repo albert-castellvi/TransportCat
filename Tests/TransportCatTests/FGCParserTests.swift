@@ -74,6 +74,27 @@ final class FGCParserTests: XCTestCase {
         XCTAssertTrue(lines.allSatisfy { $0.colorHex == $0.colorHex.uppercased() })
     }
 
+    /// #88: a repeated code must publish one line only, and the first copy is
+    /// the one kept, so the maps and the picker have unique identities.
+    func testDuplicateLineCodesKeepTheFirstLine() {
+        let first = FGCLine(
+            code: "R5", name: "first", colorHex: "111111",
+            textColorHex: "FFFFFF", polylines: []
+        )
+        let repeated = FGCLine(
+            code: "R5", name: "second", colorHex: "222222",
+            textColorHex: "FFFFFF", polylines: []
+        )
+        let other = FGCLine(
+            code: "S1", name: "Terrassa", colorHex: "65277E",
+            textColorHex: "FFFFFF", polylines: []
+        )
+
+        let unique = FGCNetwork.uniqueLines([first, repeated, other])
+        XCTAssertEqual(unique.map(\.code), ["R5", "S1"])
+        XCTAssertEqual(unique.first?.name, "first")
+    }
+
     /// An empty `route_short_name` is as absent as a null one: the record must
     /// fall back to `route_id` instead of being dropped, and only a route with
     /// both values empty disappears.
@@ -114,6 +135,31 @@ final class FGCParserTests: XCTestCase {
         let platform = try XCTUnwrap(FGCNetwork.stopPoint(for: "GR1", in: stops))
         XCTAssertEqual(platform, point)
         XCTAssertNil(FGCNetwork.stopPoint(for: "ZZ", in: stops))
+    }
+
+    /// #87: a bare prefix is another stop, and two platform rows must not make
+    /// the join depend on the order the catalog happened to return.
+    func testStopCodeJoinNeedsAPlatformBoundaryAndSortsCandidates() throws {
+        let unrelated = FGCStop(
+            id: "GRX",
+            name: "Un altre lloc",
+            point: GeoPoint(latitude: 40.0, longitude: 1.0)
+        )
+        XCTAssertNil(FGCNetwork.stopPoint(for: "GR", in: [unrelated]))
+
+        let expected = GeoPoint(latitude: 41.3991, longitude: 2.1527)
+        let platforms = [
+            FGCStop(id: "GR2", name: "Gràcia 2", point: GeoPoint(latitude: 41.5, longitude: 2.3)),
+            FGCStop(id: "GR1", name: "Gràcia 1", point: expected),
+        ]
+        XCTAssertEqual(FGCNetwork.stopPoint(for: "GR", in: platforms), expected)
+
+        // The same sorted rule feeds the station join.
+        let joined = FGCNetwork.stations(
+            [FGCStation(code: "GR", name: "Gràcia", networkLine: 1, order: 1, point: nil)],
+            points: FGCNetwork.stopIndex(platforms)
+        )
+        XCTAssertEqual(joined.first?.point, expected)
     }
 
     func testStationJoinAttachesCoordinatesToStations() throws {

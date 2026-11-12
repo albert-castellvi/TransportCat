@@ -298,6 +298,31 @@ final class BusFleetTests: XCTestCase {
         XCTAssertEqual(positions.first?.directionID, direction.id)
     }
 
+    // MARK: - Tracked bus count (#86)
+
+    /// Bus id 0 is the feed's placeholder, not a bus: `BusFleet.positions`
+    /// never draws it, so the strip must not count it either.
+    func testTrackedBusCountIgnoresThePlaceholderBusZero() {
+        func arrival(stopCode: Int, busID: Int?) -> BusArrival {
+            BusArrival(
+                stopCode: stopCode,
+                lineCode: 212,
+                lineName: "H12",
+                directionID: 1,
+                trajectCode: "2120",
+                destination: "Can Peixau",
+                seconds: 120,
+                busID: busID,
+                rampStatus: nil
+            )
+        }
+        let arrivals = [
+            10: [arrival(stopCode: 10, busID: 0), arrival(stopCode: 10, busID: 42)],
+            20: [arrival(stopCode: 20, busID: 42), arrival(stopCode: 20, busID: nil)],
+        ]
+        XCTAssertEqual(BusLineState.trackedBusCount(in: arrivals), 1)
+    }
+
     // MARK: - Diagram index (S8)
 
     func testStopIndexPositionIsMonotoneAndClamped() throws {

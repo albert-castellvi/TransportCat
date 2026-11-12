@@ -53,16 +53,20 @@ final class IncidentWatcher {
 
     // MARK: - Pure rules
 
-    /// The alerts to notify: current alerts touching a favorite line, unseen,
-    /// each id once, in feed order.
+    /// The alerts to notify: alerts in force at `now` touching a favorite
+    /// line, unseen, each id once, in feed order. A scheduled disruption is in
+    /// the feed long before it starts, and an expired one stays in it for a
+    /// while, so neither may be notified (or marked seen) yet (#71).
     nonisolated static func newAlerts(
         current: [ServiceAlert],
         favoriteLines: Set<String>,
-        seen: Set<String>
+        seen: Set<String>,
+        now: Date = Date()
     ) -> [ServiceAlert] {
         var emitted: Set<String> = []
         var result: [ServiceAlert] = []
         for alert in current where !seen.contains(alert.id) && !emitted.contains(alert.id) {
+            guard alert.isActive(now: now) else { continue }
             guard alert.lineCodes.contains(where: favoriteLines.contains) else { continue }
             emitted.insert(alert.id)
             result.append(alert)
@@ -148,13 +152,14 @@ final class IncidentWatcher {
         guard !favorites.isEmpty else { return 0 }
 
         var notified = 0
-        for alert in Self.newAlerts(current: metro, favoriteLines: favorites, seen: Set(seenIDs)) {
+        let now = Date()
+        for alert in Self.newAlerts(current: metro, favoriteLines: favorites, seen: Set(seenIDs), now: now) {
             if await notify(alert, isBus: false, busNames: [:]) { notified += 1 }
         }
         let busNames = Dictionary(
             uniqueKeysWithValues: BusCatalogStore.shared.lines.map { (String($0.code), $0.name) }
         )
-        for alert in Self.newAlerts(current: bus, favoriteLines: favorites, seen: Set(seenIDs)) {
+        for alert in Self.newAlerts(current: bus, favoriteLines: favorites, seen: Set(seenIDs), now: now) {
             if await notify(alert, isBus: true, busNames: busNames) { notified += 1 }
         }
         return notified

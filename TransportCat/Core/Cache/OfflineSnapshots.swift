@@ -213,6 +213,9 @@ struct FGCStationSnapshot: Codable, Equatable {
     let networkLine: Int
     let order: Int
     let point: GeoPoint?
+    /// Optional so snapshots written before the field existed still decode
+    /// (#75); no cache version bump is needed.
+    let wheelchairBoarding: Int?
 
     init(_ station: FGCStation) {
         code = station.code
@@ -220,10 +223,18 @@ struct FGCStationSnapshot: Codable, Equatable {
         networkLine = station.networkLine
         order = station.order
         point = station.point
+        wheelchairBoarding = station.wheelchairBoarding
     }
 
     var fgcStation: FGCStation {
-        FGCStation(code: code, name: name, networkLine: networkLine, order: order, point: point)
+        FGCStation(
+            code: code,
+            name: name,
+            networkLine: networkLine,
+            order: order,
+            point: point,
+            wheelchairBoarding: wheelchairBoarding
+        )
     }
 }
 

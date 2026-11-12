@@ -49,6 +49,9 @@ final class WatchSessionReceiver: NSObject, WCSessionDelegate {
         let places = WatchPayload.places(from: session.receivedApplicationContext)
         Task { @MainActor in
             self.isActivated = activated
+            // #79: a failed activation must release the single retry entry
+            // point, so the next foreground can call `activate()` again.
+            if !activated { self.isActivating = false }
             self.apply(places)
         }
     }
