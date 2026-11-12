@@ -71,10 +71,6 @@ struct BusMapScreen: View {
     /// vehicle id that is not in the feed yet.
     @State private var pendingPlaceFocus: Place?
     @State private var pendingVehicleFocusID: String?
-    /// Whether the source strip shows (#94): it lives behind a tap on the
-    /// status capsule, because pinned over the map it covered the Apple Maps
-    /// attribution, which must stay visible.
-    @State private var showsSourceStrip = false
     /// Latitude span on screen, which decides whether the stop dots of the
     /// direction on screen are drawn at all (spec S3).
     @State private var latitudeSpan: Double = BusMapScreen.initialRegion.span.latitudeDelta
@@ -120,19 +116,9 @@ struct BusMapScreen: View {
             // the map fills the screen under the status bar, and the v2
             // chrome lives in overlays (spec S1).
             .overlay(alignment: .topLeading) {
-                Button {
-                    showsSourceStrip.toggle()
-                } label: {
-                    statusCapsule
-                }
-                .buttonStyle(.plain)
-                // VoiceOver keeps the chip's own text and gets the action on
-                // top (#94).
-                .accessibilityHint(showsSourceStrip
-                    ? "Amaga d'on provenen les positions"
-                    : "Mostra d'on provenen les positions")
-                .padding(.leading, 16)
-                .padding(.top, 8)
+                statusCapsule
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
                 locationButton
@@ -520,13 +506,6 @@ struct BusMapScreen: View {
                     .padding(16)
             }
         }
-        .overlay(alignment: .bottom) {
-            if state.totalStopCount > 0, showsSourceStrip {
-                sourceStrip(state: state)
-                    .transition(AppMotion.chipTransition)
-            }
-        }
-        .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: showsSourceStrip)
         .onChange(of: state.directions.map(\.id)) { _, ids in
             // The shared storage resolves against the new directions (spec
             // S4), so the clamp the old local `@State` needed is gone.
@@ -549,27 +528,6 @@ struct BusMapScreen: View {
         // whole annotation set on a line switch, which read as a doubled
         // annotation layer (map-perf S14b). Annotations pop in like the FGC
         // map already does; the placeholder fade (`lineState != nil`) stays.
-    }
-
-    /// The strip that says where the buses come from (spec S3, S9): the
-    /// positions are estimated from arrivals, never from a GPS feed, and the
-    /// rider has to be able to tell that without leaving the screen.
-    private func sourceStrip(state: BusLineState) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "clock")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Text("Posició estimada a partir de les arribades a \(state.polledStopCount) de \(state.totalStopCount) parades (TMB iBus). \(state.trackedBusCount) busos seguits.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                // Full sentence, never clipped by the card height.
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
-        .accessibilityElement(children: .combine)
     }
 
     /// The direction the shared storage selects, falling back to the first one
