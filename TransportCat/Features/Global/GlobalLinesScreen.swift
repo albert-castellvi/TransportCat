@@ -117,12 +117,20 @@ struct GlobalLinesScreen: View {
         )
     }
 
-    /// "A prop teu" (spec S10): the reusable list, or the location-denied
-    /// explanation instead of it — never a permission prompt loop.
+    /// "A prop teu" (spec S10): the reusable list, the same "Activa la
+    /// ubicació" prompt Explora shows while nothing has been asked yet, or the
+    /// location-denied explanation — never a permission prompt loop. Without
+    /// the prompt the list would wait on a fix nobody requested (UX-18).
     @ViewBuilder
     private var nearbySection: some View {
         let service = LocationService.shared
         switch service.authorization {
+        case .notDetermined:
+            Button("Activa la ubicació") {
+                service.requestWhenInUse()
+            }
+            .font(.footnote)
+            .padding(.vertical, 8)
         case .denied, .restricted:
             Text("Activa la ubicació a Configuració per veure què tens a prop.")
                 .font(.footnote)
