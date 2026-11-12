@@ -13,6 +13,7 @@ Branch `feat/sim-verified-improvements`. Workers are pi sessions in herdr panes;
 - S7 (user, 2026-11-12): "no te olvides del widget i de la app de applewatch"
 - S8 (user, 2026-11-12): "prueba el seguimiento de trenes i las notificaciones que funcionen bien tambien"
 - S9 (user, 2026-11-12): "enviame norificacion a la app movil con cada punto finalizado"
+- S10 (user, 2026-11-12): "sigue, no pares hasta acabarlo todo y subirlo a testfligh"
 - S4: each open GitHub issue body is the spec of its fix (#74 #78 #93 #96 #97 #99 #101 #102).
 
 ## Tasks
