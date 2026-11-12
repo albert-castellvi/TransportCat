@@ -29,6 +29,7 @@ struct PlannerScreen: View {
         List {
             routeSection
             timeSection
+            searchNoticeSection
             searchSection
             resultsSection
         }
@@ -156,6 +157,19 @@ struct PlannerScreen: View {
                     selection: $plannedDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
+            }
+        }
+    }
+
+    /// The search button is disabled while the build has no TMB credentials,
+    /// so the same notice the maps show names the reason here instead of
+    /// leaving a dead button (UX-19).
+    @ViewBuilder
+    private var searchNoticeSection: some View {
+        if let message = app.missingCredentialsMessage {
+            Section {
+                ConfigurationNotice(message: message)
+                    .listRowBackground(Color.clear)
             }
         }
     }
