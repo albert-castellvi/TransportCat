@@ -1,5 +1,6 @@
 import CoreLocation
 import SwiftUI
+import UIKit
 
 /// Explora tab (spec S12): search over places and lines, the favorites with
 /// their next arrivals, and the places around the rider. Wired into `RootView`
@@ -8,6 +9,7 @@ import SwiftUI
 @MainActor
 struct ExploreScreen: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.openURL) private var openURL
     @State private var query = ""
     /// Place whose detail sheet is open.
     @State private var selectedPlace: Place?
@@ -357,9 +359,13 @@ struct ExploreScreen: View {
                     service.requestWhenInUse()
                 }
             } else if service.authorization == .denied || service.authorization == .restricted {
-                Text("Activa la ubicació a Configuració per veure què tens a prop.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Activa la ubicació a Configuració per veure què tens a prop.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Obre Configuració", action: openSettings)
+                        .font(.footnote)
+                }
             } else if let position = service.location {
                 nearbyRows(position: position)
             } else {
@@ -394,5 +400,12 @@ struct ExploreScreen: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    /// Opens the app's Settings page so a denied location permission can be
+    /// turned back on without leaving the app (#98).
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 }
