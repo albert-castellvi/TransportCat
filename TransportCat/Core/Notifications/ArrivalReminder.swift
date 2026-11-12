@@ -61,6 +61,9 @@ final class ArrivalReminder {
     func schedule(id: String, title: String, body: String, at: Date) async -> Bool {
         guard at.timeIntervalSinceNow > 0 else { return false }
         guard await ensurePermissionGranted() else { return false }
+        // The permission prompt can take long enough for `at` to pass; a past
+        // calendar trigger is recorded as scheduled but never fires.
+        guard at.timeIntervalSinceNow > 0 else { return false }
 
         let content = UNMutableNotificationContent()
         content.title = title
