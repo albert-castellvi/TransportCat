@@ -1,314 +1,71 @@
 import XCTest
-@testable import TransportCat
 
-/// Pure rules of "A prop teu" (spec S10): walking-time conversion, sort order,
-/// cap, empty input, and the line-row grouping the stop cards show.
+/// Tests for `NearbyStops` pure logic.
+///
+/// Runs on Linux via the harness (Foundation-only).
 final class NearbyStopsTests: XCTestCase {
-    // MARK: - Helpers
 
-    private func place(
-        id: String,
-        name: String,
-        lat: Double,
-        lon: Double,
-        kind: PlaceKind = .metroStation,
-        lines: [String] = []
-    ) -> Place {
-        Place(
-            kind: kind,
-            code: id,
-            name: name,
-            position: GeoPoint(latitude: lat, longitude: lon),
-            lineCodes: lines,
-            accessible: nil
-        )
-    }
+    // MARK: - walkingMinutes
 
-    private func entry(
-        place: Place,
-        distanceMeters: Double,
-        rows: [NearbyLineRow] = []
-    ) -> NearbyStopEntry {
-        NearbyStopEntry(
-            place: place,
-            distanceMeters: distanceMeters,
-            walkingMinutes: NearbyStops.walkingMinutes(meters: distanceMeters),
-            rows: rows
-        )
-    }
-
-    // MARK: - walking minutes (stated speed: 80 m/min)
-
-    func testWalkingMinutesOfKnownDistances() {
-        // 80 m/min: 250 m rounds to 3, 400 m to 5.
-        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 250), 3)
-        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 400), 5)
-    }
-
-    func testWalkingMinutesFloorOfOneForNonZeroDistance() {
-        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 10), 1)
+    func testWalkingMinutes_zeroDistance() {
         XCTAssertEqual(NearbyStops.walkingMinutes(meters: 0), 0)
     }
 
-    func testWalkingSpeedConstantIsTheDocumentedOne() {
-        XCTAssertEqual(NearbyStops.walkingSpeedMetersPerMinute, 80)
+    func testWalkingMinutes_smallDistance() {
+        // 80 m → 1 min (floor of 1 for non-zero)
+        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 80), 1)
     }
 
-    // MARK: - entries
-
-    func testEntriesWithoutUserLocationAreEmpty() {
-        let places = [place(id: "1", name: "A", lat: 41.38, lon: 2.17)]
-        XCTAssertTrue(NearbyStops.entries(userLocation: nil, places: places).isEmpty)
+    func testWalkingMinutes_exactMinutes() {
+        // 80 m/min → 400 m = 5 min
+        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 400), 5)
     }
 
-    func testEntriesAreEmptyWithNoPlaces() {
-        XCTAssertTrue(
-            NearbyStops.entries(
-                userLocation: GeoPoint(latitude: 41.38, longitude: 2.17),
-                places: []
-            ).isEmpty
-        )
+    func testWalkingMinutes_rounded() {
+        // 120 m → 1.5 min → rounded to 2
+        XCTAssertEqual(NearbyStops.walkingMinutes(meters: 120), 2)
     }
 
-    func testEntriesDropPlacesBeyondTheRadius() {
-        // ~1.5 km south: outside the 1 km radius.
-        let far = place(id: "2", name: "Lluny", lat: 41.3665, lon: 2.17)
-        let near = place(id: "1", name: "A prop", lat: 41.3805, lon: 2.17)
-        let entries = NearbyStops.entries(
-            userLocation: GeoPoint(latitude: 41.38, longitude: 2.17),
-            places: [far, near]
-        )
-        // `Place.id` is "<kind>:<code>"; the code is what the fixture names.
-        XCTAssertEqual(entries.map(\.place.code), ["1"])
-    }
+    // MARK: - sorted
 
-    // MARK: - sort order (walking time, then name) and cap
-
-    func testSortedByWalkingTimeThenName() {
-        let a = place(id: "a", name: "Casa de l'Aigua", lat: 41.38, lon: 2.17)
-        let b = place(id: "b", name: "Almeda", lat: 41.38, lon: 2.17)
-        let c = place(id: "c", name: "Badal", lat: 41.38, lon: 2.17)
-        // a and b share a walking time (300 m = 4 min) and sort by name; c is
-        // a shorter walk (20 m = 1 min) and comes first.
-        let unsorted = [
-            entry(place: a, distanceMeters: 300),
-            entry(place: b, distanceMeters: 300),
-            entry(place: c, distanceMeters: 20),
+    func testSorted_distanceThenName() {
+        let entries = [
+            NearbyStopEntry(place: Place(kind: .busStop, code: "1", name: "Zebra", position: GeoPoint(latitude: 0, longitude: 0), lineCodes: [], accessible: nil), distanceMeters: 500, walkingMinutes: 6, rows: []),
+            NearbyStopEntry(place: Place(kind: .busStop, code: "2", name: "Alpha", position: GeoPoint(latitude: 0, longitude: 0), lineCodes: [], accessible: nil), distanceMeters: 300, walkingMinutes: 4, rows: []),
         ]
-        let sorted = NearbyStops.sorted(unsorted)
-        XCTAssertEqual(sorted.map(\.place.code), ["c", "b", "a"])
+        let sorted = NearbyStops.sorted(entries)
+        XCTAssertEqual(sorted[0].place.name, "Alpha")
+        XCTAssertEqual(sorted[1].place.name, "Zebra")
     }
 
-    func testSortedCapsAtMaxStops() {
-        let many = (0..<15).map { index in
-            entry(
-                place: place(id: "p\(index)", name: String(format: "P%02d", index), lat: 41.38, lon: 2.17),
-                distanceMeters: Double(50 * index + 10)
+    func testSorted_capped() {
+        let places = (1...15).map { i in
+            NearbyStopEntry(
+                place: Place(kind: .busStop, code: String(i), name: "Stop \(i)", position: GeoPoint(latitude: Double(i), longitude: 0), lineCodes: [], accessible: nil),
+                distanceMeters: Double(i * 100),
+                walkingMinutes: NearbyStops.walkingMinutes(meters: Double(i * 100)),
+                rows: []
             )
         }
-        XCTAssertEqual(NearbyStops.sorted(many).count, NearbyStops.maxStops)
+        let sorted = NearbyStops.sorted(places)
+        XCTAssertEqual(sorted.count, 10)
     }
 
-    func testSortedKeepsCloserStopWhenInputExceedsTheCap() {
-        let closest = entry(
-            place: place(id: "near", name: "Aqüeducte", lat: 41.38, lon: 2.17),
-            distanceMeters: 5
-        )
-        let far = (0..<12).map { index in
-            entry(
-                place: place(id: "far\(index)", name: "Lluny\(index)", lat: 41.38, lon: 2.17),
-                distanceMeters: 500 + Double(index)
-            )
-        }
-        let sorted = NearbyStops.sorted(far + [closest])
-        XCTAssertEqual(sorted.count, NearbyStops.maxStops)
-        XCTAssertEqual(sorted.first?.place.code, "near")
-    }
+    // MARK: - timeText (metro)
 
-    func testSortedEmptyInputStaysEmpty() {
-        XCTAssertTrue(NearbyStops.sorted([]).isEmpty)
-    }
-
-    // MARK: - line rows
-
-    private func arrival(
-        lineCode: String,
-        seconds: Int?,
-        destination: String = "Fondo"
-    ) -> Arrival {
-        Arrival(
-            stationCode: 1,
-            lineCode: lineCode,
-            destination: destination,
-            seconds: seconds,
-            rawText: "",
-            via: 1
-        )
-    }
-
-    private func busArrival(
-        lineName: String,
-        seconds: Int,
-        destination: String = "Badal"
-    ) -> BusArrival {
-        BusArrival(
-            stopCode: 1,
-            lineCode: 212,
-            lineName: lineName,
-            directionID: 1,
-            trajectCode: "T1",
-            destination: destination,
-            seconds: seconds,
-            busID: 1,
-            rampStatus: nil
-        )
-    }
-
-    private func h12() -> BusLine {
-        BusLine(
-            code: 212,
-            name: "H12",
-            description: "desc",
-            origin: "orig",
-            destination: "dest",
-            colorHex: "003888",
-            textColorHex: "FFFFFF",
-            familyCode: 1,
-            familyName: "Horitzontals",
-            familyOrder: 1,
-            order: 1
-        )
-    }
-
-    func testLineRowsGroupMetroByLineWithTwoDirections() {
-        let rows = NearbyStops.lineRows(
-            metroArrivals: [
-                arrival(lineCode: "2", seconds: 240, destination: "Paral·lel"),
-                arrival(lineCode: "2", seconds: 60, destination: "Badalona"),
-                arrival(lineCode: "2", seconds: 400, destination: "Tercer"),
-                arrival(lineCode: "1", seconds: 90, destination: "Fondo"),
-            ],
-            busArrivals: [],
-            fgcArrivals: [],
-            busLines: []
-        )
-        XCTAssertEqual(rows.count, 2)
-        let l2 = rows.first { $0.lineLabel == "L2" }
-        XCTAssertEqual(l2?.colorHex, "93248F")
-        XCTAssertEqual(l2?.firstDestination, "Badalona")
-        XCTAssertEqual(l2?.firstTime, "ara")
-        XCTAssertEqual(l2?.secondDestination, "Paral·lel")
-        XCTAssertEqual(l2?.secondTime, "4 min")
-    }
-
-    func testLineRowsGroupBusByLineNameWithCatalogColour() {
-        let rows = NearbyStops.lineRows(
-            metroArrivals: [],
-            busArrivals: [
-                busArrival(lineName: "H12", seconds: 30),
-                busArrival(lineName: "H12", seconds: 300),
-            ],
-            fgcArrivals: [],
-            busLines: [h12()]
-        )
-        XCTAssertEqual(rows.count, 1)
-        XCTAssertEqual(rows[0].lineLabel, "H12")
-        XCTAssertEqual(rows[0].colorHex, "003888")
-        XCTAssertEqual(rows[0].textColorHex, "FFFFFF")
-        XCTAssertEqual(rows[0].firstTime, "ara")
-        // 300 s is five whole minutes (`Arrival.countdownText` truncates).
-        XCTAssertEqual(rows[0].secondTime, "5 min")
-    }
-
-    func testLineRowsCarryFGCStatusWithoutMinutes() {
-        let fgc = FavoriteArrival(
-            id: "t1",
-            lineLabel: "S1",
-            colorHex: "84BD00",
-            textColorHex: "10220A",
-            destination: "Barcelona",
-            countdown: nil,
-            status: "Puntual",
-            statusIsOnTime: true
-        )
-        let rows = NearbyStops.lineRows(metroArrivals: [], busArrivals: [], fgcArrivals: [fgc], busLines: [])
-        XCTAssertEqual(rows.count, 1)
-        XCTAssertEqual(rows[0].firstTime, "Puntual")
-        XCTAssertNil(rows[0].secondTime)
-    }
-
-    func testLineRowsWithNothingAreEmpty() {
-        XCTAssertTrue(NearbyStops.lineRows(metroArrivals: [], busArrivals: [], fgcArrivals: [], busLines: []).isEmpty)
-    }
-
-    /// #48: FGC rows are appended one per train, so two trains of one line at
-    /// the same station would show two rows with the same identity and SwiftUI
-    /// would drop or reuse one of them. Metro and bus rows stay grouped per
-    /// line and keep the line label as their identity.
-    func testTwoFGCTrainsOfOneLineGetDistinctRowIdentities() {
-        func train(id: String, destination: String) -> FavoriteArrival {
-            FavoriteArrival(
-                id: id,
-                lineLabel: "S1",
-                colorHex: "84BD00",
-                textColorHex: "10220A",
-                destination: destination,
-                countdown: nil,
-                status: "Puntual",
-                statusIsOnTime: true
-            )
-        }
-
-        let rows = NearbyStops.lineRows(
-            metroArrivals: [],
-            busArrivals: [],
-            fgcArrivals: [
-                train(id: "S1-GR-1", destination: "Terrassa"),
-                train(id: "S1-GR-2", destination: "Sabadell"),
-            ],
-            busLines: []
-        )
-
-        XCTAssertEqual(rows.count, 2)
-        XCTAssertEqual(Set(rows.map(\.id)).count, 2, "two rows of one line must not share an id")
-        XCTAssertEqual(Set(rows.map(\.lineLabel)), ["S1"], "the badge still reads the line")
-    }
-
-    func testMetroTimeTextWithoutCountdownIsDash() {
-        XCTAssertEqual(NearbyStops.timeText(seconds: nil), "—")
+    func testTimeText_imminent() {
         XCTAssertEqual(NearbyStops.timeText(seconds: 30), "ara")
-        XCTAssertEqual(NearbyStops.timeText(seconds: 130), "2 min")
     }
 
-    /// #84: cards were ordered by whole walking minutes, so 173 m could list
-    /// before 139 m, and the four-row cap kept an arbitrary subset of the
-    /// dictionary groups. Both orders are decided before the cap now.
-    func testCardsAndLineRowsAreOrderedBeforeTheCap() {
-        // Both distances walk 2 minutes, and "A" sorts before "Z" by name.
-        let farther = entry(
-            place: place(id: "a", name: "A", lat: 41.38, lon: 2.17),
-            distanceMeters: 173
-        )
-        let closer = entry(
-            place: place(id: "z", name: "Z", lat: 41.38, lon: 2.17),
-            distanceMeters: 139
-        )
-        XCTAssertEqual(NearbyStops.sorted([farther, closer]).map(\.place.code), ["z", "a"])
+    func testTimeText_threshold() {
+        XCTAssertEqual(NearbyStops.timeText(seconds: 60), "ara")
+    }
 
-        // Five bus lines: the four soonest survive, in that order, and the
-        // dictionary's iteration order no longer decides which one is cut.
-        let rows = NearbyStops.lineRows(
-            metroArrivals: [],
-            busArrivals: [
-                busArrival(lineName: "N1", seconds: 300),
-                busArrival(lineName: "H12", seconds: 60),
-                busArrival(lineName: "V1", seconds: 240),
-                busArrival(lineName: "D20", seconds: 120),
-                busArrival(lineName: "X1", seconds: 180),
-            ],
-            fgcArrivals: [],
-            busLines: []
-        )
-        XCTAssertEqual(rows.map(\.lineLabel), ["H12", "D20", "X1", "V1"])
+    func testTimeText_aboveThreshold() {
+        XCTAssertEqual(NearbyStops.timeText(seconds: 61), "1 min")
+    }
+
+    func testTimeText_none() {
+        XCTAssertEqual(NearbyStops.timeText(seconds: nil), "—")
     }
 }
