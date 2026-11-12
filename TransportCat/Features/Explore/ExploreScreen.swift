@@ -14,6 +14,9 @@ struct ExploreScreen: View {
     /// Next arrivals of the favorite places, keyed by `Place.id`, refreshed on
     /// the screen's 30 s loop while it is visible.
     @State private var favoriteArrivals: [String: [FavoriteArrival]] = [:]
+    /// Favorites whose arrivals feed failed on the last pass, so their rows
+    /// do not claim that nothing is due (#97).
+    @State private var failedFavoriteIDs: Set<String> = []
     /// Whether the first arrivals refresh has finished, so the rows can tell
     /// "loading" from "nothing expected here".
     @State private var arrivalsLoaded = false
@@ -173,17 +176,19 @@ struct ExploreScreen: View {
         }
         guard !places.isEmpty else {
             favoriteArrivals = [:]
+            failedFavoriteIDs = []
             return
         }
         guard let client = app.client else { return }
-        let loaded = await ExploreArrivals.nextArrivals(
+        let fetched = await ExploreArrivals.nextArrivals(
             for: places,
             client: client,
             fgcState: fgc,
             busLines: busStore.lines
         )
         guard !Task.isCancelled, arrivalsGeneration.isCurrent(generation) else { return }
-        favoriteArrivals = loaded
+        favoriteArrivals = fetched.arrivals
+        failedFavoriteIDs = fetched.failedPlaceIDs
     }
 
     // MARK: - Search results
@@ -261,6 +266,13 @@ struct ExploreScreen: View {
             }
             ForEach(favorites.favoritePlaces) { place in
                 favoritePlaceRow(place)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            FavoritesStore.shared.toggle(place)
+                        } label: {
+                            Label("Treu de preferits", systemImage: "star.slash")
+                        }
+                    }
             }
             ForEach(favoriteLines) { result in
                 ExploreLineRow(result: result)
@@ -280,7 +292,7 @@ struct ExploreScreen: View {
             }
             .buttonStyle(.plain)
             if arrivals.isEmpty {
-                Text(arrivalsLoaded ? "Sense arribades ara mateix." : "Carregant arribades…")
+                Text(emptyArrivalsText(for: place))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
@@ -297,6 +309,14 @@ struct ExploreScreen: View {
                 Label("Treu de preferits", systemImage: "star.slash")
             }
         }
+    }
+
+    /// A feed that failed is not the same as a stop with nothing due (#97).
+    private func emptyArrivalsText(for place: Place) -> String {
+        guard arrivalsLoaded else { return "Carregant arribades…" }
+        return failedFavoriteIDs.contains(place.id)
+            ? "No s'han pogut carregar les arribades."
+            : "Sense arribades ara mateix."
     }
 
     /// Favorite metro/FGC lines from `FavoritesStore` plus the catalog's own

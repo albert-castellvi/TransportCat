@@ -232,7 +232,9 @@ struct ExploreFavoriteArrivalRow: View {
             if let countdown = arrival.countdown {
                 Text(countdown)
                     .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Color(hex: arrival.colorHex))
+                    // The line colour made L1 minutes look like an error;
+                    // only an imminent arrival is green (#97).
+                    .foregroundStyle(countdown == "ara" ? Color(hex: "30D158") : Color.primary)
             }
         }
         .padding(.leading, 4)

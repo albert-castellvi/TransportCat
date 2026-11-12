@@ -156,12 +156,13 @@ struct NearbyStopsList: View {
                 bus = (try? await client.busArrivals(stopCode: code)) ?? []
             }
         case .fgcStation:
-            fgc = await ExploreArrivals.nextArrivals(
+            let fetched = await ExploreArrivals.nextArrivals(
                 for: [place],
                 client: client,
                 fgcState: FGCNetworkState.shared,
                 busLines: busStore.lines
-            )[place.id] ?? []
+            )
+            fgc = fetched.arrivals[place.id] ?? []
         }
 
         return NearbyStops.lineRows(

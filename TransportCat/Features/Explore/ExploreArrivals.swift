@@ -49,20 +49,25 @@ struct ArrivalRefreshGeneration {
 /// station code — no second FGC poller is started here.
 enum ExploreArrivals {
     /// At most `ExploreFormatting.arrivalsPerPlace` soonest arrivals per
-    /// place, keyed by `Place.id`. A place whose feed failed or answered with
-    /// nothing simply has no key, which the row shows as "Sense arribades".
+    /// place, keyed by `Place.id`, plus the ids whose feed failed, so the row
+    /// can tell a failed fetch from a stop with nothing due (#97). A place
+    /// that was fetched and answered with nothing owns an empty key.
     @MainActor
     static func nextArrivals(
         for places: [Place],
         client: TMBClient,
         fgcState: FGCNetworkState,
         busLines: [BusLine]
-    ) async -> [String: [FavoriteArrival]] {
+    ) async -> (arrivals: [String: [FavoriteArrival]], failedPlaceIDs: Set<String>) {
         var result: [String: [FavoriteArrival]] = [:]
-        await addMetro(places: places, client: client, into: &result)
-        await addBus(places: places, client: client, busLines: busLines, into: &result)
+        var failed: Set<String> = []
+        await addMetro(places: places, client: client, into: &result, failed: &failed)
+        await addBus(places: places, client: client, busLines: busLines, into: &result, failed: &failed)
         addFGC(places: places, state: fgcState, into: &result)
-        return result
+        for place in places where result[place.id] == nil && !failed.contains(place.id) {
+            result[place.id] = []
+        }
+        return (result, failed)
     }
 
     // MARK: - Metro
@@ -75,7 +80,8 @@ enum ExploreArrivals {
     private static func addMetro(
         places: [Place],
         client: TMBClient,
-        into result: inout [String: [FavoriteArrival]]
+        into result: inout [String: [FavoriteArrival]],
+        failed: inout Set<String>
     ) async {
         let metroPlaces = places.filter { $0.kind == .metroStation && Int($0.code) != nil }
         guard !metroPlaces.isEmpty else { return }
@@ -90,7 +96,11 @@ enum ExploreArrivals {
         var arrivalsByPlace: [String: [Arrival]] = [:]
         for (lineCode, linePlaces) in placesByLine {
             guard let fetched = try? await client.metroArrivals(lineCode: lineCode, places: linePlaces)
-            else { continue }
+            else {
+                // The request covers every favorite station of this line.
+                failed.formUnion(linePlaces.map(\.id))
+                continue
+            }
             for (id, arrivals) in fetched {
                 arrivalsByPlace[id, default: []].append(contentsOf: arrivals)
             }
@@ -134,12 +144,16 @@ enum ExploreArrivals {
         places: [Place],
         client: TMBClient,
         busLines: [BusLine],
-        into result: inout [String: [FavoriteArrival]]
+        into result: inout [String: [FavoriteArrival]],
+        failed: inout Set<String>
     ) async {
         for place in places where place.kind == .busStop {
-            guard let code = Int(place.code),
-                  let arrivals = try? await client.busArrivals(stopCode: code),
-                  !arrivals.isEmpty else { continue }
+            guard let code = Int(place.code) else { continue }
+            guard let arrivals = try? await client.busArrivals(stopCode: code) else {
+                failed.insert(place.id)
+                continue
+            }
+            guard !arrivals.isEmpty else { continue }
             let soonest = arrivals
                 .sorted { $0.seconds < $1.seconds }
                 .prefix(ExploreFormatting.arrivalsPerPlace)
