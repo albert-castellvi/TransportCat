@@ -39,6 +39,11 @@ struct TransportCatApp: App {
                 // Spec S14: every 60 s alerts poll flows through the watcher,
                 // which notifies the new alerts of the favorite lines once.
                 RootView()
+                    // The design is dark (mockups in docs/design/redesign-v2):
+                    // dark is forced once here at the root instead of every
+                    // surface hard-coding dark fills, which made sheets
+                    // unreadable under system light-mode text (#89).
+                    .preferredColorScheme(.dark)
                     .onReceive(AppModel.shared.$alerts) { alerts in
                         IncidentWatcher.shared.handleAlertsUpdate(metro: alerts)
                     }
