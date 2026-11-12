@@ -58,6 +58,8 @@ struct FGCMapScreen: View {
     /// future the camera is animating toward the focus, and the continuous
     /// callbacks carry our own interpolated centres, not a rider pan.
     @State private var focusFlightEndsAt: Date?
+    /// Station whose sheet is open (UX-06).
+    @State private var selectedPlace: Place?
     /// Camera bearing in degrees clockwise from north: the train markers
     /// rotate against it so they keep facing along the track whatever the
     /// rider does with the map, exactly like the bus markers (spec S7).
@@ -215,6 +217,12 @@ struct FGCMapScreen: View {
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        // UX-06: tap on a station dot opens the station sheet.
+        .sheet(item: $selectedPlace) { place in
+            FGCStationSheet(place: place)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -382,8 +390,22 @@ struct FGCMapScreen: View {
                 if let point = station.point {
                     // Empty title: the dot only shows where the line stops.
                     Annotation("", coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)) {
-                        FGCStationDot(colorHex: layer.colorHex)
-                            .accessibilityLabel("Estació \(station.name)")
+                        Button {
+                            selectedPlace = Place(
+                                kind: .fgcStation,
+                                code: station.code,
+                                name: station.name,
+                                position: point,
+                                lineCodes: [],
+                                accessible: nil
+                            )
+                        } label: {
+                            FGCStationDot(colorHex: layer.colorHex)
+                                .accessibilityLabel("Estació \(station.name)")
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -734,7 +756,7 @@ private struct FGCVehicleCardRows: View {
                 stopRow(train)
                 Text(train.isOnTime ? "Puntual" : "Amb retard")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                    .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
             }
             // FGC positions are GPS live data (spec S3): never an estimate.
             VehiclePositionSource(isEstimated: false, estimatedText: "")
@@ -750,7 +772,7 @@ private struct FGCVehicleCardRows: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } else if let stopCode = train.nextStopCodes.first {
-            Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+            Label("Pròxima: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
