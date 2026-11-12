@@ -123,15 +123,13 @@ struct StationDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(arrival.destination.isEmpty ? "—" : arrival.destination)
                     .font(.body.weight(.medium))
-                Text(arrival.rawText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Spacer()
             if let seconds = arrival.seconds {
-                Text(Arrival.countdownText(seconds: seconds))
+                let text = Arrival.countdownText(seconds: seconds)
+                Text(text)
                     .font(.title3.bold().monospacedDigit())
-                    .foregroundStyle(Color(hex: line.colorHex))
+                    .foregroundStyle(text == "ara" ? Color(hex: "30D158") : Color.primary)
             }
             if hasReminder(arrival) {
                 Image(systemName: "bell.fill")
