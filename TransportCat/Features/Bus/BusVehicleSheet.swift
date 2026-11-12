@@ -98,7 +98,6 @@ struct BusVehicleSheet: View {
                     withAnimation {
                         followingVehicleID = followingVehicleID == positionID ? nil : positionID
                     }
-                    .sensoryFeedback(.selection, followingVehicleID == position ? nil : .selection)
                 } label: {
                     Label(
                         followingVehicleID == positionID ? "Deixar de seguir" : "Seguir",
@@ -108,6 +107,8 @@ struct BusVehicleSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color(hex: line.colorHex))
+                // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+                .sensoryFeedback(.selection, trigger: followingVehicleID)
             }
         }
     }

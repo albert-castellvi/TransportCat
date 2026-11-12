@@ -103,7 +103,6 @@ struct MetroTrainSheet: View {
                 withAnimation {
                     followingTrainID = followingTrainID == trainID ? nil : trainID
                 }
-                .sensoryFeedback(.selection, followingTrainID == train ? nil : .selection)
             } label: {
                 Label(
                     followingTrainID == trainID ? "Deixar de seguir" : "Seguir",
@@ -113,6 +112,8 @@ struct MetroTrainSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Color(hex: line.colorHex))
+            // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+            .sensoryFeedback(.selection, trigger: followingTrainID)
         }
     }
 }

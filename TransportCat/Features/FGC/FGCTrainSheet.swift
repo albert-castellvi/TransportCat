@@ -80,7 +80,6 @@ struct FGCTrainSheet: View {
                     withAnimation {
                         followingVehicleID = followingVehicleID == trainID ? nil : trainID
                     }
-                    .sensoryFeedback(.selection, followingVehicleID == train ? nil : .selection)
                 } label: {
                     Label(
                         followingVehicleID == trainID ? "Deixar de seguir" : "Seguir",
@@ -90,6 +89,8 @@ struct FGCTrainSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color(hex: style.colorHex))
+                // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+                .sensoryFeedback(.selection, trigger: followingVehicleID)
             }
 
             VStack(alignment: .leading, spacing: 8) {
