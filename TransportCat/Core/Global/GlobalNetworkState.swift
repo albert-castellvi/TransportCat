@@ -93,6 +93,10 @@ final class GlobalNetworkState {
     /// chip, a failure keeps the markers moving on last data, so it only
     /// downgrades freshness.
     private(set) var lastPollFailed = false
+    /// Whether the last topology pass loaded nothing drawable (spec S8): a
+    /// cold start whose every line load failed keeps the loading placeholder
+    /// forever, so the screen offers a retry instead.
+    private(set) var loadFailed = false
 
     /// Metro lines are polled once per 30 s pass (spec S8).
     static let pollIntervalSeconds: UInt64 = 30
@@ -119,6 +123,7 @@ final class GlobalNetworkState {
     func run() async {
         guard AppModel.shared.client != nil else { return }
         await ensureLineStates()
+        loadFailed = metroLineLayers.isEmpty
 
         let ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -149,6 +154,15 @@ final class GlobalNetworkState {
             refreshIncidents()
             await refreshBusFavoritesIfNeeded()
         }
+    }
+
+    /// Re-runs the topology load after a failure (spec S8): the "Reintenta"
+    /// button of the error state. Lines that already loaded keep their state;
+    /// the ones that failed are rebuilt and `loadFailed` reflects the result.
+    func retryLoad() async {
+        loadFailed = false
+        await ensureLineStates()
+        loadFailed = metroLineLayers.isEmpty
     }
 
     /// Re-derives `incidentStations` from `IncidentIndex` and the app's
