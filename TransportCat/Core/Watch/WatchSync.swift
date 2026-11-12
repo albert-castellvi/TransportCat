@@ -35,6 +35,8 @@ final class WatchSync: NSObject, WCSessionDelegate {
     func sync(_ places: [Place]) {
         guard WCSession.isSupported(), let data = try? JSONEncoder().encode(places) else { return }
         pendingData = data
+        // A launch-time activation that failed is retried by the next change.
+        activate()
         flush()
     }
 
@@ -69,7 +71,10 @@ final class WatchSync: NSObject, WCSessionDelegate {
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
-        Task { @MainActor in self.flush() }
+        Task { @MainActor in
+            if activationState != .activated { self.isActivating = false }
+            self.flush()
+        }
     }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
