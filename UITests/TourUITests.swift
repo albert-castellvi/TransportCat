@@ -10,6 +10,8 @@ import XCTest
 ///     tap:<label or identifier>   tap the first element whose label contains the text
 ///     tapxy:<x>,<y>               tap a normalized screen point (0...1)
 ///     press:<x>,<y>               long-press a normalized screen point
+///     sbtap:<label>               tap a SpringBoard element (permission alert, banner)
+///     home / notifications / activate   go home, pull the notification centre, return to the app
 ///     pinch:<scale>               pinch the map (above 1 zooms in)
 ///     type:<text>                 type into the focused field
 ///     swipe:<up|down|left|right>  swipe the middle of the screen
@@ -47,6 +49,22 @@ final class TourUITests: XCTestCase {
                 point(argument, in: app).tap()
             case "press":
                 point(argument, in: app).press(forDuration: 1)
+            case "sbtap":
+                // System alerts (permissions) and notification banners live in SpringBoard.
+                let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+                let target = springboard.descendants(matching: .any)
+                    .matching(NSPredicate(format: "label CONTAINS[c] %@", argument)).firstMatch
+                XCTAssertTrue(target.waitForExistence(timeout: 10), "no SpringBoard element matching '\(argument)'")
+                target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            case "home":
+                XCUIDevice.shared.press(.home)
+            case "notifications":
+                // Pull the notification centre down over whatever is on screen.
+                let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+                springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.0))
+                    .press(forDuration: 0.1, thenDragTo: springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)))
+            case "activate":
+                app.activate()
             case "pinch":
                 app.windows.firstMatch.pinch(withScale: CGFloat(Double(argument) ?? 2), velocity: 2)
             case "type":
