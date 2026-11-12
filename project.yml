@@ -225,6 +225,20 @@ targets:
     dependencies:
       - target: TransportCat
 
+  # Local-only UI driver (UITests/TourUITests.swift): taps through the real
+  # app in the simulator and saves screenshots. It has its own scheme, so the
+  # CI test action never runs it.
+  TransportCatUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: TransportCat
+
 schemes:
   TransportCat:
     build:
@@ -237,3 +251,12 @@ schemes:
       config: Debug
       targets:
         - TransportCatTests
+  TransportCatTour:
+    build:
+      targets:
+        TransportCat: all
+        TransportCatUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - TransportCatUITests
