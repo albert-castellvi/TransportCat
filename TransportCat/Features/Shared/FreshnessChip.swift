@@ -59,7 +59,7 @@ struct FreshnessChip: View {
             )
             HStack(spacing: 7) {
                 statusIcon(of: status)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                 Text(status.label)
                     .font(.caption.weight(.semibold))
                 if !status.detail.isEmpty {

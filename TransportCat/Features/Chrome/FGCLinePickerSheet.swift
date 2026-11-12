@@ -12,6 +12,7 @@ struct FGCLinePickerSheet: View {
     private let onSelect: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .footnote) private var fgcsCodeSize: CGFloat = 14
 
     private var fgc: FGCNetworkState { FGCNetworkState.shared }
 
@@ -36,6 +37,7 @@ struct FGCLinePickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     /// The drawable lines, exactly the set the map's chips show (spec S7 of
@@ -57,7 +59,7 @@ struct FGCLinePickerSheet: View {
         } label: {
             HStack(spacing: 12) {
                 Text(layer.code)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: fgcsCodeSize, weight: .bold))
                     .foregroundStyle(Color(hex: layer.textColorHex))
                     .padding(.horizontal, 10)
                     .frame(height: 30)
@@ -69,7 +71,7 @@ struct FGCLinePickerSheet: View {
                 Spacer(minLength: 0)
                 if layer.code == selectedLineCode {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tint)
                 }
             }

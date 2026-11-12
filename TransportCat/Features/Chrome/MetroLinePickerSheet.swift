@@ -16,6 +16,8 @@ struct MetroLinePickerSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @ScaledMetric(relativeTo: .footnote) private var searchIconSize: CGFloat = 13
+    @ScaledMetric(relativeTo: .subheadline) private var clearIconSize: CGFloat = 15
     /// Termini of every line, read once per presentation from the topology
     /// cache (never a network poll, spec S4).
     @State private var terminiByCode: [String: String] = [:]
@@ -64,14 +66,16 @@ struct MetroLinePickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13))
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             TextField("Línia o estació", text: $query)
+                .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
             if !query.isEmpty {
@@ -79,7 +83,7 @@ struct MetroLinePickerSheet: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -133,7 +137,7 @@ struct MetroLinePickerSheet: View {
                 Spacer(minLength: 0)
                 if line.code == selectedLineCode {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tint)
                 }
             }

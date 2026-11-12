@@ -15,7 +15,11 @@ struct BusBadge: View {
     private static let heightRatio: CGFloat = 0.58
     private static let cornerRadius: CGFloat = 9
 
+    @ScaledMetric(relativeTo: .caption2) private var badgeFontSize: CGFloat = 9
+
     var body: some View {
+        let baseSize = min(width * 0.3, 22)
+        let finalSize = max(badgeFontSize, baseSize)
         RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
             .fill(Color(hex: line.colorHex))
             .frame(width: width, height: width * Self.heightRatio)
@@ -25,7 +29,7 @@ struct BusBadge: View {
             }
             .overlay {
                 Text(line.name)
-                    .font(.system(size: fontSize, weight: .bold))
+                    .font(.system(size: finalSize, weight: .bold))
                     .foregroundStyle(Color(hex: line.textColorHex))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -35,10 +39,4 @@ struct BusBadge: View {
             .accessibilityLabel("Línia \(line.name)")
     }
 
-    /// Letter size scaled with the badge, so the same view works at the map,
-    /// picker and row sizes; long names ("Convencional de barri"...) shrink via
-    /// `minimumScaleFactor` instead of being clipped.
-    private var fontSize: CGFloat {
-        max(9, min(width * 0.3, 22))
-    }
 }
