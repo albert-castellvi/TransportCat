@@ -130,6 +130,8 @@ targets:
       - path: TransportCat/Core/Favorites/FavoritesStore.swift
       - path: TransportCat/Core/ColorFromHex.swift
       - path: TransportCat/Core/HexLuminance.swift
+      # The network motif of the icon, drawn faintly behind the widget.
+      - path: TransportCat/Features/Shared/NetworkArt.swift
     settings:
       base:
         PRODUCT_NAME: TransportCatWidgets
