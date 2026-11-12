@@ -87,7 +87,22 @@ struct PlannerScreen: View {
                 endpoint: destination,
                 placeholder: "Afegeix una destinació"
             )
+            Button {
+                swapEndpoints()
+            } label: {
+                Label("Intercanvia l'origen i la destinació", systemImage: "arrow.up.arrow.down")
+                    .font(.footnote)
+            }
+            .disabled(origin == nil && destination == nil)
         }
+    }
+
+    /// Swaps the two endpoints, so the rider does not have to pick both again
+    /// just to plan the return trip (#96).
+    private func swapEndpoints() {
+        let previousOrigin = origin
+        origin = destination
+        destination = previousOrigin
     }
 
     /// One tappable origin/destination row opening the place picker.
@@ -138,21 +153,25 @@ struct PlannerScreen: View {
         }
     }
 
+    /// Primary search action: a filled button instead of a plain list row (#96).
     private var searchSection: some View {
         Section {
             Button {
                 Task { await plan() }
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     Spacer()
                     if isPlanning {
                         ProgressView().controlSize(.small)
                     }
                     Text("Cerca")
-                        .fontWeight(.semibold)
+                        .font(.headline.weight(.semibold))
                     Spacer()
                 }
+                .frame(maxWidth: .infinity, minHeight: 30)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .disabled(!canSearch || isPlanning)
         }
     }
