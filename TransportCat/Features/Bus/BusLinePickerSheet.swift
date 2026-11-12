@@ -247,7 +247,7 @@ struct BusLinePickerSheet: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Línia \(line.name)")
+            .accessibilityLabel("Línia \(line.name), \(line.description)")
 
             Button {
                 store.toggleFavorite(line)
