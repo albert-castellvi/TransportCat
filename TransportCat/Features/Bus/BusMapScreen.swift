@@ -251,7 +251,9 @@ struct BusMapScreen: View {
             }
         }
         // The bus sheet of spec S10. Closing it releases the camera, like the
-        // FGC train sheet does.
+        // FGC train sheet does. The compact first detent fits the sheet's
+        // content — badge, destination, next stop and "Seguir" — without
+        // scrolling; `.medium` and `.large` stay for the rest.
         .sheet(item: $selectedBus, onDismiss: { followingVehicleID = nil }) { bus in
             if let state = lineState {
                 BusVehicleSheet(
@@ -260,7 +262,7 @@ struct BusMapScreen: View {
                     allowFollow: true,
                     followingVehicleID: $followingVehicleID
                 )
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.fraction(0.35), .medium, .large])
                     .presentationDragIndicator(.visible)
             }
         }

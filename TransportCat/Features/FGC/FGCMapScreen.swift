@@ -208,14 +208,16 @@ struct FGCMapScreen: View {
         .toolbar(.hidden, for: .navigationBar)
         // The train sheet is presented by the stack itself and declares its
         // detents here, as the metro and bus station sheets learned to do.
-        // Closing the sheet stops the follow (spec S8).
+        // Closing the sheet stops the follow (spec S8). The compact first
+        // detent fits the sheet's content — badge, destination and "Seguir" —
+        // without scrolling; `.large` stays for the next stops and occupancy.
         .sheet(item: $sheetVehicle, onDismiss: { followingVehicleID = nil }) { vehicle in
             FGCTrainSheet(
                 trainID: vehicle.id,
                 allowFollow: true,
                 followingVehicleID: $followingVehicleID
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.fraction(0.35), .medium, .large])
             .presentationDragIndicator(.visible)
         }
         // UX-06: tap on a station dot opens the station sheet.

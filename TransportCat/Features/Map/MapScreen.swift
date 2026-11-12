@@ -222,11 +222,14 @@ struct MapScreen: View {
                 .presentationDragIndicator(.visible)
         }
         // The train sheet (spec S10): the stack declares the detents, and
-        // closing it stops the follow, exactly like the FGC map.
+        // closing it stops the follow, exactly like the FGC map. The compact
+        // first detent is what fits the sheet's content — badge, destination,
+        // next stop and "Seguir" — without scrolling; `.large` stays for the
+        // rest.
         .sheet(item: $selectedTrain, onDismiss: { followingTrainID = nil }) { train in
             if let state = lineState {
                 MetroTrainSheet(trainID: train.id, state: state, followingTrainID: $followingTrainID)
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents([.fraction(0.35), .medium, .large])
                     .presentationDragIndicator(.visible)
             }
         }
