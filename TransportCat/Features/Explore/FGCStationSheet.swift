@@ -70,7 +70,10 @@ struct FGCStationSheet: View {
                 }
             }
             .navigationTitle(place.name)
-            .navigationBarTitleDisplayMode(.inline)
+            // Inline-large keeps the title on the leading edge and lets it
+            // shrink before truncating: centred, a short name sits off-centre
+            // next to the star and a long one truncates.
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
