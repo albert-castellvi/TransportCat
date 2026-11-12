@@ -35,36 +35,50 @@ struct NearbyStopsList: View {
     }
 
     var body: some View {
-        Group {
-            if let location = LocationService.shared.location {
-                if entries.isEmpty {
-                    emptyText(hasLoaded: arrivalsLoaded)
-                } else {
-                    ForEach(entries) { entry in
-                        Button {
-                            if let onSelect {
-                                onSelect(entry.place)
-                            } else {
-                                // The router switches to the tab that is already on
-                                // screen, so the sheet has to close for the map to
-                                // handle the focus (#92).
-                                AppRouter.shared.isNearbyPresented = false
-                                AppRouter.shared.open(.place(entry.place))
-                            }
-                        } label: {
-                            NearbyStopCard(entry: entry)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            } else {
+        // Read the catalog before the branches so the view keeps observing it
+        // even while the location is still nil, and the `.onChange` below can
+        // reload once it lands.
+        let catalogPlacesEmpty = catalog.places.isEmpty
+        let catalogLoading = catalog.isLoading && catalogPlacesEmpty
+        return Group {
+            if LocationService.shared.location == nil {
                 // The fix has not landed yet (or the host shows its own denied
                 // state): say what is happening instead of drawing nothing.
                 ProgressView("Cercant la teva ubicació…")
+            } else if catalogLoading {
+                // The catalog is still landing (possibly loaded by another
+                // screen): keep the loading state instead of claiming there is
+                // nothing around (#97).
+                ProgressView("Cercant la teva ubicació…")
+            } else if entries.isEmpty {
+                emptyText(hasLoaded: arrivalsLoaded)
+            } else {
+                ForEach(entries) { entry in
+                    Button {
+                        if let onSelect {
+                            onSelect(entry.place)
+                        } else {
+                            // The router switches to the tab that is already on
+                            // screen, so the sheet has to close for the map to
+                            // handle the focus (#92).
+                            AppRouter.shared.isNearbyPresented = false
+                            AppRouter.shared.open(.place(entry.place))
+                        }
+                    } label: {
+                        NearbyStopCard(entry: entry)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .task {
             await bootstrapAndRefresh()
+        }
+        .onChange(of: catalogPlacesEmpty) { _, _ in
+            Task { await refresh() }
+        }
+        .onChange(of: LocationService.shared.location) { _, _ in
+            Task { await refresh() }
         }
     }
 
@@ -79,13 +93,6 @@ struct NearbyStopsList: View {
         }
         while !Task.isCancelled {
             await refresh()
-            // Only a pass that had a location fix can tell "loading" from
-            // "nothing around": on a cold start the first pass often runs
-            // before the first fix and returns empty, which must not turn into
-            // the definitive "no stop within a kilometre" (spec S10).
-            if LocationService.shared.location != nil {
-                arrivalsLoaded = true
-            }
             do {
                 try await Task.sleep(nanoseconds: Self.arrivalsRefreshIntervalNanoseconds)
             } catch {
@@ -99,6 +106,17 @@ struct NearbyStopsList: View {
     /// card waited for every request above it (#92).
     @MainActor
     private func refresh() async {
+        // Only a pass that had a location fix can tell "loading" from
+        // "nothing around": on a cold start the first pass often runs before
+        // the first fix and returns empty, which must not turn into the
+        // definitive "no stop within a kilometre" (spec S10). The defer keeps
+        // this true for the `.onChange`-driven passes too, not just the 30 s
+        // loop.
+        defer {
+            if LocationService.shared.location != nil {
+                arrivalsLoaded = true
+            }
+        }
         let nearby = NearbyStops.entries(
             userLocation: LocationService.shared.location,
             places: catalog.places
