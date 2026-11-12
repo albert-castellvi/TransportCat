@@ -107,6 +107,26 @@ final class PlannerParserTests: XCTestCase {
         XCTAssertEqual(busLeg.intermediateStops.count, 3)
     }
 
+    /// #96: a bus leg can carry the line description as `route`; the badge
+    /// needs the short name.
+    func testLegPrefersTheShortRouteName() throws {
+        let json = """
+        {"plan": {"itineraries": [{
+            "startTime": 1793603100000, "endTime": 1793603220000, "duration": 120, "transfers": 0,
+            "legs": [{
+                "startTime": 1793603100000, "endTime": 1793603220000, "mode": "BUS",
+                "route": "Districte Gran Via l'Hospitalet / Av. Esplugues", "routeShortName": "V1",
+                "from": {"name": "A", "lat": 41.38, "lon": 2.16},
+                "to": {"name": "B", "lat": 41.39, "lon": 2.17}
+            }]
+        }]}}
+        """
+        let leg = try XCTUnwrap(PlannerParser.itineraries(from: Data(json.utf8)).first?.legs.first)
+
+        XCTAssertEqual(leg.route, "V1")
+        XCTAssertEqual(leg.badgeText, "V1")
+    }
+
     func testMinimalLegWithoutOptionalFieldsParses() throws {
         let json = """
         {"plan": {"itineraries": [{
