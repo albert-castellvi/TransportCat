@@ -258,4 +258,40 @@ final class MapIncidentBadgeTests: XCTestCase {
         )
         XCTAssertEqual(result, [])
     }
+
+    /// A station's per-line `CODI_ESTACIO` can equal another station's
+    /// `ID_ESTACIO`: the interchange rule must not match on it. Hospital de
+    /// Bellvitge (L1) is 111/81; an unrelated place whose id is 111 and that
+    /// serves L2-L3-L4 must add nothing.
+    func testInterchangeDoesNotMatchAnotherPlaceByPerLineCode() throws {
+        let l1 = try GeoJSONParser.stations(from: Fixtures.data("stations-L1"), lineCode: "1")
+        let bellvitge = try XCTUnwrap(l1.first { $0.name == "Hospital de Bellvitge" })
+        let places = TMBPlaceParser.metroPlaces(from: [
+            TMBPlaceMetroLine(
+                code: "1",
+                displayName: "L1",
+                stations: try GeoJSONParser.stations(from: Fixtures.data("places-metro-L1"), lineCode: "1")
+            ),
+            TMBPlaceMetroLine(
+                code: "3",
+                displayName: "L3",
+                stations: try GeoJSONParser.stations(from: Fixtures.data("places-metro-L3"), lineCode: "3")
+            ),
+        ])
+        let colliding = Place(
+            kind: .metroStation,
+            code: String(bellvitge.code),
+            name: "Un altre intercanvi",
+            position: GeoPoint(latitude: 41.35, longitude: 2.10),
+            lineCodes: ["L2", "L3", "L4"],
+            accessible: nil
+        )
+
+        let result = StationInterchange.metroLineDisplayNames(
+            for: bellvitge,
+            places: places + [colliding],
+            lineCode: "1"
+        )
+        XCTAssertEqual(result, [])
+    }
 }

@@ -21,8 +21,10 @@ enum StationInterchange {
     /// FGC codes in the catalog never produce a capsule.
     ///
     /// The place behind the station comes from the places catalog the same way
-    /// `MapScreen` matches a `Place` focus: the catalog's `ID_ESTACIO` or the
-    /// station code first, the folded name as the last resort. Same-name metro
+    /// `MapScreen` matches a `Place` focus: the catalog's `ID_ESTACIO` first,
+    /// the folded name as the last resort. The per-line `CODI_ESTACIO` is never
+    /// compared: it overlaps numerically with `ID_ESTACIO`, so a match on it
+    /// would hand a station the lines of an unrelated place. Same-name metro
     /// places add their lines too — the two halves of a transfer are separate
     /// places whose merged line list the catalog also publishes, and the name
     /// match keeps the rule honest if it splits them again. Lines come out in
@@ -35,8 +37,7 @@ enum StationInterchange {
         let needle = PlaceIndex.normalized(station.name)
         let matches = places.filter { place in
             guard place.kind == .metroStation else { return false }
-            let sameCode = (place.code == station.id.map { String($0) })
-                || (place.code == String(station.code))
+            let sameCode = place.code == station.id.map { String($0) }
             let sameName = !needle.isEmpty && PlaceIndex.normalized(place.name) == needle
             return sameCode || sameName
         }
