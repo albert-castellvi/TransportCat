@@ -307,9 +307,9 @@ struct ExploreScreen: View {
                 // mode word only as a standalone caption so the code is
                 // never repeated.
                 let caption = arrivals.isEmpty
-                    ? (modeLabel.isEmpty ? nil : "\(modeLabel) \(place.lineCodes.joined(separator: " · "))")
-                    : ""
-                ExplorePlaceRow(place: place, caption: caption.isEmpty ? nil : caption)
+                    ? "\(modeLabel) · \(place.lineCodes.joined(separator: " · "))"
+                    : modeLabel
+                ExplorePlaceRow(place: place, caption: caption)
             }
             .buttonStyle(.plain)
             if arrivals.isEmpty {
