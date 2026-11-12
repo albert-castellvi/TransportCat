@@ -42,11 +42,11 @@ struct PlannerScreen: View {
                 title: target.sheetTitle,
                 allowsCurrentLocation: target.allowsCurrentLocation
             ) { endpoint in
-                let (newOrigin, newDestination) = resolveCurrentLocationConflict(
-                    existingOrigin: origin,
-                    existingDestination: destination,
-                    proposedEndpoint: endpoint,
-                    target: target
+                let (newOrigin, newDestination) = applyPlannerPick(
+                    endpoint,
+                    to: target,
+                    origin: origin,
+                    destination: destination
                 )
                 origin = newOrigin
                 destination = newDestination
@@ -70,7 +70,7 @@ struct PlannerScreen: View {
     /// when the screen appears. Does not overwrite an origin the rider
     /// cleared by choosing the current location as destination instead.
     private func adoptCurrentLocation() {
-        guard origin == nil, destination?.isCurrentLocation == false,
+        guard origin == nil, destination?.isCurrentLocation != true,
               let current = PlannerEndpoint.currentLocation()
         else { return }
         origin = current
