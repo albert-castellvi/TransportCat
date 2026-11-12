@@ -521,19 +521,22 @@ struct FGCMapScreen: View {
 
     /// Re-center on the followed train if it is still in the feed (spec S8).
     /// The span is kept as it is so following never zooms.
+    ///
+    /// The train sheet covers the bottom of the map while the follow is on, so
+    /// the centre moves south by half of the covered height and the train lands
+    /// in the middle of the band the sheet leaves visible. The anchor is the
+    /// shifted centre the camera reports back; anchoring the train itself would
+    /// read as a rider pan and release the follow.
     private func followVehicle(in vehicles: [MapVehicle]) {
         guard let id = followingVehicleID,
               let vehicle = vehicles.first(where: { $0.id == id }) else { return }
-        followAnchor = vehicle.position
-        cameraPosition = .region(
-            MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: vehicle.position.latitude,
-                    longitude: vehicle.position.longitude
-                ),
-                span: cameraSpan
-            )
+        let offset = cameraSpan.latitudeDelta * Self.vehicleSheetCoverFraction / 2
+        let center = CLLocationCoordinate2D(
+            latitude: vehicle.position.latitude - offset,
+            longitude: vehicle.position.longitude
         )
+        followAnchor = GeoPoint(latitude: center.latitude, longitude: center.longitude)
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: cameraSpan))
     }
 
     // MARK: - Focus (spec S11)
@@ -680,6 +683,11 @@ struct FGCMapScreen: View {
     /// Floor of the pan-detection tolerance, in degrees: below it our own
     /// 10 Hz follow commands would read as the rider moving the map.
     private static let followPanToleranceDegrees = 0.002
+
+    /// Fraction of the map height the train sheet covers at its compact detent,
+    /// the first one it is presented with. The follow camera shifts its centre
+    /// by half of it so the followed train stays in the visible band.
+    private static let vehicleSheetCoverFraction = 0.35
 
     /// How long a focus flight keeps the pan detector quiet: the 0.35 s camera
     /// animation plus a margin for the callbacks that trail it.

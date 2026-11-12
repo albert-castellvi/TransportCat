@@ -974,19 +974,22 @@ struct BusMapScreen: View {
 
     /// Re-center on the followed bus if it is still in the feed (spec S10).
     /// The span is kept as it is so following never zooms — the FGC mechanic.
+    ///
+    /// The bus sheet covers the bottom of the map while the follow is on, so the
+    /// centre moves south by half of the covered height and the bus lands in the
+    /// middle of the band the sheet leaves visible. The anchor is the shifted
+    /// centre the camera reports back; anchoring the bus itself would read as a
+    /// rider pan and release the follow.
     private func followBus(in state: BusLineState) {
         guard let id = followingVehicleID,
               let position = state.positions.first(where: { $0.id == id }) else { return }
-        followAnchor = position.train.position
-        cameraPosition = .region(
-            MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: position.train.position.latitude,
-                    longitude: position.train.position.longitude
-                ),
-                span: cameraSpan
-            )
+        let offset = cameraSpan.latitudeDelta * Self.vehicleSheetCoverFraction / 2
+        let center = CLLocationCoordinate2D(
+            latitude: position.train.position.latitude - offset,
+            longitude: position.train.position.longitude
         )
+        followAnchor = GeoPoint(latitude: center.latitude, longitude: center.longitude)
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: cameraSpan))
     }
 
     /// Zoom to a stop or a vehicle and re-center on it (spec S11).
@@ -1054,6 +1057,11 @@ struct BusMapScreen: View {
     /// map's constant, copied because both maps release the follow the same
     /// way (spec S10).
     private static let followPanToleranceDegrees = 0.002
+
+    /// Fraction of the map height the bus sheet covers at its compact detent,
+    /// the first one it is presented with. The follow camera shifts its centre
+    /// by half of it so the followed bus stays in the visible band.
+    private static let vehicleSheetCoverFraction = 0.35
 }
 
 /// Inputs of the bus screen's load/poll task (spec S13): the selected line and

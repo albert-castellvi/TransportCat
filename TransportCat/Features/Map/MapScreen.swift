@@ -800,24 +800,33 @@ struct MapScreen: View {
 
     /// Re-center on the followed train if it is still on the line (spec S10).
     /// The span is kept as it is so following never zooms.
+    ///
+    /// The train sheet covers the bottom of the map while the follow is on, so
+    /// the centre moves south by half of the covered height: the train lands in
+    /// the middle of the band the sheet leaves visible instead of under the
+    /// sheet's top edge. The anchor is the shifted centre, because that is the
+    /// camera the command produces; anchoring the train itself would read as a
+    /// rider pan by the tolerance check and release the follow.
     private func followTrain(in positions: [TrainPosition]) {
         guard let id = followingTrainID,
               let train = positions.first(where: { $0.id == id }) else { return }
-        followAnchor = train.position
-        cameraPosition = .region(
-            MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: train.position.latitude,
-                    longitude: train.position.longitude
-                ),
-                span: cameraSpan
-            )
+        let offset = cameraSpan.latitudeDelta * Self.vehicleSheetCoverFraction / 2
+        let center = CLLocationCoordinate2D(
+            latitude: train.position.latitude - offset,
+            longitude: train.position.longitude
         )
+        followAnchor = GeoPoint(latitude: center.latitude, longitude: center.longitude)
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: cameraSpan))
     }
 
     /// Floor of the pan-detection tolerance, in degrees: below it our own
     /// 10 Hz follow commands would read as the rider moving the map (S10).
     private static let followPanToleranceDegrees = 0.002
+
+    /// Fraction of the map height the train sheet covers at its compact detent,
+    /// the first one it is presented with. The follow camera shifts its centre
+    /// by half of it so the followed train stays in the visible band.
+    private static let vehicleSheetCoverFraction = 0.35
 
     // MARK: - Router focus (S11)
 
