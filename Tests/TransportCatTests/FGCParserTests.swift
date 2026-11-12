@@ -197,7 +197,7 @@ final class FGCParserTests: XCTestCase {
           {"id":"no-geo","lin":"S1","dir":"A","origen":"PC","desti":"NA",
            "properes_parades":"{\\"parada\\": \\"NA\\"}","en_hora":"True"},
           {"id":"valid-b","lin":"S1","geo_point_2d":{"lon":2.15,"lat":41.39},"dir":"A","origen":"PC",
-           "desti":"NA","properes_parades":"","estacionat_a":"NO","en_hora":"False"}
+           "desti":"NA","properes_parades":"","estacionat_a":"","en_hora":"False"}
         ]}
         """.data(using: .utf8)!
         let trains = try FGCParser.trains(from: json)
