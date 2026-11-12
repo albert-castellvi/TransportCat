@@ -275,7 +275,11 @@ struct BusDiagramScreen: View {
         state: BusLineState,
         direction: BusDirection
     ) -> [BusDiagramRowPlan] {
-        stops.enumerated().map { index, stop in
+        // The poll asks iBus about an evenly spaced subset of the direction's
+        // stops (spec S5); a stop outside it never gets arrivals, so its row
+        // must not read as an empty answer (#78).
+        let polledCodes = Set(direction.polledStops.map(\.code))
+        return stops.enumerated().map { index, stop in
             let arrivals = (state.arrivalsByStop[stop.code] ?? [])
                 .filter { $0.directionID == direction.id }
             let nextTwo = ParadesTimeline.busNextTwo(arrivals: arrivals, directionID: direction.id)
@@ -284,6 +288,7 @@ struct BusDiagramScreen: View {
                 stop: stop,
                 isFirst: index == 0,
                 isLast: index == stops.count - 1,
+                isPolled: polledCodes.contains(stop.code),
                 incidents: incidents[stop.code] ?? [],
                 next: nextTwo.next,
                 after: nextTwo.after
@@ -327,6 +332,9 @@ private struct BusDiagramRowPlan: Identifiable {
     let stop: BusStop
     let isFirst: Bool
     let isLast: Bool
+    /// Whether the poll asks iBus about this stop: outside the polled subset
+    /// the times column stays empty, because no data can ever arrive (#78).
+    let isPolled: Bool
     let incidents: [StationIncident]
     /// Next bus of this direction at this stop; nil when the stop was not
     /// polled or no bus is announced (spec S9).
@@ -432,49 +440,53 @@ private struct BusDiagramRow: View {
     }
 
     /// The next two buses of the direction (spec S9): "<n> min" big, second
-    /// smaller; "ara" in green; "Sense dada" when the poll saw none.
+    /// smaller; "ara" in green. A stop outside the poll plan shows nothing
+    /// instead of an empty answer (#78); a polled stop the poll saw no bus
+    /// at shows a single dash.
     @ViewBuilder
     private var timesColumn: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if let next = row.next {
-                Text(ParadesTimeline.busTimeText(seconds: next.seconds))
-                    .font(.callout.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(
-                        next.seconds <= ParadesTimeline.imminentThresholdSeconds
-                            ? Color(hex: "30D158")
-                            : Color.primary
-                    )
-            } else {
-                Text("—")
-                    .font(.callout.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+        if row.isPolled {
+            VStack(alignment: .trailing, spacing: 2) {
+                if let next = row.next {
+                    Text(ParadesTimeline.busTimeText(seconds: next.seconds))
+                        .font(.callout.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(
+                            next.seconds <= ParadesTimeline.imminentThresholdSeconds
+                                ? Color(hex: "30D158")
+                                : Color.primary
+                        )
+                } else {
+                    Text("—")
+                        .font(.callout.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                if let after = row.after {
+                    Text(ParadesTimeline.busTimeText(seconds: after.seconds))
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
             }
-            if let after = row.after {
-                Text(ParadesTimeline.busTimeText(seconds: after.seconds))
-                    .font(.caption.weight(.medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            } else if row.next == nil {
-                Text("Sense dada")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
+            .frame(minWidth: 72, alignment: .trailing)
         }
-        .frame(minWidth: 72, alignment: .trailing)
     }
 
     private var accessibilityText: String {
         var parts: [String] = [row.stop.name]
         if let hereText { parts.append(hereText) }
-        if let next = row.next {
-            parts.append("Bus en \(ParadesTimeline.busTimeText(seconds: next.seconds))")
-        } else {
-            parts.append("Sense dada")
-        }
-        if let after = row.after {
-            parts.append("i en \(ParadesTimeline.busTimeText(seconds: after.seconds))")
+        // Only the polled stops speak of buses (#78): an unpolled stop shows
+        // no times, so it announces none either.
+        if row.isPolled {
+            if let next = row.next {
+                parts.append("Bus en \(ParadesTimeline.busTimeText(seconds: next.seconds))")
+            } else {
+                parts.append("Sense dada")
+            }
+            if let after = row.after {
+                parts.append("i en \(ParadesTimeline.busTimeText(seconds: after.seconds))")
+            }
         }
         return parts.joined(separator: ", ")
     }

@@ -33,6 +33,11 @@ struct DiagramScreen: View {
     @AppStorage("metroSelectedLine") private var selectedLineCode = MetroLine.allLines[0].code
     @State private var lineState: LineState?
     @State private var selectedStation: Station?
+    /// Whether the collapsed service-alert summary is expanded (#91): five
+    /// cards pushed the timeline below the fold, so several alerts collapse
+    /// into one row.
+    @State private var showsServiceCards = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var selectedLine: MetroLine {
         MetroLine.line(forCode: selectedLineCode) ?? MetroLine.allLines[0]
@@ -53,6 +58,8 @@ struct DiagramScreen: View {
             // Same rule as MapScreen: the loader task lives on the always-
             // visible container, not on the view that requires loaded data.
             .task(id: selectedLineCode) {
+                // A new line starts with its alert summary collapsed (#91).
+                showsServiceCards = false
                 // The interchange badges read the places catalog (fix F1); a
                 // disk read, no request, when nothing has loaded it yet.
                 if PlaceCatalogStore.shared.places.isEmpty {
@@ -126,11 +133,7 @@ struct DiagramScreen: View {
         )
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(cards) { card in
-                    ServiceCard(alert: card)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                }
+                serviceCardsSection(cards)
                 if state.isFeedEmpty {
                     // No arrivals feed for this line: say so above the rows
                     // instead of leaving a rail with no trains (spec S8).
@@ -197,6 +200,60 @@ struct DiagramScreen: View {
     ) -> [ServiceAlert] {
         let byID = Dictionary(alerts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return cardAlertIDs.compactMap { byID[$0] }
+    }
+
+    /// The top of the timeline (spec S8): one card per affected run, or —
+    /// when several runs are affected — one summary row that expands on tap,
+    /// because a stack of truncated cards filled the top half of the screen
+    /// and pushed the timeline below the fold (#91).
+    @ViewBuilder
+    private func serviceCardsSection(_ cards: [ServiceAlert]) -> some View {
+        if cards.count > 1 {
+            Button {
+                withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+                    showsServiceCards.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image("icon-alert")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 22, height: 22)
+                        .foregroundStyle(Color(hex: "FF9F0A"))
+                    Text("\(cards.count) avisos a \(selectedLine.displayName)")
+                        .font(.subheadline.weight(.bold))
+                    Spacer(minLength: 0)
+                    Image(systemName: showsServiceCards ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(hex: "FF9F0A").opacity(0.14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .strokeBorder(Color(hex: "FF9F0A").opacity(0.45), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Mostra o amaga la llista d'avisos")
+            .accessibilityValue(showsServiceCards ? "Desplegat" : "Plegat")
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            if showsServiceCards {
+                ForEach(cards) { card in
+                    ServiceCard(alert: card)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
+            }
+        } else if let card = cards.first {
+            ServiceCard(alert: card)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+        }
     }
 
     /// One entry per station, in line order, with the incidents, the
@@ -352,8 +409,11 @@ private struct ParadesMetroRow: View {
                 }
             }
             Spacer(minLength: 8)
-            timeColumn(row.columnVia1, width: 76)
-            timeColumn(row.columnVia2, width: 84)
+            // The widths the columns ever need ("<1 min", "59 min") instead of
+            // the old generous ones, so the station name takes the free width
+            // instead of truncating with a gap before the times (#91).
+            timeColumn(row.columnVia1, width: 58)
+            timeColumn(row.columnVia2, width: 66)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)

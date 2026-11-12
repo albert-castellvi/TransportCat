@@ -43,6 +43,7 @@ struct PlannerItineraryRow: View {
 
 /// One leg in the results badges: the walk pictogram, or the line pill in the
 /// colors OTP published (spec S16).
+@MainActor
 struct PlannerLegBadge: View {
     let leg: Leg
 
@@ -57,11 +58,22 @@ struct PlannerLegBadge: View {
                 .accessibilityLabel("A peu")
         } else {
             ExploreLineBadge(
-                label: leg.badgeText,
+                label: badgeLabel,
                 colorHex: leg.badgeColorHex,
                 textColorHex: leg.routeTextColorHex
             )
         }
+    }
+
+    /// The bus catalog knows the commercial name behind a published line
+    /// description, so "Districte Gran Via l'Hospitalet / Av. Esplugues"
+    /// reads "V1" on the badge (#96).
+    private var badgeLabel: String {
+        guard let route = leg.route,
+              let name = PlannerFormat.shortLineName(for: route, in: BusCatalogStore.shared.lines) else {
+            return leg.badgeText
+        }
+        return name
     }
 }
 

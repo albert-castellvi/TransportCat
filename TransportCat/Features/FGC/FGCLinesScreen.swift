@@ -269,7 +269,10 @@ private struct FGCLinesRow: View {
                         .lineLimit(1)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(displayed.accessibilityLabel)
+                // The marker on the rail is this train's control, so the
+                // label button stays out of the accessibility tree instead of
+                // announcing the same train twice (#83).
+                .accessibilityHidden(true)
             }
         }
     }
@@ -280,7 +283,7 @@ private struct FGCLinesRow: View {
     /// measured from the top, where the rail dot sits — never a fixed band
     /// anchored at the row's top, which drifts once the row grows.
     private var trainMarkers: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: -20) {
             ForEach(trains) { displayed in
                 Button {
                     onTapTrain(displayed.train)
@@ -293,12 +296,19 @@ private struct FGCLinesRow: View {
                         isSelected: false,
                         size: 22
                     )
+                    // A 22 pt marker is half the 44 pt minimum target, so
+                    // the button carries the full frame and the visual
+                    // marker stays centered on the rail dot (#83). The
+                    // negative spacing keeps consecutive markers at the same
+                    // visual distance a 22 pt marker row had.
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(displayed.accessibilityLabel)
             }
         }
-        .padding(.leading, Self.spineCenterX - 11)
+        .padding(.leading, Self.spineCenterX - 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

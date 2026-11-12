@@ -193,6 +193,37 @@ final class OfflineCacheTests: XCTestCase {
         XCTAssertEqual(loaded?.stations, stations)
     }
 
+    /// #75: the offline copy must carry the station accessibility, or every
+    /// FGC station loses its accessibility section when the app starts offline.
+    func testFGCTopologyRoundTripKeepsWheelchairBoarding() async throws {
+        let stations = [
+            FGCStation(
+                code: "GR",
+                name: "Gràcia",
+                networkLine: 1,
+                order: 1,
+                point: GeoPoint(latitude: 41.3991, longitude: 2.1527),
+                wheelchairBoarding: 1
+            ),
+            FGCStation(
+                code: "PR",
+                name: "Provença",
+                networkLine: 1,
+                order: 2,
+                point: nil,
+                wheelchairBoarding: 2
+            ),
+        ]
+
+        let save = try XCTUnwrap(OfflineCache.saveFGCTopology(
+            lines: fgcLines(), stations: stations, cache: cache
+        ))
+        await save.value
+
+        let loaded = OfflineCache.loadFGCTopology(cache: cache)
+        XCTAssertEqual(loaded?.stations.map(\.wheelchairBoarding), [1, 2])
+    }
+
     // MARK: - Background saves (spec S5)
 
     /// Spec S5: the topology saves of the three maps hand back the write they

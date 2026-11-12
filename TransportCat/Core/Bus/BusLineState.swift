@@ -70,6 +70,10 @@ final class BusLineState {
     /// Poll cycle, in seconds. iBus updates on the order of tens of seconds,
     /// so 20 s keeps a line visible without hammering the API (spec S5).
     static let pollIntervalSeconds: UInt64 = 20
+    /// First pause before retrying a failed topology load, and the cap the
+    /// delay doubles up to (#67).
+    static let topologyRetryInitialSeconds: UInt64 = 5
+    static let topologyRetryMaxSeconds: UInt64 = 60
     /// Stop requests per poll, both directions together (spec S5).
     static let maxRequestsPerPoll = 30
     /// Stop requests allowed in flight at once.
@@ -98,9 +102,22 @@ final class BusLineState {
     }
 
     /// Distinct buses the last successful poll reported for this line: what
-    /// the data-source strip calls "K busos seguits" (spec S3).
+    /// the data-source strip calls "K busos seguits" (spec S3). Bus id 0 is
+    /// the feed's placeholder, not a bus, and `BusFleet.positions` drops it
+    /// (#86).
     var trackedBusCount: Int {
-        Set(arrivalsByStop.values.flatMap { $0 }.compactMap(\.busID)).count
+        Self.trackedBusCount(in: arrivalsByStop)
+    }
+
+    /// Buses in the arrivals of one poll, counted once per feed id and without
+    /// the placeholder id 0 that `BusFleet.positions` never places (#86).
+    nonisolated static func trackedBusCount(in arrivalsByStop: [Int: [BusArrival]]) -> Int {
+        Set(
+            arrivalsByStop.values
+                .flatMap { $0 }
+                .compactMap(\.busID)
+                .filter { $0 != 0 }
+        ).count
     }
 
     /// A successful poll answered with no bus at all for the line: the screen
@@ -110,11 +127,24 @@ final class BusLineState {
         return arrivalsByStop.values.allSatisfy(\.isEmpty)
     }
 
-    /// Long-running task body: load topology once, then poll until cancelled
-    /// (the bus screen's `.task` cancels on disappear, spec S5).
+    /// Long-running task body: load topology, retrying while it has no
+    /// directions, then poll until cancelled (the bus screen's `.task` cancels
+    /// on disappear, spec S5).
     func run() async {
-        if directions.isEmpty {
+        // #67: a failed first load used to end the task for good, leaving the
+        // error overlay until the rider picked another line. Retry with a
+        // growing, capped delay while the line still has no directions and the
+        // screen is alive.
+        var retryDelay = Self.topologyRetryInitialSeconds
+        while !Task.isCancelled && directions.isEmpty {
             await loadTopology()
+            guard directions.isEmpty, !Task.isCancelled else { break }
+            do {
+                try await Task.sleep(nanoseconds: retryDelay * 1_000_000_000)
+            } catch {
+                return
+            }
+            retryDelay = min(retryDelay * 2, Self.topologyRetryMaxSeconds)
         }
         guard !directions.isEmpty else { return }
         // 10 Hz ticker between polls, like the metro line: the buses move
@@ -166,7 +196,7 @@ final class BusLineState {
                 publishDirections(stops: cached.stops, routes: cached.routes)
                 Self.log.info("Bus line \(self.line.name, privacy: .public): \(cached.stops.count) stops (offline cache)")
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = "No s'ha pogut carregar la línia. Torna-ho a provar."
             }
         }
     }
@@ -374,7 +404,7 @@ final class BusLineState {
         var result: [Int: BusObservations] = [:]
         for (stopCode, arrivals) in fetched {
             for arrival in arrivals {
-                guard let busID = arrival.busID else { continue }
+                guard let busID = arrival.busID, busID != 0 else { continue }
                 var observation = result[busID] ?? BusObservations(destination: arrival.destination)
                 observation.stops.append((
                     stopCode: stopCode,

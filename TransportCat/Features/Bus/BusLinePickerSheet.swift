@@ -181,9 +181,18 @@ struct BusLinePickerSheet: View {
                                     Button {
                                         select(line)
                                     } label: {
-                                        BusBadge(line: line, width: 46)
+                                        HStack(spacing: 10) {
+                                            BusBadge(line: line, width: 46)
+                                            Text(line.description)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.leading)
+                                                .frame(width: 110, alignment: .leading)
+                                        }
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel("Línia \(line.name), \(line.description)")
                                 }
                             }
                             .padding(.vertical, 2)
@@ -220,9 +229,15 @@ struct BusLinePickerSheet: View {
                             .font(.subheadline.weight(.medium))
                             // Full headline, never clipped by the row height.
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(line.familyName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        // The family is already the section header and the chip,
+                        // so it is only named again while searching, where the
+                        // rows span every family and the header is the result
+                        // count (#100).
+                        if isSearching {
+                            Text(line.familyName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer(minLength: 0)
                 }

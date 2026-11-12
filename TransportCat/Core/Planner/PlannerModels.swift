@@ -51,8 +51,16 @@ struct Leg: Hashable {
     var isWalk: Bool { mode == "WALK" || !isTransit }
     var duration: TimeInterval { endTime.timeIntervalSince(startTime) }
 
-    /// Badge text: the line's short name, falling back to the mode.
-    var badgeText: String { route ?? PlannerFormat.modeLabel(mode) }
+    /// Badge text: the line's short name, falling back to the mode. Some bus
+    /// legs publish the line description ("Districte Gran Via l'Hospitalet /
+    /// Av. Esplugues") as `route`; a badge has room for a code only, so those
+    /// fall back to the mode label until the bus catalog resolves them (#96).
+    var badgeText: String {
+        guard let route, !route.isEmpty, !route.contains(" "), route.count <= 5 else {
+            return PlannerFormat.modeLabel(mode)
+        }
+        return route
+    }
     /// Badge fill: the published route color, or a neutral gray when absent.
     var badgeColorHex: String { routeColorHex ?? "8E8E93" }
 }
@@ -141,5 +149,14 @@ enum PlannerFormat {
         case "RAIL": return "Tren"
         default: return mode
         }
+    }
+
+    /// Commercial name of the bus line whose description the planner published
+    /// as a leg's route ("Districte Gran Via l'Hospitalet / Av. Esplugues" →
+    /// "V1"). nil when the catalog does not know that description (#96).
+    static func shortLineName(for route: String, in busLines: [BusLine]) -> String? {
+        busLines.first {
+            $0.description == route || "\($0.origin) / \($0.destination)" == route
+        }?.name
     }
 }

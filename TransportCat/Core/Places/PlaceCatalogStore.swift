@@ -24,7 +24,9 @@ final class PlaceCatalogStore {
 
     private let cache: DiskCache
     /// One load per launch: an empty `places` from the cache still triggers the
-    /// network refresh, but a successful or failed attempt does not repeat.
+    /// network refresh, but a successful attempt does not repeat. An attempt
+    /// that ends with an empty catalog clears the guard, so a failed first load
+    /// never locks the whole launch (#66).
     private var hasAttemptedLoad = false
 
     init(cache: DiskCache = .shared) {
@@ -52,7 +54,13 @@ final class PlaceCatalogStore {
         guard !hasAttemptedLoad, !isLoading else { return !places.isEmpty }
         hasAttemptedLoad = true
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            // #66: a failed load without a cached copy leaves the catalog empty.
+            // Clearing the guard here lets the next screen's load try again
+            // instead of answering an empty catalog for the rest of the launch.
+            if places.isEmpty { hasAttemptedLoad = false }
+        }
 
         do {
             async let metroLines = client.metroPlaceLines()

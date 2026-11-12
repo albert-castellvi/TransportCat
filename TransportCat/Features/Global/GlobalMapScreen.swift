@@ -280,6 +280,11 @@ struct GlobalMapScreen: View {
         } else if hasLayers {
             networkMap
                 .transition(.opacity)
+        } else if state.loadFailed {
+            GlobalLoadFailedView {
+                Task { await state.retryLoad() }
+            }
+            .transition(.opacity)
         } else {
             MapLoadingPlaceholder()
                 .transition(.opacity)
@@ -561,8 +566,8 @@ struct GlobalMapScreen: View {
     /// the station order — every trigger is a throttled, human-scale event.
     /// A selection whose badge vanished quietly closes its card.
     private func refreshIncidentBadges() {
-        incidentBadges = GlobalIncidentBadges.badges(from: state.incidentStations) { lineCode, stationCode in
-            state.lineStates[lineCode]?.stations.first { $0.code == stationCode }?.orderInLine
+        incidentBadges = GlobalIncidentBadges.badges(from: state.incidentStations) { lineCode, stationID in
+            state.lineStates[lineCode]?.stations.first { StationGroupKey.key(for: $0) == stationID }?.orderInLine
         }
         if let badge = selectedBadge, !incidentBadges.contains(badge) {
             selectedBadge = nil
@@ -940,5 +945,26 @@ private enum GlobalVehicleCardRows {
         private func stationName(for code: String) -> String {
             state.stations.first { $0.code == code }?.name ?? code
         }
+    }
+}
+
+/// Error state of the global map (spec S8): a load that left the map empty
+/// says so instead of spinning forever, with a retry that re-runs the
+/// topology pass.
+private struct GlobalLoadFailedView: View {
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("No s'ha pogut carregar la xarxa")
+                .font(.callout)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Button("Reintenta", action: onRetry)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

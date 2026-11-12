@@ -1,11 +1,13 @@
 # TransportCat
 
-Native iOS client for the Barcelona metro in real time, built with SwiftUI.
-Network topology and live arrivals come straight from the public TMB API
-([developer.tmb.cat](https://developer.tmb.cat)); train positions are computed
-on device by interpolating live metro arrivals (i-Metro) over each line's
-geometry. No backend of our own. Distributed via TestFlight through GitHub
-Actions (XcodeGen, no committed `.xcodeproj`).
+Native iOS client for public transport around Barcelona in real time, built
+with SwiftUI: TMB metro and bus, FGC, and a combined "Tot" map, plus a watchOS
+app, widgets, a Live Activity and Siri shortcuts. Network topology and live
+arrivals come straight from the public TMB API
+([developer.tmb.cat](https://developer.tmb.cat)) and the FGC open data; metro
+and bus positions are computed on device by interpolating live arrivals over
+each line's geometry. No backend of our own. Distributed via TestFlight through
+GitHub Actions (XcodeGen, no committed `.xcodeproj`).
 
 ## Manual checklist (one human, in order)
 
@@ -45,8 +47,9 @@ Environment secrets.
 7. **TestFlight**: create a tester group, fill "What to Test". Export
    compliance is declared in Info.plist
    (`ITSAppUsesNonExemptEncryption=false`), so no per-build questionnaire.
-8. **App icon**: the asset catalog currently has an empty AppIcon set. Add a
-   real 1024×1024 icon before distributing to testers.
+8. **App Group**: the app and the widget share favorites through
+   `group.cat.transport.app`; the App IDs need the capability before the
+   signed job can create their profiles.
 
 Local build for development: create `Support/secrets.xcconfig`-style values
 via `xcodegen generate` and pass

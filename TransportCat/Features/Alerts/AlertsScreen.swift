@@ -71,6 +71,7 @@ struct AlertsScreen: View {
                         }
                     }
                 }
+                let summary = AlertsStateSummary(alerts: app.alerts)
                 if let message = app.missingCredentialsMessage {
                     ConfigurationNotice(message: message)
                         .listRowBackground(Color.clear)
@@ -78,16 +79,21 @@ struct AlertsScreen: View {
                     Text(error)
                         .font(.footnote)
                         .foregroundStyle(.red)
+                } else if summary.showsEmptyState {
+                    emptyState
                 } else {
-                    let summary = AlertsStateSummary(alerts: app.alerts)
-                    if summary.showsEmptyState {
-                        emptyState(summary)
-                    } else {
-                        // Same flat list as before: service and facility
-                        // alerts together, in feed order.
-                        ForEach(app.alerts) { alert in
-                            AlertRow(alert: alert)
-                        }
+                    // Service alerts first; facility notices stay behind the
+                    // count row instead of joining this list (#95).
+                    ForEach(summary.serviceAlerts) { alert in
+                        AlertRow(alert: alert)
+                    }
+                }
+                // The count row leads to the facility notices in every state.
+                if summary.facilityCount > 0 {
+                    NavigationLink {
+                        FacilityAlertsScreen(alerts: summary.facilityAlerts)
+                    } label: {
+                        FacilityAlertsRow(count: summary.facilityCount)
                     }
                 }
             }
@@ -103,10 +109,10 @@ struct AlertsScreen: View {
     }
 
     /// The "Tot funciona" empty state (spec S11, `V5Empty` mockup): the icon's
-    /// network in full colour, then the facility-alert count row when the feed
-    /// still has elevators or escalators out of service.
+    /// network in full colour. The facility-alert count row follows in the
+    /// list, in this state and in the service-alert state alike (#95).
     @ViewBuilder
-    private func emptyState(_ summary: AlertsStateSummary) -> some View {
+    private var emptyState: some View {
         VStack(spacing: 20) {
             NetworkArt(.illustration, accessibilityLabel: Text("Il·lustració de la xarxa de metro"))
                 .frame(height: 254)
@@ -128,16 +134,6 @@ struct AlertsScreen: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-
-        // Facility alerts stay reachable (spec S11): the count row leads to
-        // them, exactly like the mockup's "instal·lacions" row.
-        if summary.facilityCount > 0 {
-            NavigationLink {
-                FacilityAlertsScreen(alerts: summary.facilityAlerts)
-            } label: {
-                FacilityAlertsRow(count: summary.facilityCount)
-            }
-        }
     }
 }
 
@@ -200,7 +196,7 @@ private struct AlertRow: View {
                 }
                 Spacer()
                 if let end = alert.endDate {
-                    Text(end, style: .date)
+                    (Text("fins al ") + Text(end, style: .date))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

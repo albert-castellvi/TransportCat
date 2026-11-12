@@ -244,6 +244,14 @@ enum FGCNetwork {
         }
     }
 
+    /// Lines de-duplicated by code, keeping the first occurrence: a repeated
+    /// code would publish two map layers with the same id, and the picker would
+    /// show the line twice (#88).
+    static func uniqueLines(_ lines: [FGCLine]) -> [FGCLine] {
+        var seen: Set<String> = []
+        return lines.filter { seen.insert($0.code).inserted }
+    }
+
     // MARK: - Stop-code join (S2)
 
     /// The stop catalog read as a join source: coordinates per stop code
@@ -271,12 +279,18 @@ enum FGCNetwork {
     }
 
     /// Coordinates of a station code: the stop whose id equals the code, or
-    /// the first one that starts with it (`GR`, `GR1`... share coordinates).
+    /// the first platform row that starts with it (`GR`, `GR1`... share
+    /// coordinates). Only a digits-only remainder counts as a platform suffix:
+    /// `GRX` is another stop, not a platform of `GR` (#87).
     static func stopPoint(for code: String, in stops: [FGCStop]) -> GeoPoint? {
         if let exact = stops.first(where: { $0.id == code }), let point = exact.point {
             return point
         }
-        return stops.first { $0.id.hasPrefix(code) }?.point
+        return stops
+            .filter { isPlatformRow($0.id, of: code) }
+            .sorted { $0.id < $1.id }
+            .first { $0.point != nil }?
+            .point
     }
 
     /// `wheelchair_boarding` of a station code (spec S17): the exact stop row
@@ -284,8 +298,19 @@ enum FGCNetwork {
     /// the code, so platform rows that disagree still join deterministically.
     static func boarding(for code: String, in index: FGCStopIndex) -> Int? {
         if let exact = index.boarding[code] { return exact }
-        guard let key = index.boarding.keys.filter({ $0.hasPrefix(code) }).sorted().first else { return nil }
+        guard let key = index.boarding.keys
+            .filter({ isPlatformRow($0, of: code) })
+            .sorted()
+            .first else { return nil }
         return index.boarding[key]
+    }
+
+    /// A platform row of `code`: the code followed only by digits (`GR1`).
+    /// A bare prefix without that boundary addresses another stop (#87).
+    private static func isPlatformRow(_ id: String, of code: String) -> Bool {
+        guard id.hasPrefix(code) else { return false }
+        let suffix = id.dropFirst(code.count)
+        return !suffix.isEmpty && suffix.allSatisfy(\.isNumber)
     }
 
     /// Adds the station coordinates and boarding state joined from the stop
@@ -314,7 +339,11 @@ enum FGCNetwork {
 
     private static func point(for code: String, in points: [String: GeoPoint]) -> GeoPoint? {
         if let exact = points[code] { return exact }
-        return points.first { $0.key.hasPrefix(code) }?.value
+        return points
+            .filter { isPlatformRow($0.key, of: code) }
+            .sorted { $0.key < $1.key }
+            .first?
+            .value
     }
 
     // MARK: - properes_parades (S3)

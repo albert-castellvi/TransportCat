@@ -401,6 +401,12 @@ jobs:
           CERT_PASSWORD: ${{ secrets.DIST_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
+          # The .p12 is optional: without it the provisioning script creates
+          # the certificate itself, so an empty secret must not fail the job.
+          if [ -z "$CERT_P12_BASE64" ]; then
+            echo "No distribution .p12 secret: the provisioning script creates the certificate."
+            exit 0
+          fi
           keychain="$RUNNER_TEMP/dist-signing.keychain-db"
           keychain_pass="$(openssl rand -hex 24)"
           printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"

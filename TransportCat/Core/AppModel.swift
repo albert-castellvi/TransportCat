@@ -233,6 +233,10 @@ final class LineState {
     /// Poll cycle for i-Metro arrivals, in seconds. 20 s keeps the request
     /// volume per visible line modest while staying visibly live.
     static let pollIntervalSeconds: UInt64 = 20
+    /// First pause before retrying a failed topology load, and the cap the
+    /// delay doubles up to (#67).
+    static let topologyRetryInitialSeconds: UInt64 = 5
+    static let topologyRetryMaxSeconds: UInt64 = 60
 
     private let client: TMBClient
     private(set) var engine: TrainPositionEngine?
@@ -246,11 +250,24 @@ final class LineState {
         self.client = client
     }
 
-    /// Long-running task body: load topology once, then poll arrivals until
-    /// the task is cancelled (the view's .task modifier cancels on disappear).
+    /// Long-running task body: load topology, retrying while it has no engine,
+    /// then poll arrivals until the task is cancelled (the view's .task
+    /// modifier cancels on disappear).
     func run() async {
-        if stations.isEmpty || geometry == nil {
+        // #67: a failed first load used to end the task for good, so a cold
+        // launch without connectivity stayed on the error overlay after the
+        // network returned. Retry with a growing, capped delay while the line
+        // still has no engine and the screen is alive.
+        var retryDelay = Self.topologyRetryInitialSeconds
+        while !Task.isCancelled && engine == nil {
             await loadTopology()
+            guard engine == nil, !Task.isCancelled else { break }
+            do {
+                try await Task.sleep(nanoseconds: retryDelay * 1_000_000_000)
+            } catch {
+                return
+            }
+            retryDelay = min(retryDelay * 2, Self.topologyRetryMaxSeconds)
         }
         guard engine != nil else { return }
         // 10 Hz ticker between the 20 s polls: the markers move smoothly
@@ -329,7 +346,7 @@ final class LineState {
             // trains instead of an error. The copy applied above is that
             // fallback; only a cold start without one reports the error.
             if !applyCachedTopology() {
-                errorMessage = error.localizedDescription
+                errorMessage = "No s'ha pogut carregar la línia. Torna-ho a provar."
             }
         }
     }

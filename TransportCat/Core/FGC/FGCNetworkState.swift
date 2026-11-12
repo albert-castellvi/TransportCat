@@ -81,6 +81,10 @@ final class FGCNetworkState {
 
     /// The position feed refreshes on the server about every 30 s.
     static let pollIntervalSeconds: UInt64 = 30
+    /// First pause before retrying a failed topology load, and the cap the
+    /// delay doubles up to (#67).
+    static let topologyRetryInitialSeconds: UInt64 = 5
+    static let topologyRetryMaxSeconds: UInt64 = 60
     /// 10 Hz ticker between polls, like `BusLineState.run()`.
     static let tickIntervalNanoseconds: UInt64 = 100_000_000
 
@@ -97,11 +101,24 @@ final class FGCNetworkState {
         self.client = client
     }
 
-    /// Long-running task body: load topology once, then poll until cancelled
-    /// (the screen's `.task` cancels on disappear).
+    /// Long-running task body: load topology, retrying while the network has
+    /// no lines, then poll until cancelled (the screen's `.task` cancels on
+    /// disappear).
     func run() async {
-        if lines.isEmpty {
+        // #67: a failed first load used to end the task for good, leaving the
+        // error overlay until the rider left the mode. Retry with a growing,
+        // capped delay while the network still has no lines and the screen is
+        // alive.
+        var retryDelay = Self.topologyRetryInitialSeconds
+        while !Task.isCancelled && lines.isEmpty {
             await loadTopology()
+            guard lines.isEmpty, !Task.isCancelled else { break }
+            do {
+                try await Task.sleep(nanoseconds: retryDelay * 1_000_000_000)
+            } catch {
+                return
+            }
+            retryDelay = min(retryDelay * 2, Self.topologyRetryMaxSeconds)
         }
         guard !lines.isEmpty else { return }
 
@@ -151,7 +168,7 @@ final class FGCNetworkState {
             if let cached = OfflineCache.loadFGCTopology() {
                 publishTopology(cached.lines, loadedStations: cached.stations, persist: false)
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = "No s'ha pogut carregar la xarxa FGC. Torna-ho a provar."
             }
         }
     }
@@ -166,18 +183,22 @@ final class FGCNetworkState {
         loadedStations: [FGCStation],
         persist: Bool
     ) {
+        // #88: one line per code. A repeated route would otherwise create two
+        // `lineLayers` with the same id and duplicate `ForEach` identities in
+        // the maps and the picker.
+        let uniqueLines = FGCNetwork.uniqueLines(loadedLines)
         if persist {
-            OfflineCache.saveFGCTopology(lines: loadedLines, stations: loadedStations)
+            OfflineCache.saveFGCTopology(lines: uniqueLines, stations: loadedStations)
         }
-        lines = loadedLines
+        lines = uniqueLines
         stations = loadedStations
         stationNamesByCode = FGCNetwork.stationNames(from: loadedStations)
         // A repeated line code must not trap (a trap skips the offline fallback).
         geometryByLine = Dictionary(
-            loadedLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) },
+            uniqueLines.map { ($0.code, FGCNetwork.geometry(polylines: $0.polylines)) },
             uniquingKeysWith: { first, _ in first }
         )
-        lineLayers = loadedLines.map { line in
+        lineLayers = uniqueLines.map { line in
             MapLineLayer(
                 id: line.code,
                 operator: "FGC",

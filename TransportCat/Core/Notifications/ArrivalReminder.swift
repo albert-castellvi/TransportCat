@@ -105,11 +105,27 @@ final class ArrivalReminder {
 
     // MARK: - Permission and housekeeping
 
-    /// Asks for alert + sound once and caches the answer. The incident toggle
-    /// (spec S14) calls it while turning on, so denial surfaces at the switch.
+    /// Asks for alert + sound once and caches the answer. A cached denial is
+    /// re-read from the system settings, so allowing notifications in Settings
+    /// takes effect when the rider comes back instead of on the next relaunch
+    /// (#72). The incident toggle (spec S14) calls it while turning on, so
+    /// denial surfaces at the switch.
     @discardableResult
     func ensurePermissionGranted() async -> Bool {
-        if let permissionGranted { return permissionGranted }
+        if permissionGranted == true { return true }
+        if permissionGranted == false {
+            switch await center.notificationSettings().authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                permissionGranted = true
+                return true
+            case .denied:
+                return false
+            case .notDetermined:
+                break
+            @unknown default:
+                return false
+            }
+        }
         let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         permissionGranted = granted
         return granted

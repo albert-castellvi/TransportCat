@@ -279,4 +279,36 @@ final class NearbyStopsTests: XCTestCase {
         XCTAssertEqual(NearbyStops.timeText(seconds: 30), "ara")
         XCTAssertEqual(NearbyStops.timeText(seconds: 130), "2 min")
     }
+
+    /// #84: cards were ordered by whole walking minutes, so 173 m could list
+    /// before 139 m, and the four-row cap kept an arbitrary subset of the
+    /// dictionary groups. Both orders are decided before the cap now.
+    func testCardsAndLineRowsAreOrderedBeforeTheCap() {
+        // Both distances walk 2 minutes, and "A" sorts before "Z" by name.
+        let farther = entry(
+            place: place(id: "a", name: "A", lat: 41.38, lon: 2.17),
+            distanceMeters: 173
+        )
+        let closer = entry(
+            place: place(id: "z", name: "Z", lat: 41.38, lon: 2.17),
+            distanceMeters: 139
+        )
+        XCTAssertEqual(NearbyStops.sorted([farther, closer]).map(\.place.code), ["z", "a"])
+
+        // Five bus lines: the four soonest survive, in that order, and the
+        // dictionary's iteration order no longer decides which one is cut.
+        let rows = NearbyStops.lineRows(
+            metroArrivals: [],
+            busArrivals: [
+                busArrival(lineName: "N1", seconds: 300),
+                busArrival(lineName: "H12", seconds: 60),
+                busArrival(lineName: "V1", seconds: 240),
+                busArrival(lineName: "D20", seconds: 120),
+                busArrival(lineName: "X1", seconds: 180),
+            ],
+            fgcArrivals: [],
+            busLines: []
+        )
+        XCTAssertEqual(rows.map(\.lineLabel), ["H12", "D20", "X1", "V1"])
+    }
 }

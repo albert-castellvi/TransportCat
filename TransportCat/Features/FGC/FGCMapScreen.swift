@@ -172,6 +172,9 @@ struct FGCMapScreen: View {
                     fitCamera()
                 }
                 refreshMapContent()
+                // A station focus that just switched the line centers here,
+                // once the serving line is on screen (#82).
+                resolvePendingPlaceFocus()
             }
             // A released follow drops its anchor: the next flight starts from
             // no stale position (spec S8).
@@ -546,9 +549,23 @@ struct FGCMapScreen: View {
         resolvePendingVehicleFocus()
     }
 
-    /// Centers a pending station focus once the topology exists (spec S11).
+    /// Centers a pending station focus once the topology exists (spec S11),
+    /// after making sure a line serving the station is the one on screen:
+    /// like the metro and bus maps, the focus must center where the app
+    /// actually draws a station and its trains, not on a bare coordinate
+    /// of another line (#82).
     private func resolvePendingPlaceFocus() {
         guard let place = pendingPlaceFocus, shownLayer != nil else { return }
+        if let serving = FGCLinePicker.selectableLayers(from: state.lineLayers)
+            .first(where: { place.lineCodes.contains($0.code) }),
+           shownLineCode != serving.code {
+            // Switch first and keep the focus pending: the line change's own
+            // onChange refreshes the stations and re-runs this, so the
+            // centering happens after that handler's fitCamera instead of
+            // being overwritten by it.
+            selectedLineCode = serving.code
+            return
+        }
         pendingPlaceFocus = nil
         centerCamera(on: place.position)
         router.clearFocus()

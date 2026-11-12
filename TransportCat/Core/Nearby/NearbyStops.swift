@@ -102,15 +102,14 @@ enum NearbyStops {
     }
 
     /// Sorts and caps already-built entries (the caller attaches the arrivals
-    /// rows first): walking time ascending, then name, then id so equal
-    /// distances and equal names are still deterministic. Entries already past
-    /// `maxStops` are cut.
+    /// rows first): distance in metres ascending, then name, then id so equal
+    /// distances and equal names are still deterministic. Whole walking
+    /// minutes hide the difference between 139 m and 173 m, so the metres are
+    /// the sort key (#84). Entries already past `maxStops` are cut.
     static func sorted(_ entries: [NearbyStopEntry], maxStops: Int = NearbyStops.maxStops) -> [NearbyStopEntry] {
         entries
             .sorted { lhs, rhs in
-                let lhsMinutes = walkingMinutes(meters: lhs.distanceMeters)
-                let rhsMinutes = walkingMinutes(meters: rhs.distanceMeters)
-                if lhsMinutes != rhsMinutes { return lhsMinutes < rhsMinutes }
+                if lhs.distanceMeters != rhs.distanceMeters { return lhs.distanceMeters < rhs.distanceMeters }
                 if lhs.place.name != rhs.place.name { return lhs.place.name < rhs.place.name }
                 return lhs.place.id < rhs.place.id
             }
@@ -126,15 +125,20 @@ enum NearbyStops {
     /// no countdown (D1), so their time text is "ara" when a train is at or
     /// announcing the station.
     ///
-    /// Everything is derived from the values the existing fetchers publish;
-    /// no new endpoint is called and no poller is modified (T2 constraints).
+    /// Rows are sorted by their soonest arrival, then by line label, before
+    /// the cap: dictionary groups have no stable order, so the previous cap
+    /// kept an arbitrary subset (#84). FGC rows carry no countdown and come
+    /// last. Everything is derived from the values the existing fetchers
+    /// publish; no new endpoint is called and no poller is modified (T2).
     static func lineRows(
         metroArrivals: [Arrival],
         busArrivals: [BusArrival],
         fgcArrivals: [FavoriteArrival],
         busLines: [BusLine]
     ) -> [NearbyLineRow] {
-        var rows: [NearbyLineRow] = []
+        // The build order is the last tie-break, so equal rows stay in feed
+        // order instead of changing between launches.
+        var rows: [(row: NearbyLineRow, seconds: Int, order: Int)] = []
 
         // Metro: group the arrivals of every line code, soonest two per line.
         let metroByLine = Dictionary(grouping: metroArrivals, by: \.lineCode)
@@ -144,14 +148,19 @@ enum NearbyStops {
             }
             let sorted = arrivals.sorted { ($0.seconds ?? .max) < ($1.seconds ?? .max) }
             let first = sorted.first, second = sorted.count > 1 ? sorted[1] : nil
-            rows.append(NearbyLineRow(
-                lineLabel: line?.displayName ?? code,
-                colorHex: line?.colorHex ?? "6B7280",
-                textColorHex: nil,
-                firstDestination: first?.destination ?? "—",
-                firstTime: first.map { Self.timeText(seconds: $0.seconds) } ?? "—",
-                secondDestination: second?.destination,
-                secondTime: second.map { Self.timeText(seconds: $0.seconds) }
+            let order = rows.count
+            rows.append((
+                NearbyLineRow(
+                    lineLabel: line?.displayName ?? code,
+                    colorHex: line?.colorHex ?? "6B7280",
+                    textColorHex: nil,
+                    firstDestination: first?.destination ?? "—",
+                    firstTime: first.map { Self.timeText(seconds: $0.seconds) } ?? "—",
+                    secondDestination: second?.destination,
+                    secondTime: second.map { Self.timeText(seconds: $0.seconds) }
+                ),
+                first?.seconds ?? Int.max,
+                order
             ))
         }
 
@@ -162,34 +171,51 @@ enum NearbyStops {
             let catalogLine = busLines.first { $0.name == name }
             let sorted = arrivals.sorted { $0.seconds < $1.seconds }
             let first = sorted.first, second = sorted.count > 1 ? sorted[1] : nil
-            rows.append(NearbyLineRow(
-                lineLabel: name,
-                colorHex: catalogLine?.colorHex ?? "6B7280",
-                textColorHex: catalogLine?.textColorHex,
-                firstDestination: first?.destination ?? "—",
-                firstTime: first.map { ParadesTimeline.busTimeText(seconds: $0.seconds) } ?? "—",
-                secondDestination: second?.destination,
-                secondTime: second.map { ParadesTimeline.busTimeText(seconds: $0.seconds) }
+            let order = rows.count
+            rows.append((
+                NearbyLineRow(
+                    lineLabel: name,
+                    colorHex: catalogLine?.colorHex ?? "6B7280",
+                    textColorHex: catalogLine?.textColorHex,
+                    firstDestination: first?.destination ?? "—",
+                    firstTime: first.map { ParadesTimeline.busTimeText(seconds: $0.seconds) } ?? "—",
+                    secondDestination: second?.destination,
+                    secondTime: second.map { ParadesTimeline.busTimeText(seconds: $0.seconds) }
+                ),
+                first?.seconds ?? Int.max,
+                order
             ))
         }
 
         // FGC: read-only from the shared state's derived arrivals; no minutes
         // exist, so the time text is the status the Explora rows already use.
         // One row per train, so the train id keeps the identities apart.
-        for arrival in fgcArrivals.prefix(maxRowsPerStop) {
-            rows.append(NearbyLineRow(
-                lineLabel: arrival.lineLabel,
-                colorHex: arrival.colorHex,
-                textColorHex: arrival.textColorHex,
-                firstDestination: arrival.destination,
-                firstTime: arrival.status ?? "—",
-                secondDestination: nil,
-                secondTime: nil,
-                discriminator: arrival.id
+        for arrival in fgcArrivals {
+            let order = rows.count
+            rows.append((
+                NearbyLineRow(
+                    lineLabel: arrival.lineLabel,
+                    colorHex: arrival.colorHex,
+                    textColorHex: arrival.textColorHex,
+                    firstDestination: arrival.destination,
+                    firstTime: arrival.status ?? "—",
+                    secondDestination: nil,
+                    secondTime: nil,
+                    discriminator: arrival.id
+                ),
+                Int.max,
+                order
             ))
         }
 
-        return Array(rows.prefix(maxRowsPerStop))
+        return rows
+            .sorted { lhs, rhs in
+                if lhs.seconds != rhs.seconds { return lhs.seconds < rhs.seconds }
+                if lhs.row.lineLabel != rhs.row.lineLabel { return lhs.row.lineLabel < rhs.row.lineLabel }
+                return lhs.order < rhs.order
+            }
+            .prefix(maxRowsPerStop)
+            .map { $0.row }
     }
 
     /// Countdown text of a metro arrival whose seconds are optional: nil means
