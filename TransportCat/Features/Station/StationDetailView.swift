@@ -126,10 +126,12 @@ struct StationDetailView: View {
             }
             Spacer()
             if let seconds = arrival.seconds {
-                let text = Arrival.countdownText(seconds: seconds)
-                Text(text)
+                let time = seconds <= ParadesTimeline.imminentThresholdSeconds
+                    ? ParadesTimeText.now
+                    : ParadesTimeText.minutes(Arrival.countdownText(seconds: seconds))
+                Text(time.text)
                     .font(.title3.bold().monospacedDigit())
-                    .foregroundStyle(text == "ara" ? Color(hex: "30D158") : Color.primary)
+                    .foregroundStyle(time.isImminent ? Color(hex: "30D158") : Color.primary)
             }
             if hasReminder(arrival) {
                 Image(systemName: "bell.fill")
