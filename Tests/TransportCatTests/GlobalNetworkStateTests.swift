@@ -92,4 +92,26 @@ final class GlobalNetworkStateTests: XCTestCase {
         XCTAssertEqual(pass.layers.map(\.id), ["bus:212", "bus:7"])
         XCTAssertEqual(pass.layers.first, previous)
     }
+
+    /// An answer with no drawable route removes the layer it replaces; only a
+    /// failed fetch keeps the old one.
+    func testBusLayerPassDropsTheLayerOfAnEmptyAnswer() {
+        let previous = MapLineLayer(
+            id: "bus:212",
+            operator: "Bus",
+            code: "212",
+            colorHex: "CE1126",
+            textColorHex: "FFFFFF",
+            polylines: [[GeoPoint(latitude: 41.38, longitude: 2.17)]]
+        )
+        let pass = GlobalNetworkState.busLayerPass(
+            favorites: [212],
+            previousLayers: [previous],
+            fetchedRoutePolylines: [212: []],
+            lines: []
+        )
+
+        XCTAssertEqual(pass.fetchedCodes, [212])
+        XCTAssertTrue(pass.layers.isEmpty)
+    }
 }

@@ -341,8 +341,11 @@ final class GlobalNetworkState {
         let favorites = BusCatalogStore.shared.favorites
         guard favorites != fetchedBusCodes else { return }
 
+        // Only the favorites that have not answered yet are asked: a code
+        // that keeps failing must not make the others download again.
+        let alreadyFetched = Set(fetchedBusCodes)
         var routePolylines: [Int: [[GeoPoint]]] = [:]
-        for code in favorites {
+        for code in favorites where !alreadyFetched.contains(code) {
             guard let routes = try? await client.busRoutes(lineCode: code) else { continue }
             routePolylines[code] = routes.map(\.geometry.points).filter { !$0.isEmpty }
         }
@@ -353,7 +356,8 @@ final class GlobalNetworkState {
             lines: BusCatalogStore.shared.lines
         )
         busLineLayers = pass.layers
-        fetchedBusCodes = pass.fetchedCodes
+        let answered = alreadyFetched.union(pass.fetchedCodes)
+        fetchedBusCodes = favorites.filter(answered.contains)
     }
 
     /// Folds one bus favorites pass into the layer set (spec S8): a favorite
@@ -374,7 +378,11 @@ final class GlobalNetworkState {
         for code in favorites {
             guard let polylines = fetchedRoutePolylines[code] else { continue }
             fetchedCodes.append(code)
-            guard !polylines.isEmpty else { continue }
+            guard !polylines.isEmpty else {
+                // An answer with nothing to draw replaces the old layer too.
+                layersByCode[code] = nil
+                continue
+            }
             let line = lines.first { $0.code == code }
             layersByCode[code] = MapLineLayer(
                 id: "bus:\(code)",

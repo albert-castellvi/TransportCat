@@ -58,6 +58,8 @@ struct DiagramScreen: View {
             // Same rule as MapScreen: the loader task lives on the always-
             // visible container, not on the view that requires loaded data.
             .task(id: selectedLineCode) {
+                // A new line starts with its alert summary collapsed (#91).
+                showsServiceCards = false
                 // The interchange badges read the places catalog (fix F1); a
                 // disk read, no request, when nothing has loaded it yet.
                 if PlaceCatalogStore.shared.places.isEmpty {

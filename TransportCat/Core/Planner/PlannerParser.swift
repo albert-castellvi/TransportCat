@@ -117,7 +117,7 @@ enum PlannerParser {
             mode: mode,
             // `routeShortName` is the line code ("V1"); `route` can carry the
             // line description for bus legs, so it is only the fallback (#96).
-            route: JSONValue.string(from: dict["routeShortName"])
+            route: JSONValue.string(from: dict["routeShortName"]).flatMap { $0.isEmpty ? nil : $0 }
                 ?? JSONValue.string(from: dict["route"]),
             routeLongName: JSONValue.string(from: dict["routeLongName"]),
             routeColorHex: normalizedColor(JSONValue.string(from: dict["routeColor"])),

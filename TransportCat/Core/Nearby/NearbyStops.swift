@@ -190,7 +190,7 @@ enum NearbyStops {
         // FGC: read-only from the shared state's derived arrivals; no minutes
         // exist, so the time text is the status the Explora rows already use.
         // One row per train, so the train id keeps the identities apart.
-        for arrival in fgcArrivals.prefix(maxRowsPerStop) {
+        for arrival in fgcArrivals {
             let order = rows.count
             rows.append((
                 NearbyLineRow(
