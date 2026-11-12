@@ -260,7 +260,7 @@ struct ExploreScreen: View {
     @ViewBuilder
     private var favoritesSection: some View {
         let favoriteLines = favoriteLineResults
-        Section("Preferits") {
+        Section {
             if favorites.favoritePlaces.isEmpty && favoriteLines.isEmpty {
                 Text("Encara no tens preferits. Toca l'estrella d'una estació o parada.")
                     .font(.footnote)
@@ -276,8 +276,19 @@ struct ExploreScreen: View {
                         }
                     }
             }
+            .onMove { source, destination in
+                FavoritesStore.shared.move(fromOffsets: source, toOffset: destination)
+            }
             ForEach(favoriteLines) { result in
                 ExploreLineRow(result: result)
+            }
+        } header: {
+            HStack {
+                Text("Preferits")
+                Spacer()
+                if favorites.favoritePlaces.count >= 2 {
+                    EditButton()
+                }
             }
         }
     }
