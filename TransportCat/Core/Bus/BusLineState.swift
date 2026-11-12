@@ -102,9 +102,22 @@ final class BusLineState {
     }
 
     /// Distinct buses the last successful poll reported for this line: what
-    /// the data-source strip calls "K busos seguits" (spec S3).
+    /// the data-source strip calls "K busos seguits" (spec S3). Bus id 0 is
+    /// the feed's placeholder, not a bus, and `BusFleet.positions` drops it
+    /// (#86).
     var trackedBusCount: Int {
-        Set(arrivalsByStop.values.flatMap { $0 }.compactMap(\.busID)).count
+        Self.trackedBusCount(in: arrivalsByStop)
+    }
+
+    /// Buses in the arrivals of one poll, counted once per feed id and without
+    /// the placeholder id 0 that `BusFleet.positions` never places (#86).
+    nonisolated static func trackedBusCount(in arrivalsByStop: [Int: [BusArrival]]) -> Int {
+        Set(
+            arrivalsByStop.values
+                .flatMap { $0 }
+                .compactMap(\.busID)
+                .filter { $0 != 0 }
+        ).count
     }
 
     /// A successful poll answered with no bus at all for the line: the screen
@@ -391,7 +404,7 @@ final class BusLineState {
         var result: [Int: BusObservations] = [:]
         for (stopCode, arrivals) in fetched {
             for arrival in arrivals {
-                guard let busID = arrival.busID else { continue }
+                guard let busID = arrival.busID, busID != 0 else { continue }
                 var observation = result[busID] ?? BusObservations(destination: arrival.destination)
                 observation.stops.append((
                     stopCode: stopCode,
