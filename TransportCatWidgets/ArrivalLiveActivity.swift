@@ -116,26 +116,51 @@ private struct ArrivalActivityBadge: View {
     }
 }
 
-/// The countdown, in the words the app uses everywhere else: "ara" or
-/// "N min" (F5).
+/// The countdown, in the words the app uses everywhere else: "ara" once the
+/// arrival is due, otherwise a minute offset the system keeps updated on its
+/// own.
+///
+/// The offset must be fed from `TimeDataSource<Date>.currentDate`, not from a
+/// `Date()` read at render time: a static date makes the text static, and a
+/// Live Activity is only re-rendered when the app updates it — which does not
+/// happen in the background (regression seen on device: "11 min" at 22:51,
+/// still "11 min" at 22:57).
 private struct ArrivalActivityCountdown: View {
     let context: ActivityViewContext<ArrivalActivityAttributes>
 
     var body: some View {
-        Text(ArrivalActivityStyle.countdown(context))
-            .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .multilineTextAlignment(.trailing)
+        Group {
+            if ArrivalBoard.isDue(context.state.arrivalDate, now: Date()) {
+                Text("ara")
+                    .monospacedDigit()
+            } else {
+                // `allowedFields: [.minute]` picks the units representation ("11
+                // min"), never the time-pattern one ("10:32") that a minute and
+                // second pair would produce, and `sign: .never` drops the minus
+                // once the arrival has passed.
+                Text(
+                    TimeDataSource<Date>.currentDate,
+                    format: .offset(
+                        to: context.state.arrivalDate,
+                        allowedFields: [.minute],
+                        maxFieldCount: 1,
+                        sign: .never
+                    )
+                )
+                .monospacedDigit()
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .multilineTextAlignment(.trailing)
     }
 }
 
-/// Wording of the Live Activity, shared by the views above so the pixels and
-/// the VoiceOver label can never disagree.
+/// Wording of the Live Activity that is read once instead of drawn: the
+/// VoiceOver sentence below. The pixels come from `ArrivalActivityCountdown`,
+/// which the system keeps current.
 enum ArrivalActivityStyle {
-    /// "ara" once the arrival is due, "N min" before it. The app refreshes the
-    /// activity after every arrivals load, so the minutes advance with the
-    /// data; a missing refresh is what `isStale` is for.
+    /// "ara" once the arrival is due, "N min" before it.
     static func countdown(
         _ context: ActivityViewContext<ArrivalActivityAttributes>,
         now: Date = Date()
