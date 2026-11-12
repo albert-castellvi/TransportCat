@@ -7,8 +7,9 @@ import SwiftUI
 enum ExplorePlaceBridge {
     // MARK: - Model → Place (the star toggles inside the sheets)
 
+    @MainActor
     static func place(for station: Station, line: MetroLine) -> Place {
-        Place(
+        let bridged = Place(
             kind: .metroStation,
             code: String(station.id ?? station.code),
             name: station.name,
@@ -16,6 +17,10 @@ enum ExplorePlaceBridge {
             lineCodes: [line.displayName],
             accessible: station.accessible
         )
+        // The catalog place with the same id carries every line serving the
+        // station; starring the bridged one-line place would freeze the
+        // favorite to the line it was opened from (spec S12).
+        return PlaceCatalogStore.shared.place(id: bridged.id) ?? bridged
     }
 
     static func place(for stop: BusStop, line: BusLine) -> Place {
