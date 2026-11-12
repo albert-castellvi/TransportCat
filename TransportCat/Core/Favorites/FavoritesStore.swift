@@ -30,6 +30,29 @@ final class FavoritesStore {
     static let placesKey = "favoritePlaces.v1"
     static let linesKey = "favoriteLines.v1"
 
+    /// App Group shared by the app and the widget extension, so the widget's
+    /// place suggestions can read the app's favorites.
+    static let appGroup = "group.cat.transport.app"
+
+    /// The group suite, created once. Favorites saved before the group existed
+    /// live in `.standard`; they are copied over the first time. Falls back to
+    /// `.standard` when the group is unavailable (unsigned builds).
+    static let sharedDefaults: UserDefaults = {
+        let group = UserDefaults(suiteName: appGroup) ?? .standard
+        migrateLegacy(from: .standard, to: group)
+        return group
+    }()
+
+    /// Copies each favorites key from `source` to `destination` unless the
+    /// destination already has one, so a newer group value is never overwritten.
+    static func migrateLegacy(from source: UserDefaults, to destination: UserDefaults) {
+        for key in [placesKey, linesKey] where destination.object(forKey: key) == nil {
+            if let data = source.data(forKey: key) {
+                destination.set(data, forKey: key)
+            }
+        }
+    }
+
     private let defaults: UserDefaults
 
     /// Favorite places, in the order they were starred.
@@ -39,7 +62,7 @@ final class FavoritesStore {
 
     /// - Parameter defaults: injectable suite, so tests do not touch the app's
     ///   domain.
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = FavoritesStore.sharedDefaults) {
         self.defaults = defaults
         favoritePlaces = Self.read([Place].self, key: Self.placesKey, defaults: defaults) ?? []
         favoriteLines = Self.read([FavoriteLine].self, key: Self.linesKey, defaults: defaults) ?? []

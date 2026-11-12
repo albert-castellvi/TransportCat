@@ -73,7 +73,9 @@ struct PlaceEntityQuery: EntityStringQuery {
     }
 
     func suggestedEntities() async throws -> [PlaceEntity] {
-        FavoritesStore.shared.favoritePlaces
+        // A fresh read of the shared group: the app mutates its own instance, so
+        // this neither reuses a stale snapshot nor touches main-actor state.
+        FavoritesStore().favoritePlaces
             .prefix(Self.searchLimit)
             .map(PlaceEntity.init(place:))
     }

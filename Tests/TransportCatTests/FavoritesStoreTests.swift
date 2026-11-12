@@ -118,4 +118,35 @@ final class FavoritesStoreTests: XCTestCase {
         store.toggle(line())
         XCTAssertEqual(defaults.array(forKey: "busFavorites") as? [Int], [212])
     }
+
+    // MARK: - App Group migration
+
+    private func legacySource() throws -> UserDefaults {
+        let name = "TransportCatLegacyTests-\(UUID().uuidString)"
+        addTeardownBlock { UserDefaults().removePersistentDomain(forName: name) }
+        return try XCTUnwrap(UserDefaults(suiteName: name))
+    }
+
+    func testLegacyFavoritesAreCopiedIntoTheGroup() throws {
+        let legacy = try legacySource()
+        let before = FavoritesStore(defaults: legacy)
+        before.toggle(place())
+        before.toggle(line())
+
+        FavoritesStore.migrateLegacy(from: legacy, to: defaults)
+
+        let migrated = FavoritesStore(defaults: defaults)
+        XCTAssertEqual(migrated.favoritePlaces, [place()])
+        XCTAssertEqual(migrated.favoriteLines, [line()])
+    }
+
+    func testMigrationNeverOverwritesGroupFavorites() throws {
+        let legacy = try legacySource()
+        FavoritesStore(defaults: legacy).toggle(place(code: "1", name: "Old"))
+        FavoritesStore(defaults: defaults).toggle(place(code: "2", name: "New"))
+
+        FavoritesStore.migrateLegacy(from: legacy, to: defaults)
+
+        XCTAssertEqual(FavoritesStore(defaults: defaults).favoritePlaces, [place(code: "2", name: "New")])
+    }
 }
