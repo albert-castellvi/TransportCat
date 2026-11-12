@@ -286,4 +286,31 @@ final class ParadesTimelineTests: XCTestCase {
         XCTAssertEqual(ParadesTimeline.busTimeText(seconds: 45), "ara")
         XCTAssertEqual(ParadesTimeline.busTimeText(seconds: 150), "2 min")
     }
+
+    // MARK: - Unified imminent threshold across all sheets (UX-03, UX-04)
+
+    /// The sheets use the same imminent threshold as the parades rows:
+    /// ≤ 60 s → green "ara"; > 60 s → neutral "N min".
+    func testUnifiedImminentThresholdAtBoundary() {
+        // Exactly at the threshold: imminent
+        XCTAssertEqual(ParadesTimeline.busTimeText(seconds: 60), "ara")
+        // Just above: countdown
+        XCTAssertEqual(ParadesTimeline.busTimeText(seconds: 61), "1 min")
+    }
+
+    func testUnifiedImminentTextMatchesMetroColumnRule() {
+        // For the same seconds value, busTimeText and metroColumn.text
+        // should produce identical countdown text outside the imminent case.
+        for seconds in [90, 120, 180, 300, 600] {
+            let metro = ParadesTimeline.metroColumn(
+                arrivals: [arrival(seconds: seconds, via: 1)],
+                via: 1
+            )
+            if metro.isImminent {
+                XCTAssertEqual(ParadesTimeline.busTimeText(seconds: seconds), "ara")
+            } else {
+                XCTAssertEqual(ParadesTimeline.busTimeText(seconds: seconds), metro.text)
+            }
+        }
+    }
 }
