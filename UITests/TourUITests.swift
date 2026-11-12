@@ -48,7 +48,7 @@ final class TourUITests: XCTestCase {
             case "press":
                 point(argument, in: app).press(forDuration: 1)
             case "pinch":
-                app.maps.firstMatch.pinch(withScale: CGFloat(Double(argument) ?? 2), velocity: 2)
+                app.windows.firstMatch.pinch(withScale: CGFloat(Double(argument) ?? 2), velocity: 2)
             case "type":
                 app.typeText(argument)
             case "swipe":
