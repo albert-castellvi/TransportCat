@@ -701,14 +701,11 @@ struct BusMapScreen: View {
 
     private static func dayText(_ date: Date) -> String {
         // The format the former incident sheet printed, as plain text.
-        Self.incidentDayFormatter.string(from: date)
+        MapScreen.alertDayFormatter.string(from: date)
     }
 
-    private static let incidentDayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd/MM/yyyy"
-        return formatter
-    }()
+    // No formatter of its own (#80): the bus card prints the same "dd/MM/yyyy"
+    // Gregorian day the metro map's pinned formatter renders.
 
     /// Incidents of one stop from the bus alerts feed (spec S7). Both
     /// directions are mapped to `Station` values because the same physical stop
