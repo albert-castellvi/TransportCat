@@ -852,7 +852,7 @@ private struct StationDotTap: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .frame(width: 32, height: 32)
+            .frame(width: 44, height: 44)
             .contentShape(Circle())
             .onTapGesture(perform: action)
             .accessibilityAddTraits(.isButton)
@@ -970,13 +970,13 @@ private enum GlobalVehicleCardRows {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     } else if let stopCode = train.nextStopCodes.first {
-                        Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+                        Label("Pròxima: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     Text(train.isOnTime ? "Puntual" : "Amb retard")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                        .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
                 }
                 VehiclePositionSource(isEstimated: false, estimatedText: "")
             }
