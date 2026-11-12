@@ -43,10 +43,16 @@ final class TourUITests: XCTestCase {
                 let index = pieces.count > 1 ? Int(pieces[1]) ?? 0 : 0
                 let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR identifier == %@", label, label)
                 let button = app.buttons.matching(predicate).element(boundBy: index)
-                let element = button.waitForExistence(timeout: 5)
-                    ? button
-                    : app.descendants(matching: .any).matching(predicate).firstMatch
-                XCTAssertTrue(element.waitForExistence(timeout: 10), "no element matching '\(argument)'")
+                var element = button
+                if !button.waitForExistence(timeout: 5) {
+                    // Four map screens stay mounted: skip matches that belong to a hidden one.
+                    let matches = app.descendants(matching: .any).matching(predicate)
+                    _ = matches.firstMatch.waitForExistence(timeout: 10)
+                    element = (0..<min(matches.count, 40)).lazy
+                        .map { matches.element(boundBy: $0) }
+                        .first { $0.isHittable } ?? matches.firstMatch
+                }
+                XCTAssertTrue(element.exists, "no element matching '\(argument)'")
                 // By coordinate: a live map never goes idle, and an element
                 // tap waits for idle before it resolves the hit point.
                 element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
