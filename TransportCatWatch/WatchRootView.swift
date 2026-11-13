@@ -1,8 +1,7 @@
 import SwiftUI
-import WatchKit
 
 /// The watch home: the favourite places received from the phone (spec S22,
-/// reviews W2, W9, W12, W15).
+/// reviews W2, W9, W12, W15, W16).
 ///
 /// Search is the first row, not the last: with three favourites the list already
 /// fills a 41 mm screen, and search is what a rider needs when the place is not
@@ -41,7 +40,9 @@ struct WatchRootView: View {
         }
     }
 
-    /// Spec S22: the empty state tells the rider where favorites come from.
+    /// Spec S22: the empty state tells the rider where favorites come from, and
+    /// review W16 makes it say which of the two empties this is — the phone has
+    /// never synced, or the phone's list is empty.
     private var emptyState: some View {
         ScrollView {
             VStack(spacing: 8) {
@@ -49,7 +50,9 @@ struct WatchRootView: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                Text("Marca preferits a l'iPhone")
+                Text(favorites.syncedAt == nil
+                     ? "Obre TransportCat a l'iPhone per sincronitzar els preferits"
+                     : "Marca preferits a l'iPhone")
                     .font(.footnote)
                     .multilineTextAlignment(.center)
                 searchLink
@@ -67,8 +70,8 @@ struct WatchRootView: View {
     }
 
     /// Review W12: there is no pull-to-refresh on watchOS, so asking for fresh
-    /// arrivals has to be a row. The haptic confirms the tap and says whether
-    /// anything changed.
+    /// arrivals has to be a row. The haptic confirms the tap, says whether
+    /// anything changed and whether the watch reached the feeds (review W17).
     private var reloadRow: some View {
         Button {
             Task { await reload() }
@@ -80,7 +83,12 @@ struct WatchRootView: View {
 
     private func reload() async {
         let changed = await arrivals.refresh(favorites.places, maxAge: 0)
-        WKInterfaceDevice.current().play(changed ? .success : .click)
+        WatchRefreshHaptic.play(
+            changed: changed,
+            failed: !favorites.places.isEmpty && favorites.places.allSatisfy { place in
+                arrivals.board(for: place.id)?.lastAttemptFailed ?? true
+            }
+        )
     }
 
     private func refreshLoop() async {

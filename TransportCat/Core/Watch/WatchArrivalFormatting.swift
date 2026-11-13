@@ -1,23 +1,21 @@
 import Foundation
 
-/// Pure display rules of the watch screens (spec S22): no SwiftUI and no
-/// clock of their own, so they can be exercised without a UI.
+/// Pure display rules of the watch screens (spec S22, reviews W4, W7, W8):
+/// no SwiftUI and no clock of their own.
+///
+/// Shared with the iOS app so the rules run in the unit tests
+/// (`WatchArrivalFormattingTests`); the wording and the expiry are the same ones
+/// the arrivals widget uses.
 enum WatchArrivalFormatting {
     /// Spacing of the screens' local tick: how often a countdown is redrawn and
     /// how often a train that has left drops off without a new fetch.
     static let tick: TimeInterval = 20
 
-    /// An arrival stays on the board this long after its date, the same grace
-    /// the iOS widget uses (`ArrivalBoard.dueGrace`). The shared file is not
-    /// compiled into the watch target, so the rule is repeated here until it is.
-    static let dueGrace: TimeInterval = 30
-
-    /// Minutes until `date`, with the phone's wording (`Arrival.countdownText`):
-    /// "<1 min", "3 min", and a lowercase "ara" once it is due or overdue.
+    /// Minutes until `date`, with the app's single wording
+    /// (`ArrivalBoard.minutesText`): "ara" from `dueGrace` before the date,
+    /// then "1 min", "12 min".
     static func countdown(until date: Date, now: Date = Date()) -> String {
-        let seconds = Int(date.timeIntervalSince(now))
-        guard seconds > 0 else { return "ara" }
-        return Arrival.countdownText(seconds: seconds)
+        ArrivalBoard.minutesText(until: date, now: now)
     }
 
     /// The same countdown for VoiceOver, where "min" is not a word: "en 3
@@ -33,10 +31,14 @@ enum WatchArrivalFormatting {
     /// The arrivals still worth showing at `now` from a fetch made at
     /// `fetched`, in the order the fetcher ranked them and at most `limit`.
     ///
-    /// An arrival whose date is not after `fetched` carries no countdown (the
-    /// FGC open feed stamps every train with the fetch time), so it never
-    /// expires. Everything else leaves `dueGrace` after its date instead of
-    /// staying on screen as a stale "ara" until the next pass.
+    /// Same expiry as the widget's board: an arrival with a countdown leaves
+    /// `dueGrace` after its date, and one the feed announced without minutes
+    /// (the FGC open feed never sends any, and i-Metro sometimes omits them)
+    /// only stays while the fetch is younger than `announcedLife`. That last
+    /// rule is what stopped every FGC train from reading "ara" forever (review
+    /// W7). `ArrivalBoard.rows` applies the same rules but groups by line and
+    /// destination for the widget; the watch lists one arrival per row, so the
+    /// rules are applied here instead of calling it.
     static func visible(
         _ arrivals: [NextArrival],
         fetched: Date,
@@ -46,7 +48,12 @@ enum WatchArrivalFormatting {
         guard limit > 0 else { return [] }
         return Array(
             arrivals
-                .filter { $0.date <= fetched || $0.date.addingTimeInterval(dueGrace) > now }
+                .filter { arrival in
+                    if arrival.announcedWithoutCountdown {
+                        return now.timeIntervalSince(fetched) < ArrivalBoard.announcedLife
+                    }
+                    return arrival.date.addingTimeInterval(ArrivalBoard.dueGrace) > now
+                }
                 .prefix(limit)
         )
     }

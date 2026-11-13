@@ -3,8 +3,9 @@ import Foundation
 /// The searches that led somewhere, newest first (review W9).
 ///
 /// Typing on a watch costs a dictation or a scribble, so the search screen
-/// offers the last few queries back as a single tap. Foundation-only, so the
-/// rule can be exercised without a UI.
+/// offers the last few queries back as a single tap. Foundation-only and shared
+/// with the iOS app, so the rule runs in the unit tests
+/// (`WatchRecentSearchesTests`).
 enum WatchRecentSearches {
     /// Versioned key. A change of the stored shape must use a new key.
     static let key = "watchRecentSearches.v1"

@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// One arrival inside the detail list: line badge, destination and countdown
-/// (spec S22, reviews W4, W6, W8, W14).
+/// (spec S22, reviews W4, W6, W7, W8, W14).
 ///
-/// The countdown is the largest and highest-contrast text of the row: it is
-/// what the rider raised the wrist for. The line keeps its network colour when
-/// the watch knows it (metro, from `MetroLine.allLines`) and a neutral badge
-/// when it does not, so the colour never states something the data does not.
+/// The countdown is the largest and highest-contrast text of the row: it is what
+/// the rider raised the wrist for. The line keeps its network colour when the
+/// watch knows it (metro, from `MetroLine.allLines`) and a neutral badge when it
+/// does not, so the colour never states something the data does not.
 @MainActor
 struct WatchArrivalRow: View {
     let arrival: NextArrival
@@ -33,7 +33,7 @@ struct WatchArrivalRow: View {
             Spacer(minLength: 4)
             Text(countdown)
                 .font(.title3.weight(.semibold).monospacedDigit())
-                .foregroundStyle(isImminent ? WatchLineColor.color(WatchLineColor.imminentHex) : Color.primary)
+                .foregroundStyle(isImminent ? Color(hex: WatchLineColor.imminentHex) : Color.primary)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
@@ -44,15 +44,15 @@ struct WatchArrivalRow: View {
     }
 
     /// The row colour the phone gives an imminent arrival (spec S12): "ara" in
-    /// green. `countdown` still says "ara", so nothing is carried by colour
-    /// alone.
+    /// green. The word is still printed, so nothing is carried by colour alone;
+    /// it uses the same grace the countdown text does.
     private var isImminent: Bool {
-        arrival.date <= now
+        ArrivalBoard.isDue(arrival.date, now: now)
     }
 
     private var badgeColor: Color {
         guard let colorHex else { return Color.secondary.opacity(0.25) }
-        return WatchLineColor.color(colorHex)
+        return Color(hex: colorHex)
     }
 
     private var badgeTextColor: Color {
