@@ -162,8 +162,8 @@ enum ArrivalActivityStyle {
     /// One sentence, with the number: "L1 cap a Fondo, estació Catalunya, 3 min".
     static func spokenCard(_ context: ActivityViewContext<ArrivalActivityAttributes>) -> String {
         let attributes = context.attributes
-        return "\(attributes.lineName) cap a \(attributes.destination), "
-            + "\(attributes.placeWord) \(attributes.placeName), "
+        return String(localized: "\(attributes.lineName) cap a \(attributes.destination), ")
+            + String(localized: "\(attributes.placeWord) \(attributes.placeName), ")
             + countdown(context)
     }
 }

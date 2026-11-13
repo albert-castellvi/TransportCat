@@ -133,9 +133,9 @@ struct ArrivalWidgetView: View {
                 // honest rows keeps only its name.
                 EmptyView()
             } else if board.arrivals == nil {
-                notice("No s'ha pogut connectar")
+                notice(String(localized: "No s'ha pogut connectar"))
             } else if shown.isEmpty {
-                notice("Sense arribades")
+                notice(String(localized: "Sense arribades"))
             } else {
                 ForEach(shown, id: \.self) { row in
                     rowLink(row, board: board)
@@ -197,14 +197,16 @@ struct ArrivalWidgetView: View {
     }
 
     private var ageLabel: String {
-        if isStale { return "Dades de \(ageText)" }
+        if isStale { return String(localized: "Dades de \(ageText)") }
         // The small family has no room for the word, and the refresh icon sits
         // beside it.
-        return family == .systemSmall ? ageText : "Actualitzat \(ageText)"
+        return family == .systemSmall ? ageText : String(localized: "Actualitzat \(ageText)")
     }
 
     private var ageSpokenLabel: String {
-        isStale ? "Dades de \(ageText). Actualitza-les." : "Dades actualitzades \(ageText)."
+        isStale
+            ? String(localized: "Dades de \(ageText). Actualitza-les.")
+            : String(localized: "Dades actualitzades \(ageText).")
     }
 
     /// Asks for fresh arrivals with a full 44 pt target: the glyph stays small
@@ -258,13 +260,13 @@ struct ArrivalWidgetView: View {
                     // A station name on a locked phone says where its owner is.
                     .privacySensitive()
                 if isStale {
-                    notice("Dades de \(ageText)")
+                    notice(String(localized: "Dades de \(ageText)"))
                 } else if board.arrivals == nil {
-                    notice("Sense connexió")
+                    notice(String(localized: "Sense connexió"))
                 } else {
                     let shown = rows(of: board, limit: 2)
                     if shown.isEmpty {
-                        notice("Sense arribades")
+                        notice(String(localized: "Sense arribades"))
                     }
                     ForEach(shown, id: \.self) { row in
                         HStack(spacing: 5) {
