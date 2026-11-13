@@ -575,9 +575,9 @@ struct GlobalMapScreen: View {
     /// Metro vehicles have no occupancy feed, so their label stays as before.
     private func vehicleAccessibilityLabel(_ vehicle: MapVehicle, mode: String) -> String {
         if let line = MetroLine.line(forCode: vehicle.lineCode) {
-            return "Tren \(line.displayName) cap a \(vehicle.label)"
+            return String(localized: "Tren \(line.displayName) cap a \(vehicle.label)")
         }
-        var label = "Tren \(vehicle.lineCode) cap a \(vehicle.label)"
+        var label = String(localized: "Tren \(vehicle.lineCode) cap a \(vehicle.label)")
         if mode == AppModeCode.fgc,
            let train = fgc.trains.first(where: { $0.id == vehicle.id }),
            let occupancy = FGCOccupancy.summary(train) {
@@ -608,11 +608,13 @@ struct GlobalMapScreen: View {
     private func globalBadgeAccessibilityLabel(_ badge: GlobalIncidentBadge) -> String {
         switch badge.lineNames.count {
         case 1:
-            return "Servei afectat a la \(badge.lineNames[0])"
+            return String(localized: "Servei afectat a la \(badge.lineNames[0])")
         case 2:
-            return "Servei afectat a la \(badge.lineNames[0]) i la \(badge.lineNames[1]). Toca per veure-les"
+            return String(
+                localized: "Servei afectat a la \(badge.lineNames[0]) i la \(badge.lineNames[1]). Toca per veure-les"
+            )
         case let count:
-            return "Servei afectat a \(count) línies"
+            return String(localized: "Servei afectat a \(count) línies")
         }
     }
 
@@ -636,7 +638,7 @@ struct GlobalMapScreen: View {
         MapGlassCard(
             badgeText: Self.vehicleLineName(of: selected.vehicle, operator: selected.operatorCode),
             badgeColorHex: selected.vehicle.colorHex,
-            title: "Cap a \(selected.vehicle.label)",
+            title: String(localized: "Cap a \(selected.vehicle.label)"),
             onClose: { selectedVehicle = nil }
         ) {
             VStack(alignment: .leading, spacing: 8) {
@@ -679,7 +681,7 @@ struct GlobalMapScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(badge.alerts) { alert in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(AlertText.effect(for: alert) ?? "Incidència")
+                        Text(AlertText.effect(for: alert) ?? String(localized: "Incidència"))
                             .font(.subheadline.weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
                         if let time = Self.alertTimeText(alert) {
@@ -948,7 +950,7 @@ private enum GlobalVehicleCardRows {
                 }
                 VehiclePositionSource(
                     isEstimated: isEstimated,
-                    estimatedText: "Posició estimada a partir de l'horari"
+                    estimatedText: String(localized: "Posició estimada a partir de l'horari")
                 )
             }
         }

@@ -334,9 +334,9 @@ struct ExploreScreen: View {
 
     /// A feed that failed is not the same as a stop with nothing due (#97).
     private func emptyArrivalsText(for place: Place) -> String {
-        guard arrivalsLoaded else { return "Carregant arribades…" }
+        guard arrivalsLoaded else { return String(localized: "Carregant arribades…") }
         return failedFavoriteIDs.contains(place.id)
-            ? "No s'han pogut carregar les arribades."
+            ? String(localized: "No s'han pogut carregar les arribades.")
             : NearbyStops.noArrivalsText
     }
 
@@ -344,9 +344,9 @@ struct ExploreScreen: View {
     /// kinds so the caller can gate the caption.
     private func modeLabel(for kind: PlaceKind) -> String {
         switch kind {
-        case .metroStation: return "Metro"
-        case .busStop: return "Bus"
-        case .fgcStation: return "FGC"
+        case .metroStation: return String(localized: "Metro")
+        case .busStop: return String(localized: "Bus")
+        case .fgcStation: return String(localized: "FGC")
         }
     }
 

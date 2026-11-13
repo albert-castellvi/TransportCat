@@ -22,11 +22,11 @@ enum ExploreFormatting {
     /// broken caller) clamps to zero.
     static func distanceText(meters: Double) -> String {
         let clamped = max(0, meters.rounded())
-        guard clamped >= 1_000 else { return "\(Int(clamped)) m" }
+        guard clamped >= 1_000 else { return String(localized: "\(Int(clamped)) m") }
         // Tenths of a kilometer, so "1,2 km" is two integer parts and never a
         // locale-dependent float format.
         let tenths = Int((clamped / 100).rounded())
-        return "\(tenths / 10),\(tenths % 10) km"
+        return String(localized: "\(tenths / 10),\(tenths % 10) km")
     }
 
     /// Walking minutes at `walkingSpeedMetersPerMinute`, rounded to the
@@ -39,7 +39,7 @@ enum ExploreFormatting {
 
     /// "4 min a peu".
     static func walkingText(meters: Double) -> String {
-        "\(walkingMinutes(meters: meters)) min a peu"
+        String(localized: "\(walkingMinutes(meters: meters)) min a peu")
     }
 
     /// The "A prop" row caption: "350 m · 4 min a peu".

@@ -60,10 +60,10 @@ struct GlobalLinesScreen: View {
                 statusCapsule
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        sectionTitle("A prop teu")
+                        sectionTitle(String(localized: "A prop teu"))
                         nearbySection
                         HStack(alignment: .firstTextBaseline) {
-                            sectionTitle("Estat de les línies")
+                            sectionTitle(String(localized: "Estat de les línies"))
                             Spacer()
                             affectedCountText
                         }
@@ -178,7 +178,7 @@ struct GlobalLinesScreen: View {
                     colorHex: line.colorHex,
                     textColorHex: nil,
                     isAffected: keys.contains("metro:\(line.code)"),
-                    accessibilityName: "Línia \(line.displayName)",
+                    accessibilityName: String(localized: "Línia \(line.displayName)"),
                     action: {
                         AppRouter.shared.open(.line(operator: AppModeCode.metro, code: line.code))
                     }
@@ -190,7 +190,7 @@ struct GlobalLinesScreen: View {
                     colorHex: line.colorHex,
                     textColorHex: line.textColorHex,
                     isAffected: keys.contains("fgc:\(line.code)"),
-                    accessibilityName: "Línia \(line.code)",
+                    accessibilityName: String(localized: "Línia \(line.code)"),
                     action: {
                         AppRouter.shared.open(.line(operator: AppModeCode.fgc, code: line.code))
                     }
@@ -202,7 +202,7 @@ struct GlobalLinesScreen: View {
                     colorHex: line.colorHex,
                     textColorHex: line.textColorHex,
                     isAffected: keys.contains("bus:\(String(line.code))"),
-                    accessibilityName: "Línia \(line.name)",
+                    accessibilityName: String(localized: "Línia \(line.name)"),
                     action: {
                         AppRouter.shared.open(.line(operator: AppModeCode.bus, code: String(line.code)))
                     }
@@ -239,7 +239,9 @@ struct GlobalLinesScreen: View {
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isAffected ? "\(accessibilityName), servei afectat" : accessibilityName)
+        .accessibilityLabel(
+            isAffected ? String(localized: "\(accessibilityName), servei afectat") : accessibilityName
+        )
     }
 
     private func sectionTitle(_ text: String) -> some View {

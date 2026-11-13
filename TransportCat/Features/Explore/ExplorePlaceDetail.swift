@@ -95,7 +95,7 @@ enum ExplorePlaceBridge {
         }
         return BusLine(
             code: Int(place.lineCodes.first ?? "") ?? 0,
-            name: place.lineCodes.first ?? "Bus",
+            name: place.lineCodes.first ?? String(localized: "Bus"),
             description: "",
             origin: "",
             destination: "",

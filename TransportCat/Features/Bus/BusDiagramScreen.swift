@@ -501,12 +501,12 @@ private struct BusDiagramRow: View {
         // no times, so it announces none either.
         if row.isPolled {
             if let next = row.next {
-                parts.append("Bus en \(ParadesTimeline.busTimeText(seconds: next.seconds))")
+                parts.append(String(localized: "Bus en \(ParadesTimeline.busTimeText(seconds: next.seconds))"))
             } else {
-                parts.append("Sense dada")
+                parts.append(String(localized: "Sense dada"))
             }
             if let after = row.after {
-                parts.append("i en \(ParadesTimeline.busTimeText(seconds: after.seconds))")
+                parts.append(String(localized: "i en \(ParadesTimeline.busTimeText(seconds: after.seconds))"))
             }
         }
         return parts.joined(separator: ", ")

@@ -209,14 +209,14 @@ struct BusStopSheet: View {
               estimate.confidence != .low else { return nil }
         let seconds = estimate.seconds
         if abs(seconds) < 60 {
-            return ("En hora", .green)
+            return (String(localized: "En hora"), .green)
         }
         // Never "0 min": a bus rounded to zero minutes is "En hora" above.
         let minutes = max(1, Int((Double(abs(seconds)) / 60).rounded()))
         if seconds > 0 {
-            return ("+\(minutes) min tard · estimat", Color(hex: "F59E0B"))
+            return (String(localized: "+\(minutes) min tard · estimat"), Color(hex: "F59E0B"))
         }
-        return ("\(minutes) min d'avanç · estimat", .secondary)
+        return (String(localized: "\(minutes) min d'avanç · estimat"), .secondary)
     }
 
     /// The badge of the arriving line, from the catalog when it holds it. The
@@ -269,8 +269,8 @@ struct BusStopSheet: View {
     private func scheduleReminder(_ arrival: BusArrival, minutesBefore: Int) {
         guard let at = reminderDate(arrival, minutesBefore: minutesBefore) else { return }
         let id = reminderID(arrival, minutesBefore: minutesBefore)
-        let title = "Arribada a \(stop.name)"
-        let body = "El \(arrival.lineName) cap a \(arrival.destination) arriba a \(stop.name) en \(minutesBefore) min"
+        let title = String(localized: "Arribada a \(stop.name)")
+        let body = String(localized: "El \(arrival.lineName) cap a \(arrival.destination) arriba a \(stop.name) en \(minutesBefore) min")
         Task {
             if await ArrivalReminder.shared.schedule(id: id, title: title, body: body, at: at) {
                 scheduledReminderIDs.insert(id)

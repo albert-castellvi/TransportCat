@@ -361,7 +361,8 @@ private struct TerminiHeader: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            termini.map { "Cap a \($0.last) i cap a \($0.first)" } ?? "Direccions de la línia"
+            termini.map { String(localized: "Cap a \($0.last) i cap a \($0.first)") }
+                ?? String(localized: "Direccions de la línia")
         )
     }
 }
@@ -499,8 +500,8 @@ private struct ParadesMetroRow: View {
         }
         for direction in [row.columnVia1, row.columnVia2] {
             switch direction {
-            case .now: parts.append("ara")
-            case .minutes(let text): parts.append("en \(text)")
+            case .now: parts.append(String(localized: "ara"))
+            case .minutes(let text): parts.append(String(localized: "en \(text)"))
             case .none: break
             }
         }
@@ -703,15 +704,15 @@ private struct ServiceCard: View, Identifiable {
             let sentence = text.split(separator: ".", maxSplits: 1).first.map(String.init) ?? text
             return sentence.count > 80 ? String(sentence.prefix(80)) + "…" : sentence
         }
-        return "Servei afectat"
+        return String(localized: "Servei afectat")
     }
 
     /// "des de les 10:42" from the alert's begin date, or nothing usable.
     private var alertTime: String {
-        guard let begin = alert.beginDate else { return "Ara mateix" }
+        guard let begin = alert.beginDate else { return String(localized: "Ara mateix") }
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        return "des de les \(formatter.string(from: begin))"
+        return String(localized: "des de les \(formatter.string(from: begin))")
     }
 }
 

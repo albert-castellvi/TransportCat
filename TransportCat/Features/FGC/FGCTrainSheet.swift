@@ -163,7 +163,9 @@ struct FGCTrainSheet: View {
     /// feed names no destination at all.
     private func heading(for train: FGCTrain) -> String {
         let destination = destination(of: train)
-        return destination.isEmpty ? "Destí desconegut" : "Cap a \(destination)"
+        return destination.isEmpty
+            ? String(localized: "Destí desconegut")
+            : String(localized: "Cap a \(destination)")
     }
 
     /// Station name of a stop code, falling back to the code when the catalog

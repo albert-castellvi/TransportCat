@@ -118,12 +118,12 @@ struct BusVehicleSheet: View {
     /// named none.
     private func heading(for position: BusPosition) -> String {
         if !position.train.destination.isEmpty {
-            return "Cap a \(position.train.destination)"
+            return String(localized: "Cap a \(position.train.destination)")
         }
         if let destination = direction(for: position)?.destinationName, !destination.isEmpty {
-            return "Cap a \(destination)"
+            return String(localized: "Cap a \(destination)")
         }
-        return "Destí desconegut"
+        return String(localized: "Destí desconegut")
     }
 
     /// The direction the bus travels, or nil when the feed placed it on one
@@ -142,7 +142,7 @@ struct BusVehicleSheet: View {
         if let stop = state.directions.flatMap(\.stops).first(where: { $0.code == code }) {
             return stop.name
         }
-        return "Parada \(code)"
+        return String(localized: "Parada \(code)")
     }
 
     /// Countdown of the next stop, anchored to the poll that measured it: the

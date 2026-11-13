@@ -47,12 +47,12 @@ struct AlertsStateSummary: Equatable {
     /// accesses (e.g. PP2), not only elevators and escalators.
     static func facilityTitle(count: Int) -> String {
         count == 1
-            ? "1 instal·lació fora de servei"
-            : "\(count) instal·lacions fora de servei"
+            ? String(localized: "1 instal·lació fora de servei")
+            : String(localized: "\(count) instal·lacions fora de servei")
     }
 
     /// Row subtitle, matching the `V5Empty` mockup.
-    static let facilitySubtitle = "No afecten la circulació"
+    static let facilitySubtitle = String(localized: "No afecten la circulació")
 }
 
 /// Service status: active disruptions of the metro and the bus network.

@@ -234,7 +234,11 @@ struct ExploreFavoriteArrivalRow: View {
                     .font(.subheadline.weight(.semibold).monospacedDigit())
                     // The line colour made L1 minutes look like an error;
                     // only an imminent arrival is green (#97).
-                    .foregroundStyle(countdown == "ara" ? Color(hex: "30D158") : Color.primary)
+                    // Compared against the same key the wording comes from, so
+                    // the green dot survives translation.
+                    .foregroundStyle(
+                        countdown == String(localized: "ara") ? Color(hex: "30D158") : Color.primary
+                    )
             }
         }
         .padding(.leading, 4)

@@ -240,7 +240,7 @@ struct FGCMapScreen: View {
             MapGlassCard(
                 badgeText: layer.code,
                 badgeColorHex: layer.colorHex,
-                title: "Cap a \(vehicle.label)",
+                title: String(localized: "Cap a \(vehicle.label)"),
                 onClose: { selectedVehicle = nil }
             ) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -638,7 +638,7 @@ struct FGCMapScreen: View {
     /// publishes `MapVehicle`s without cars, so the live train behind the
     /// vehicle is looked up by its stable id.
     private func trainAccessibilityLabel(_ vehicle: MapVehicle, layerCode: String) -> String {
-        var label = "Tren \(layerCode) cap a \(vehicle.label)"
+        var label = String(localized: "Tren \(layerCode) cap a \(vehicle.label)")
         if let train = state.trains.first(where: { $0.id == vehicle.id }),
            let occupancy = FGCOccupancy.summary(train) {
             label += ". \(occupancy)"

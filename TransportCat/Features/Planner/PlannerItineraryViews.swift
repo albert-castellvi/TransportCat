@@ -124,7 +124,7 @@ struct PlannerLegRow: View {
                 Text(PlannerFormat.timeLabel(leg.startTime))
                     .font(.footnote.weight(.medium))
                     .monospacedDigit()
-                Text(PlannerFormat.minutes(seconds: leg.duration).description + " min")
+                Text(String(localized: "\(PlannerFormat.minutes(seconds: leg.duration)) min"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -178,9 +178,11 @@ struct PlannerLegRow: View {
 
     private var walkingDetail: String {
         guard let distance = leg.distance else {
-            return "\(PlannerFormat.minutes(seconds: leg.duration)) min a peu"
+            return String(localized: "\(PlannerFormat.minutes(seconds: leg.duration)) min a peu")
         }
-        return "\(PlannerFormat.minutes(seconds: leg.duration)) min · \(Int(distance.rounded())) m"
+        return String(
+            localized: "\(PlannerFormat.minutes(seconds: leg.duration)) min · \(Int(distance.rounded())) m"
+        )
     }
 }
 
@@ -207,12 +209,12 @@ struct PlannerRouteMap: View {
                 }
             }
             if let firstLeg = itinerary.legs.first, let lastLeg = itinerary.legs.last {
-                Annotation("Inici", coordinate: coordinate(firstLeg.from.position)) {
-                    endpointDot(color: .green, label: "Inici del trajecte")
+                Annotation(String(localized: "Inici"), coordinate: coordinate(firstLeg.from.position)) {
+                    endpointDot(color: .green, label: String(localized: "Inici del trajecte"))
                 }
                 .annotationTitles(.hidden)
-                Annotation("Final", coordinate: coordinate(lastLeg.to.position)) {
-                    endpointDot(color: .red, label: "Final del trajecte")
+                Annotation(String(localized: "Final"), coordinate: coordinate(lastLeg.to.position)) {
+                    endpointDot(color: .red, label: String(localized: "Final del trajecte"))
                 }
                 .annotationTitles(.hidden)
             }

@@ -46,10 +46,10 @@ struct BottomAccessory: View {
     /// The four modes in the order the menu lists and the map draws them
     /// (spec S4): Metro, Bus, FGC and Tot.
     private static let modes: [(AppMode, String)] = [
-        (.metro, "Metro"),
-        (.bus, "Bus"),
-        (.fgc, "FGC"),
-        (.global, "Tot")
+        (.metro, String(localized: "Metro")),
+        (.bus, String(localized: "Bus")),
+        (.fgc, String(localized: "FGC")),
+        (.global, String(localized: "Tot"))
     ]
 
     /// Menu button labelled with the current mode and an up/down chevron; the
@@ -87,10 +87,10 @@ struct BottomAccessory: View {
 
     private func label(for mode: AppMode) -> String {
         switch mode {
-        case .metro: return "Metro"
-        case .bus: return "Bus"
-        case .fgc: return "FGC"
-        case .global: return "Tot"
+        case .metro: return String(localized: "Metro")
+        case .bus: return String(localized: "Bus")
+        case .fgc: return String(localized: "FGC")
+        case .global: return String(localized: "Tot")
         }
     }
 }
@@ -172,14 +172,14 @@ private struct MetroLineChip: View {
     }
 
     private var accessibilityText: String {
-        var text = "Línia \(selectedLine.displayName)"
+        var text = String(localized: "Línia \(selectedLine.displayName)")
         if let termini {
             text += ", \(termini)"
         }
         if hasServiceAlert {
-            text += ", 1 avís"
+            text += String(localized: ", 1 avís")
         }
-        text += ". Canviar de línia"
+        text += String(localized: ". Canviar de línia")
         return text
     }
 }
@@ -277,8 +277,8 @@ private struct BusAccessoryControls: View {
     }
 
     private var lineAccessibilityText: String {
-        guard let line = store.selectedLine else { return "Canviar de línia" }
-        return "Línia \(line.name). Canviar de línia"
+        guard let line = store.selectedLine else { return String(localized: "Canviar de línia") }
+        return String(localized: "Línia \(line.name). Canviar de línia")
     }
 }
 

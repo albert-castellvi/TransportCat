@@ -540,9 +540,9 @@ struct MapScreen: View {
         state: LineState
     ) -> String {
         if let name = state.stations.first(where: { $0.code == mark.stationCode })?.name {
-            return "Incidència d'instal·lació a l'estació \(name)"
+            return String(localized: "Incidència d'instal·lació a l'estació \(name)")
         }
-        return "Incidència d'instal·lació en una estació"
+        return String(localized: "Incidència d'instal·lació en una estació")
     }
 
     /// Everything the map draws besides the position markers, derived from the
@@ -698,7 +698,9 @@ struct MapScreen: View {
         return MapGlassCard(
             badgeText: line.displayName,
             badgeColorHex: line.colorHex,
-            title: train.destination.isEmpty ? "Destí desconegut" : "Cap a \(train.destination)",
+            title: train.destination.isEmpty
+                ? String(localized: "Destí desconegut")
+                : String(localized: "Cap a \(train.destination)"),
             onClose: { selectedVehicleID = nil }
         ) {
             VStack(alignment: .leading, spacing: 8) {
@@ -712,7 +714,7 @@ struct MapScreen: View {
                 }
                 VehiclePositionSource(
                     isEstimated: train.isTheoretical,
-                    estimatedText: "Posició estimada a partir de l'horari"
+                    estimatedText: String(localized: "Posició estimada a partir de l'horari")
                 )
                 // The existing train sheet: next stations and "follow"
                 // stay reachable from a plain tap (no regression of S8).
@@ -735,7 +737,7 @@ struct MapScreen: View {
         MapGlassCard(
             badgeText: selectedLine.displayName,
             badgeColorHex: selectedLine.colorHex,
-            title: "Servei afectat",
+            title: String(localized: "Servei afectat"),
             onClose: { selectedIncidentAlertID = nil }
         ) {
             VStack(alignment: .leading, spacing: 8) {
@@ -769,11 +771,11 @@ struct MapScreen: View {
     private static func incidentDatesText(for alert: ServiceAlert) -> String? {
         switch (alert.beginDate, alert.endDate) {
         case let (begin?, end?):
-            return "Del \(dayText(begin)) al \(dayText(end))"
+            return String(localized: "Del \(dayText(begin)) al \(dayText(end))")
         case let (begin?, nil):
-            return "Des del \(dayText(begin))"
+            return String(localized: "Des del \(dayText(begin))")
         case let (nil, end?):
-            return "Fins al \(dayText(end))"
+            return String(localized: "Fins al \(dayText(end))")
         case (nil, nil):
             return nil
         }

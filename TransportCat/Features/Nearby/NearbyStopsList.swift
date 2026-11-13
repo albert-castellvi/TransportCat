@@ -271,13 +271,13 @@ private struct NearbyStopCard: View {
     private var subtitle: String {
         let mode: String
         switch entry.place.kind {
-        case .metroStation: mode = "Metro"
-        case .busStop: mode = "Bus"
-        case .fgcStation: mode = "FGC"
+        case .metroStation: mode = String(localized: "Metro")
+        case .busStop: mode = String(localized: "Bus")
+        case .fgcStation: mode = String(localized: "FGC")
         }
         guard let direction = entry.rows.first?.firstDestination,
               !direction.isEmpty, direction != "—" else { return mode }
-        return "\(mode) · cap a \(direction)"
+        return String(localized: "\(mode) · cap a \(direction)")
     }
 }
 
@@ -329,7 +329,11 @@ private struct NearbyLineRowView: View {
                     Text(times[index])
                         .font(.callout.weight(.bold))
                         .monospacedDigit()
-                        .foregroundStyle(times[index] == "ara" ? Color(hex: "30D158") : Color.primary)
+                        .foregroundStyle(
+                            // The same key `NearbyStops.timeText` renders, so the
+                            // green dot survives translation.
+                            times[index] == String(localized: "ara") ? Color(hex: "30D158") : Color.primary
+                        )
                 }
             }
         }
@@ -337,14 +341,14 @@ private struct NearbyLineRowView: View {
     }
 
     private var accessibilityText: String {
-        var parts = ["Línia \(row.lineLabel)"]
+        var parts = [String(localized: "Línia \(row.lineLabel)")]
         if !row.firstDestination.isEmpty, !row.firstTime.isEmpty {
-            parts.append("cap a \(row.firstDestination) en \(row.firstTime)")
+            parts.append(String(localized: "cap a \(row.firstDestination) en \(row.firstTime)"))
         }
         if let destination = row.secondDestination, let time = row.secondTime, !destination.isEmpty, !time.isEmpty {
             parts.append(destination == row.firstDestination
-                ? "i en \(time)"
-                : "i cap a \(destination) en \(time)")
+                ? String(localized: "i en \(time)")
+                : String(localized: "i cap a \(destination) en \(time)"))
         }
         return parts.joined(separator: ", ")
     }

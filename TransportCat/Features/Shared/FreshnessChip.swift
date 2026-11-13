@@ -160,8 +160,8 @@ struct NoRealtimeDataCard: View {
     /// the two can never say different things (S7).
     private var secondLine: String {
         theoretical
-            ? "Es mostra l'horari teòric."
-            : "TMB no publica les arribades d'aquesta línia."
+            ? String(localized: "Es mostra l'horari teòric.")
+            : String(localized: "TMB no publica les arribades d'aquesta línia.")
     }
 
     private func icon(size: CGFloat) -> some View {

@@ -157,8 +157,10 @@ struct FGCStationSheet: View {
     /// An honest statement per stage: nothing loaded yet, a failed refresh, or
     /// the feed answered and no train is near.
     private var emptyText: String {
-        if didFail { return "No s'han pogut carregar les arribades de FGC." }
-        return state.arrivalsUpdatedAt == nil ? "Carregant dades FGC…" : "Cap tren proper ara mateix."
+        if didFail { return String(localized: "No s'han pogut carregar les arribades de FGC.") }
+        return state.arrivalsUpdatedAt == nil
+            ? String(localized: "Carregant dades FGC…")
+            : String(localized: "Cap tren proper ara mateix.")
     }
 
     /// Line pill, destination and the punctuality label (spec S12).

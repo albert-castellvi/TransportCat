@@ -86,14 +86,14 @@ struct PlannerScreen: View {
                 icon: "circle.fill",
                 iconColor: .green,
                 endpoint: origin,
-                placeholder: "Afegeix un origen"
+                placeholder: String(localized: "Afegeix un origen")
             )
             endpointRow(
                 for: .destination,
                 icon: "mappin",
                 iconColor: .red,
                 endpoint: destination,
-                placeholder: "Afegeix una destinació"
+                placeholder: String(localized: "Afegeix una destinació")
             )
             Button {
                 swapEndpoints()
@@ -248,8 +248,8 @@ struct PlannerScreen: View {
             guard !Task.isCancelled else { return }
             // Spec S16 words the two outcomes; anything else is a failure.
             errorMessage = (error as? PlannerError) == .noRoute
-                ? "No s'ha trobat cap ruta."
-                : "No s'ha pogut calcular la ruta. Torna-ho a provar."
+                ? String(localized: "No s'ha trobat cap ruta.")
+                : String(localized: "No s'ha pogut calcular la ruta. Torna-ho a provar.")
         }
     }
 }
@@ -284,7 +284,11 @@ struct PlannerEndpoint: Hashable {
     @MainActor
     static func currentLocation() -> PlannerEndpoint? {
         guard let point = LocationService.shared.location else { return nil }
-        return PlannerEndpoint(label: "La meva ubicació", position: point, isCurrentLocation: true)
+        return PlannerEndpoint(
+            label: String(localized: "La meva ubicació"),
+            position: point,
+            isCurrentLocation: true
+        )
     }
 }
 
@@ -298,9 +302,9 @@ enum PlannerTimeMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .departNow: return "Surt ara"
-        case .departAt: return "Surt a les…"
-        case .arriveAt: return "Arriba a les…"
+        case .departNow: return String(localized: "Surt ara")
+        case .departAt: return String(localized: "Surt a les…")
+        case .arriveAt: return String(localized: "Arriba a les…")
         }
     }
 
@@ -314,6 +318,8 @@ enum PlannerPickerTarget: String, Identifiable {
     case destination
 
     var id: String { rawValue }
-    var sheetTitle: String { self == .origin ? "Origen" : "Destinació" }
+    var sheetTitle: String {
+        self == .origin ? String(localized: "Origen") : String(localized: "Destinació")
+    }
     var allowsCurrentLocation: Bool { true }
 }

@@ -191,8 +191,8 @@ struct StationDetailView: View {
     private func scheduleReminder(_ arrival: Arrival, minutesBefore: Int) {
         guard let at = reminderDate(arrival, minutesBefore: minutesBefore) else { return }
         let id = reminderID(arrival, minutesBefore: minutesBefore)
-        let title = "Arribada a \(station.name)"
-        let body = "El \(line.displayName) cap a \(arrival.destination) arriba a \(station.name) en \(minutesBefore) min"
+        let title = String(localized: "Arribada a \(station.name)")
+        let body = String(localized: "El \(line.displayName) cap a \(arrival.destination) arriba a \(station.name) en \(minutesBefore) min")
         Task {
             if await ArrivalReminder.shared.schedule(id: id, title: title, body: body, at: at) {
                 scheduledReminderIDs.insert(id)
@@ -330,7 +330,7 @@ struct StationDetailView: View {
                     code: code,
                     colorHex: colorHex,
                     textColorHex: HexLuminance.isLight(colorHex) ? "000000" : "FFFFFF",
-                    accessibilityLabel: "Correspondència, línia \(code)",
+                    accessibilityLabel: String(localized: "Correspondència, línia \(code)"),
                     destination: .line(operator: AppModeCode.metro, code: metro?.code ?? code)
                 ))
             }
@@ -346,7 +346,7 @@ struct StationDetailView: View {
                     code: style.label,
                     colorHex: style.colorHex,
                     textColorHex: style.textColorHex,
-                    accessibilityLabel: "Correspondència FGC, \(style.label) a \(place.name)",
+                    accessibilityLabel: String(localized: "Correspondència FGC, \(style.label) a \(place.name)"),
                     destination: .place(place)
                 ))
             }

@@ -202,7 +202,7 @@ enum ExploreArrivals {
                         textColorHex: style.textColorHex,
                         destination: train.destinationName ?? train.destinationCode,
                         countdown: nil,
-                        status: train.isOnTime ? "Puntual" : "Amb retard",
+                        status: train.isOnTime ? String(localized: "Puntual") : String(localized: "Amb retard"),
                         statusIsOnTime: train.isOnTime
                     )
                 }
