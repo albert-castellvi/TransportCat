@@ -1,0 +1,103 @@
+# Rodalies pack — the Renfe open-data half of the Rodalies mode.
+#
+# The app bundles the small topology (`TransportCat/Resources/rodalies-topology.json`,
+# rebuilt by hand and committed) and downloads the large timetable from the
+# rolling release `rodalies-latest` of this repository:
+#
+#   https://github.com/<owner>/<repo>/releases/download/rodalies-latest/rodalies-schedule.json.gz
+#
+# This workflow rebuilds that timetable from Renfe's static GTFS and republishes
+# the asset, so a timetable change on Renfe's side reaches the app without an app
+# release. The asset is public: the app reads it anonymously, no token.
+#
+# Source: https://ssl.renfe.com/ftransit/Fichero_CER_FOMENTO/fomento_transit.zip
+# (Renfe open data, CC BY 4.0, no key, reissued daily with a rolling window).
+#
+# Trigger: a daily schedule plus manual dispatch. The runner is `ubuntu-latest`
+# because `scripts/build-rodalies-pack.py` is Python 3 standard library only.
+#
+# There is no "unchanged feed" shortcut like the schedule pack's: Renfe codes
+# trip ids with the service date, so every reissue changes bytes even when the
+# timetable itself did not move. Clobbering the asset is cheap (one file) and
+# keeps the release always pointing at the newest feed.
+#
+# Publishing rules:
+#   * the builder is covered by unittest; nothing is published when its own
+#     tests fail;
+#   * the files are built into `dist/rodalies/` and their sizes are printed;
+#   * the release `rodalies-latest` is created when missing and the schedule
+#     asset is uploaded with `--clobber`;
+#   * the topology asset is uploaded too, so anyone can diff the committed copy
+#     against the feed the schedule was built from; the app never reads it;
+#   * no pull request, no commit: this workflow only owns the release assets.
+#
+# Manual runs share the job's concurrency group with the daily run, so two
+# publications can never interleave.
+
+name: Rodalies pack
+
+on:
+  schedule:
+    # 04:37 UTC daily, after the schedule pack. Renfe reissues the static feed
+    # once a day; the early run gets the new dates into the app before service.
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: rodalies-pack
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: rodalies-latest
+  PACK_DIR: dist/rodalies
+
+jobs:
+  publish:
+    name: Build and publish the Rodalies pack
+    runs-on: ubuntu-latest
+    # Download of a 16 MB feed, parse of 275 MB of stop_times, one upload.
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Test the Rodalies pack builder
+        run: python3 -m unittest scripts/test_build_rodalies_pack.py
+
+      - name: Build the Rodalies pack
+        run: |
+          set -o pipefail
+          python3 scripts/build-rodalies-pack.py --out "$PACK_DIR"
+          echo "Pack size: $(du -sh "$PACK_DIR" | cut -f1)"
+
+      - name: Ensure the rolling release exists
+        run: |
+          set -o pipefail
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists."
+            exit 0
+          fi
+          # Pre-release: the repository's "Latest" release badge stays with
+          # the app releases, not with this data release.
+          gh release create "$RELEASE_TAG" \
+            --prerelease \
+            --title "Rodalies pack (rolling)" \
+            --notes "Rolling Rodalies de Catalunya timetable built from Renfe's open GTFS (CC BY 4.0). Rebuilt and republished by .github/workflows/rodalies-pack.yml; never edit these assets by hand."
+
+      - name: Upload the pack
+        run: |
+          set -o pipefail
+          gh release upload "$RELEASE_TAG" "$PACK_DIR/rodalies-schedule.json.gz" --clobber
+          gh release upload "$RELEASE_TAG" "$PACK_DIR/rodalies-topology.json" --clobber
+          {
+            echo "### Rodalies pack published"
+            echo ""
+            echo "Release: \`$RELEASE_TAG\`"
+            echo ""
+            echo "Schedule: $(stat -c '%s' "$PACK_DIR/rodalies-schedule.json.gz") B · topology: $(stat -c '%s' "$PACK_DIR/rodalies-topology.json") B"
+          } >> "$GITHUB_STEP_SUMMARY"
