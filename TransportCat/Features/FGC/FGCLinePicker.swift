@@ -28,6 +28,7 @@ struct FGCLinePicker: View {
 
     let layers: [MapLineLayer]
     @Binding var selectedLineCode: String
+    @ScaledMetric(relativeTo: .footnote) private var chipCodeSize: CGFloat = 14
 
     var body: some View {
         let selectable = Self.selectableLayers(from: layers)
@@ -50,7 +51,7 @@ struct FGCLinePicker: View {
             selectedLineCode = layer.code
         } label: {
             Text(layer.code)
-                .font(.system(size: 14, weight: isSelected ? .bold : .semibold))
+                .font(.system(size: chipCodeSize, weight: isSelected ? .bold : .semibold))
                 .foregroundStyle(Color(hex: layer.textColorHex))
                 .padding(.horizontal, 14)
                 .frame(height: 30)

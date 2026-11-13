@@ -46,6 +46,8 @@ struct GlobalMapScreen: View {
     @State private var selectedVehicle: GlobalSelectedVehicle?
     /// The incident badge whose glass card is open (spec S7, D6).
     @State private var selectedBadge: GlobalIncidentBadge?
+    /// The station whose sheet is open, set by a tap on its dot (#101).
+    @State private var selectedPlace: Place?
     /// Grouped incident badges (spec S7, D6), derived off the 10 Hz render
     /// path: refreshed only when the incidents, the alerts or the metro
     /// topology change, never per vehicle tick.
@@ -169,6 +171,13 @@ struct GlobalMapScreen: View {
         }
         // Spec S1: the map screens show no navigation bar.
         .toolbar(.hidden, for: .navigationBar)
+        // #101: a station dot opens the same sheet Explora shows for the place.
+        .sheet(item: $selectedPlace) { place in
+            ExplorePlaceDetailSheet(place: place)
+                .environmentObject(app)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         // Spec S6, S7: the selected vehicle's or incident badge's glass card,
         // above the bottom accessory (the safe-area alignment keeps it clear
         // of it).
@@ -346,7 +355,7 @@ struct GlobalMapScreen: View {
             }
         }
         // Attribution of the feeds drawn here (spec S10 wording).
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottomTrailing) {
             Text("Dades: TMB · FGC (CC BY 4.0)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -392,15 +401,34 @@ struct GlobalMapScreen: View {
         ForEach(shownStationDots) { dot in
             Annotation("", coordinate: CLLocationCoordinate2D(latitude: dot.position.latitude, longitude: dot.position.longitude)) {
                 StationDot(name: dot.name, colorHex: dot.colorHex)
+                    .modifier(StationDotTap { open(dot.place) })
             }
         }
         ForEach(fgcStationsDots) { station in
             if let point = station.point {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)) {
                     StationDot(name: station.name, colorHex: "9E9E9E")
+                        .modifier(StationDotTap {
+                            open(Place(
+                                kind: .fgcStation,
+                                code: station.code,
+                                name: station.name,
+                                position: point,
+                                lineCodes: [],
+                                accessible: nil
+                            ))
+                        })
                 }
             }
         }
+    }
+
+    /// Opens the station sheet of a tapped dot (#101). The catalog place wins
+    /// when it is loaded: it lists every line serving the station.
+    private func open(_ place: Place) {
+        selectedVehicle = nil
+        selectedBadge = nil
+        selectedPlace = PlaceCatalogStore.shared.place(id: place.id) ?? place
     }
 
     /// Incident badges are not tied to the station band (spec S9): they are
@@ -817,6 +845,20 @@ private struct StationDot: View, Equatable {
     }
 }
 
+/// Makes a 10 pt station dot tappable through a 32 pt target (#101). Kept out
+/// of `StationDot` so the dot stays a plain `Equatable` value.
+private struct StationDotTap: ViewModifier {
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+            .onTapGesture(perform: action)
+            .accessibilityAddTraits(.isButton)
+    }
+}
+
 /// One live train on the global map (spec S6, mockup `V3Markers`): the
 /// unified marker — a solid circle in the line color with the line code in
 /// place of a pictogram, the heading wedge and the dashed estimate ring for
@@ -928,13 +970,13 @@ private enum GlobalVehicleCardRows {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     } else if let stopCode = train.nextStopCodes.first {
-                        Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+                        Label("Pròxima: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     Text(train.isOnTime ? "Puntual" : "Amb retard")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                        .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
                 }
                 VehiclePositionSource(isEstimated: false, estimatedText: "")
             }

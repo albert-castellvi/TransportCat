@@ -1,24 +1,40 @@
 import SwiftUI
 
-/// How the Avisos screen reads one alerts feed snapshot (spec S11): the
-/// "Tot funciona" empty state appears when no SERVICE alert is shown, and
-/// facility alerts stay reachable through a count row that leads to them.
-/// Pure and Foundation-only so `NetworkArtTests` covers the decision.
+/// How the Avisos screen reads the alerts feeds (spec S11): the "Tot
+/// funciona" empty state appears when no SERVICE alert is shown by either
+/// feed, and facility alerts stay reachable through a count row that leads to
+/// them. Pure and Foundation-only so `NetworkArtTests` covers the decision.
 struct AlertsStateSummary: Equatable {
-    /// Alerts that interrupt the service, in feed order.
+    /// Metro alerts that interrupt the service, in feed order.
     let serviceAlerts: [ServiceAlert]
-    /// Alerts for elevators, escalators and corridors, in feed order.
+    /// Metro alerts for elevators, escalators and corridors, in feed order.
     let facilityAlerts: [ServiceAlert]
+    /// Bus alerts in force at `now`, in feed order (UX-15). The bus feed keeps
+    /// expired alerts in its payload, so the section lists only the active
+    /// ones — the same rule `AppModel.activeBusAlerts(affecting:)` applies per
+    /// line — and `showsEmptyState` reads this filtered list too.
+    let busServiceAlerts: [ServiceAlert]
 
-    init(alerts: [ServiceAlert]) {
+    /// - Parameters:
+    ///   - alerts: the metro feed, as `AppModel.alerts` publishes it.
+    ///   - busAlerts: the bus feed, as `AppModel.busAlerts` publishes it.
+    ///   - now: the instant an alert must be in force at; tests pin it.
+    init(alerts: [ServiceAlert], busAlerts: [ServiceAlert] = [], now: Date = Date()) {
         self.serviceAlerts = alerts.filter { $0.severity == .service }
         self.facilityAlerts = alerts.filter { $0.severity == .facility }
+        // The bus feed publishes its disruptions under
+        // `categories.messageType` (ALTERATION, SERVICE_MESSAGE), never the
+        // metro feed's TRAFFIC / INFRASTRUCTURE pair, so `severity` would file
+        // every bus alert as a facility notice. Every alert of that feed is a
+        // trip-changing disruption (cancelled stops, detoured routes) and the
+        // bus map treats it as one, so the screen lists them all as service.
+        self.busServiceAlerts = busAlerts.filter { $0.isActive(now: now) }
     }
 
-    /// No service alert across the shown operators: the screen shows the
-    /// network motif instead of the alert list.
+    /// No service alert across the shown operators, metro and bus alike: the
+    /// screen shows the network motif instead of the alert list.
     var showsEmptyState: Bool {
-        serviceAlerts.isEmpty
+        serviceAlerts.isEmpty && busServiceAlerts.isEmpty
     }
 
     /// How many facility alerts the count row leads to.
@@ -39,12 +55,17 @@ struct AlertsStateSummary: Equatable {
     static let facilitySubtitle = "No afecten la circulació"
 }
 
-/// Service status: active disruptions across the whole metro network.
+/// Service status: active disruptions of the metro and the bus network.
+@MainActor
 struct AlertsScreen: View {
     @EnvironmentObject private var app: AppModel
     /// Incident alerts for the rider's favorite lines (spec S14), off by
     /// default. Same key the `IncidentWatcher` reads.
     @AppStorage(IncidentWatcher.enabledKey) private var incidentAlertsEnabled = false
+
+    /// Catalog behind the bus rows' badges: a bus alert names its line by the
+    /// numeric code, and the badge component needs the whole `BusLine`.
+    private var busCatalog: BusCatalogStore { BusCatalogStore.shared }
 
     var body: some View {
         NavigationStack {
@@ -71,7 +92,7 @@ struct AlertsScreen: View {
                         }
                     }
                 }
-                let summary = AlertsStateSummary(alerts: app.alerts)
+                let summary = AlertsStateSummary(alerts: app.alerts, busAlerts: app.busAlerts)
                 if let message = app.missingCredentialsMessage {
                     ConfigurationNotice(message: message)
                         .listRowBackground(Color.clear)
@@ -86,6 +107,17 @@ struct AlertsScreen: View {
                     // count row instead of joining this list (#95).
                     ForEach(summary.serviceAlerts) { alert in
                         AlertRow(alert: alert)
+                    }
+                }
+                // The bus incidents the bus map's "Veure a Avisos" promises to
+                // show (UX-15): metro first, then the bus feed under its own
+                // header. Kept outside the state chain so a failed metro feed
+                // never hides a bus disruption that did load.
+                if !summary.busServiceAlerts.isEmpty {
+                    Section("Bus") {
+                        ForEach(summary.busServiceAlerts) { alert in
+                            AlertRow(alert: alert, feed: .bus, busLines: busCatalog.lines)
+                        }
                     }
                 }
                 // The count row leads to the facility notices in every state.
@@ -104,6 +136,13 @@ struct AlertsScreen: View {
             }
             .task {
                 await app.refreshAlerts()
+                // The bus rows carry their line's badge, and the catalog is
+                // the only source of that line's name and colours. Its own
+                // once-per-launch guard makes this a no-op once any other
+                // screen loaded it.
+                if let client = app.client, !app.busAlerts.isEmpty {
+                    await busCatalog.load(client: client)
+                }
             }
         }
     }
@@ -121,9 +160,9 @@ struct AlertsScreen: View {
             VStack(spacing: 8) {
                 Text("Tot funciona")
                     .font(.title2.weight(.bold))
-                // This screen reads the metro alerts feed only, so the copy
-                // claims nothing about bus or FGC.
-                Text("Cap incidència de servei al metro.")
+                // The screen reads the metro and bus feeds, so the copy claims
+                // nothing about FGC, which has no alert channel of its own.
+                Text("Cap incidència de servei al metro ni al bus.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -178,22 +217,25 @@ private struct FacilityAlertsScreen: View {
     }
 }
 
+/// One alert of either feed. The two feeds identify their lines differently
+/// (metro codes against the catalog's numeric bus codes), so the caller says
+/// which feed the row belongs to and the badge reads the matching source.
+private enum AlertRowFeed {
+    case metro
+    case bus
+}
+
 private struct AlertRow: View {
     let alert: ServiceAlert
+    var feed: AlertRowFeed = .metro
+    /// Bus catalog, the only source of a bus line's name and colours: the
+    /// alert carries the numeric line code alone. Empty until it has loaded.
+    var busLines: [BusLine] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                ForEach(alert.lineCodes, id: \.self) { code in
-                    if let line = MetroLine.line(forCode: code) {
-                        Text(line.displayName)
-                            .font(.caption2.bold())
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Color(hex: line.colorHex)))
-                    }
-                }
+                lineBadges
                 Spacer()
                 if let end = alert.endDate {
                     (Text("fins al ") + Text(end, style: .date))
@@ -214,5 +256,32 @@ private struct AlertRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// The line badges of the row: the metro pill for the metro feed, the bus
+    /// screens' own `BusBadge` for the bus feed. A code the catalog cannot
+    /// resolve (the catalog has not loaded yet) renders no badge rather than a
+    /// guessed one.
+    @ViewBuilder
+    private var lineBadges: some View {
+        switch feed {
+        case .metro:
+            ForEach(alert.lineCodes, id: \.self) { code in
+                if let line = MetroLine.line(forCode: code) {
+                    Text(line.displayName)
+                        .font(.caption2.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color(hex: line.colorHex)))
+                }
+            }
+        case .bus:
+            ForEach(alert.lineCodes, id: \.self) { code in
+                if let line = busLines.first(where: { String($0.code) == code }) {
+                    BusBadge(line: line, width: 34)
+                }
+            }
+        }
     }
 }

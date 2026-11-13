@@ -63,6 +63,68 @@ final class FavoritesStoreTests: XCTestCase {
         XCTAssertFalse(store.isFavorite(place()))
     }
 
+    func testMoveReordersPlacesAndPersistsAcrossInstances() {
+        let store = FavoritesStore(defaults: defaults)
+        let a = place(code: "1", name: "A")
+        let b = place(code: "2", name: "B")
+        let c = place(code: "3", name: "C")
+        store.toggle(a)
+        store.toggle(b)
+        store.toggle(c)
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["A", "B", "C"])
+
+        // Drag the first place to the end (destination is the pre-move offset).
+        store.move(fromOffsets: IndexSet(integer: 0), toOffset: 3)
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["B", "C", "A"])
+
+        // The order is written to the same defaults, so a new instance reads it.
+        let reopened = FavoritesStore(defaults: defaults)
+        XCTAssertEqual(reopened.favoritePlaces.map(\.name), ["B", "C", "A"])
+        XCTAssertEqual(reopened.favoritePlaces, [b, c, a])
+    }
+
+    func testMoveToFront() {
+        let store = FavoritesStore(defaults: defaults)
+        let a = place(code: "1", name: "A")
+        let b = place(code: "2", name: "B")
+        let c = place(code: "3", name: "C")
+        store.toggle(a)
+        store.toggle(b)
+        store.toggle(c)
+
+        store.move(fromOffsets: IndexSet(integer: 2), toOffset: 0)
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["C", "A", "B"])
+    }
+
+    func testMoveToMiddle() {
+        let store = FavoritesStore(defaults: defaults)
+        let a = place(code: "1", name: "A")
+        let b = place(code: "2", name: "B")
+        let c = place(code: "3", name: "C")
+        let d = place(code: "4", name: "D")
+        store.toggle(a)
+        store.toggle(b)
+        store.toggle(c)
+        store.toggle(d)
+
+        // Drag the first place between B and C.
+        store.move(fromOffsets: IndexSet(integer: 0), toOffset: 2)
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["B", "A", "C", "D"])
+    }
+
+    func testMoveOnlyTouchesPlacesNotLines() {
+        let store = FavoritesStore(defaults: defaults)
+        store.toggle(line(operator: "metro", code: "1"))
+        store.toggle(line(operator: "fgc", code: "S1"))
+        store.toggle(place(code: "1", name: "A"))
+        store.toggle(place(code: "2", name: "B"))
+
+        store.move(fromOffsets: IndexSet(integer: 0), toOffset: 2)
+
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["B", "A"])
+        XCTAssertEqual(store.favoriteLines.map(\.id), ["metro:1", "fgc:S1"])
+    }
+
     // MARK: - Lines
 
     func testLineTogglePersistsAcrossInstances() {

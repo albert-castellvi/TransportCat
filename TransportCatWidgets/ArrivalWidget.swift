@@ -30,10 +30,14 @@ struct ReloadArrivalsIntent: AppIntent {
     }
 }
 
-/// One place of the widget with the arrivals fetched for it.
+/// One place of the widget with what the feeds answered for it.
 struct PlaceBoard: Hashable {
-    let name: String
-    let arrivals: [NextArrival]
+    let place: Place
+    /// Nil when no feed could be reached: a different statement from an empty
+    /// list, which means the feeds answered and nothing is coming (F2).
+    let arrivals: [NextArrival]?
+
+    var name: String { place.name }
 }
 
 /// One widget render: the boards as fetched at `fetched`, drawn for `date`.
@@ -42,7 +46,8 @@ struct PlaceBoard: Hashable {
 struct ArrivalEntry: TimelineEntry {
     let date: Date
     let fetched: Date
-    /// Empty until the rider configures the widget.
+    /// Empty until the rider configures the widget and has no favourite places
+    /// to stand in for the configuration.
     let boards: [PlaceBoard]
 
     /// Placeholder and preview data.
@@ -56,7 +61,14 @@ struct ArrivalEntry: TimelineEntry {
             fetched: now,
             boards: [
                 PlaceBoard(
-                    name: "Catalunya",
+                    place: Place(
+                        kind: .metroStation,
+                        code: "128",
+                        name: "Catalunya",
+                        position: GeoPoint(latitude: 41.385, longitude: 2.170),
+                        lineCodes: ["L1", "L3"],
+                        accessible: nil
+                    ),
                     arrivals: [
                         arrival("L1", "Fondo", 2),
                         arrival("L3", "Zona Universitària", 4),
@@ -65,7 +77,14 @@ struct ArrivalEntry: TimelineEntry {
                     ]
                 ),
                 PlaceBoard(
-                    name: "Diagonal",
+                    place: Place(
+                        kind: .metroStation,
+                        code: "127",
+                        name: "Diagonal",
+                        position: GeoPoint(latitude: 41.395, longitude: 2.160),
+                        lineCodes: ["L3", "L5"],
+                        accessible: nil
+                    ),
                     arrivals: [
                         arrival("L5", "Vall d'Hebron", 3),
                         arrival("L3", "Trinitat Nova", 5),
@@ -92,6 +111,11 @@ struct ArrivalTimelineProvider: AppIntentTimelineProvider {
     /// Arrivals asked per place: enough for a next and a following train on
     /// every line and direction of a big interchange.
     static let arrivalsPerPlace = 16
+
+    /// One client per process. It caches the per-line station feed the
+    /// place-code bridge needs, so a reload does not download the same
+    /// topology again for every place and line (F11).
+    private static let client: TMBClient? = try? TMBClient.fromBundle()
 
     /// Places a family has room for.
     static func maxPlaces(for family: WidgetFamily) -> Int {
@@ -122,32 +146,53 @@ struct ArrivalTimelineProvider: AppIntentTimelineProvider {
         )
     }
 
-    /// Boards of the configured places, in the order the rider chose them. A
-    /// build without credentials or a failing feed leaves a board empty.
+    /// Boards of the places the rider chose, in that order, or of their
+    /// favourite places until they choose one (F10).
     private func entry(for configuration: ArrivalWidgetConfiguration, family: WidgetFamily) async -> ArrivalEntry {
         let now = Date()
-        var seen: Set<String> = []
-        let places = ([configuration.place].compactMap { $0 } + (configuration.morePlaces ?? []))
-            .filter { seen.insert($0.id).inserted }
-            .prefix(Self.maxPlaces(for: family))
-            .map(\.place)
+        let places = Self.places(for: configuration, family: family)
         guard !places.isEmpty else { return .needsPlace }
 
-        let client = try? TMBClient.fromBundle()
+        guard let client = Self.client else {
+            // A build without credentials cannot answer at all; say so instead
+            // of claiming there is nothing coming (F2).
+            return ArrivalEntry(
+                date: now,
+                fetched: now,
+                boards: places.map { PlaceBoard(place: $0, arrivals: nil) }
+            )
+        }
+
         var boards: [PlaceBoard] = []
         for place in places {
-            var arrivals: [NextArrival] = []
-            if let client {
-                arrivals = await NextArrivalsFetcher.nextArrivals(
-                    for: place,
-                    client: client,
-                    now: now,
-                    limit: Self.arrivalsPerPlace
-                )
+            let outcome = await NextArrivalsFetcher.outcome(
+                for: place,
+                client: client,
+                now: now,
+                limit: Self.arrivalsPerPlace
+            )
+            switch outcome {
+            case .answered(let arrivals):
+                boards.append(PlaceBoard(place: place, arrivals: arrivals))
+            case .unreachable:
+                boards.append(PlaceBoard(place: place, arrivals: nil))
             }
-            boards.append(PlaceBoard(name: place.name, arrivals: arrivals))
         }
         return ArrivalEntry(date: now, fetched: now, boards: boards)
+    }
+
+    /// The configured places, deduplicated and cut to what the family draws.
+    /// The rider's favourite places stand in until a place is configured, so a
+    /// freshly added widget shows real arrivals instead of an instruction.
+    private static func places(for configuration: ArrivalWidgetConfiguration, family: WidgetFamily) -> [Place] {
+        var seen: Set<String> = []
+        let configured = ([configuration.place].compactMap { $0 } + (configuration.morePlaces ?? []))
+            .filter { seen.insert($0.id).inserted }
+            .map(\.place)
+        let chosen = configured.isEmpty
+            ? FavoritesStore().favoritePlaces.filter { seen.insert($0.id).inserted }
+            : configured
+        return Array(chosen.prefix(maxPlaces(for: family)))
     }
 }
 

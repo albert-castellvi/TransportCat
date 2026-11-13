@@ -29,6 +29,7 @@ struct PlannerScreen: View {
         List {
             routeSection
             timeSection
+            searchNoticeSection
             searchSection
             resultsSection
         }
@@ -42,10 +43,14 @@ struct PlannerScreen: View {
                 title: target.sheetTitle,
                 allowsCurrentLocation: target.allowsCurrentLocation
             ) { endpoint in
-                switch target {
-                case .origin: origin = endpoint
-                case .destination: destination = endpoint
-                }
+                let (newOrigin, newDestination) = applyPlannerPick(
+                    endpoint,
+                    to: target,
+                    origin: origin,
+                    destination: destination
+                )
+                origin = newOrigin
+                destination = newDestination
             }
         }
         .task {
@@ -63,9 +68,12 @@ struct PlannerScreen: View {
     /// Uses the first fix as the origin while the rider has not picked one
     /// (spec S16). Re-run on every fix: on a cold start, or after Explora
     /// stopped the service on its way out, `currentLocation()` is still nil
-    /// when the screen appears.
+    /// when the screen appears. Does not overwrite an origin the rider
+    /// cleared by choosing the current location as destination instead.
     private func adoptCurrentLocation() {
-        guard origin == nil, let current = PlannerEndpoint.currentLocation() else { return }
+        guard origin == nil, destination?.isCurrentLocation != true,
+              let current = PlannerEndpoint.currentLocation()
+        else { return }
         origin = current
     }
 
@@ -121,13 +129,13 @@ struct PlannerScreen: View {
                     .foregroundStyle(iconColor)
                 Text(endpoint?.label ?? placeholder)
                     .foregroundStyle(endpoint == nil ? .secondary : .primary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 if let detail = endpoint?.detailLabel {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .accessibilityLabel(target.sheetTitle)
@@ -149,6 +157,19 @@ struct PlannerScreen: View {
                     selection: $plannedDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
+            }
+        }
+    }
+
+    /// The search button is disabled while the build has no TMB credentials,
+    /// so the same notice the maps show names the reason here instead of
+    /// leaving a dead button (UX-19).
+    @ViewBuilder
+    private var searchNoticeSection: some View {
+        if let message = app.missingCredentialsMessage {
+            Section {
+                ConfigurationNotice(message: message)
+                    .listRowBackground(Color.clear)
             }
         }
     }
@@ -294,5 +315,5 @@ enum PlannerPickerTarget: String, Identifiable {
 
     var id: String { rawValue }
     var sheetTitle: String { self == .origin ? "Origen" : "Destinació" }
-    var allowsCurrentLocation: Bool { self == .origin }
+    var allowsCurrentLocation: Bool { true }
 }

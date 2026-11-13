@@ -64,7 +64,7 @@ struct FGCTrainSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text(train.isOnTime ? "Puntual" : "Amb retard")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                        .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
                 }
                 Spacer(minLength: 0)
             }
@@ -77,7 +77,9 @@ struct FGCTrainSheet: View {
 
             if allowFollow {
                 Button {
-                    followingVehicleID = followingVehicleID == trainID ? nil : trainID
+                    withAnimation {
+                        followingVehicleID = followingVehicleID == trainID ? nil : trainID
+                    }
                 } label: {
                     Label(
                         followingVehicleID == trainID ? "Deixar de seguir" : "Seguir",
@@ -87,6 +89,8 @@ struct FGCTrainSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color(hex: style.colorHex))
+                // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+                .sensoryFeedback(.selection, trigger: followingVehicleID)
             }
 
             VStack(alignment: .leading, spacing: 8) {

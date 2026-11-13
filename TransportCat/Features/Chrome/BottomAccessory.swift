@@ -15,6 +15,8 @@ struct BottomAccessory: View {
     /// and the screens behind it agree without explicit wiring.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
     @EnvironmentObject private var app: AppModel
+    @ScaledMetric(relativeTo: .body) private var modeLabelSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .footnote) private var modeIconSize: CGFloat = 12
 
     private var mode: AppMode {
         AppMode(rawValue: modeRaw) ?? .metro
@@ -35,6 +37,7 @@ struct BottomAccessory: View {
                     GlobalOperatorToggles()
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         }
     }
 
@@ -68,10 +71,10 @@ struct BottomAccessory: View {
         } label: {
             HStack(spacing: 6) {
                 Text(label(for: mode))
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: modeLabelSize, weight: .bold))
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: modeIconSize, weight: .semibold))
             }
             .padding(.leading, 14)
             .padding(.trailing, 10)
@@ -130,18 +133,18 @@ private struct MetroLineChip: View {
                     .frame(height: 32)
                 if let termini {
                     Text(termini)
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
                 if hasServiceAlert {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 15))
+                        .font(.subheadline)
                         .foregroundStyle(Color(hex: "FF9F0A"))
                         .accessibilityLabel("Servei afectat")
                 }
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
             .padding(.leading, 6)
@@ -198,6 +201,7 @@ private struct BusAccessoryControls: View {
     /// Directions of the line on screen, from the cached topology; empty until
     /// the line has loaded once, which hides the swap until it can act.
     @State private var availableDirections: [Int] = []
+    @ScaledMetric(relativeTo: .footnote) private var swapIconSize: CGFloat = 16
 
     var body: some View {
         HStack(spacing: 8) {
@@ -236,12 +240,12 @@ private struct BusAccessoryControls: View {
                 if let line = store.selectedLine {
                     BusBadge(line: line, width: 46)
                     Text(line.description)
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
                 }
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
             .padding(.leading, 6)
@@ -264,7 +268,7 @@ private struct BusAccessoryControls: View {
             )
         } label: {
             Image(systemName: "arrow.left.arrow.right")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: swapIconSize, weight: .semibold))
                 .frame(width: 46, height: 46)
                 .glassEffect()
         }
@@ -288,6 +292,7 @@ private struct FGCLineChip: View {
     /// The same key the FGC screens read (spec S4).
     @AppStorage("fgcSelectedLine") private var selectedLineCode = FGCLinePicker.defaultLineCode
     @State private var showPicker = false
+    @ScaledMetric(relativeTo: .footnote) private var fgcCodeSize: CGFloat = 14
 
     private var fgc: FGCNetworkState { FGCNetworkState.shared }
 
@@ -312,7 +317,7 @@ private struct FGCLineChip: View {
         } label: {
             HStack(spacing: 8) {
                 Text(shownCode)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: fgcCodeSize, weight: .bold))
                     .foregroundStyle(
                         shownLayer.map { Color(hex: $0.textColorHex) } ?? Color.white
                     )
@@ -325,7 +330,7 @@ private struct FGCLineChip: View {
                     )
                     .overlay(Capsule().stroke(.white, lineWidth: 1.5))
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
             .padding(.leading, 6)
@@ -353,6 +358,7 @@ private struct GlobalOperatorToggles: View {
     /// The same key the global map reads (spec S4): toggling here redraws the
     /// global map through `@AppStorage`.
     @AppStorage(GlobalOperatorSelection.storageKey) private var operatorsRaw = GlobalOperatorSelection.defaultRaw
+    @ScaledMetric(relativeTo: .footnote) private var opLabelSize: CGFloat = 14
 
     private var selectedOperators: Set<GlobalOperator> {
         GlobalOperatorSelection.decode(operatorsRaw)
@@ -391,7 +397,7 @@ private struct GlobalOperatorToggles: View {
                     .frame(width: 10, height: 10)
                     .overlay(Circle().stroke(Self.operatorColor(operatorKind), lineWidth: 1.5))
                 Text(operatorKind.label)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: opLabelSize, weight: .semibold))
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)

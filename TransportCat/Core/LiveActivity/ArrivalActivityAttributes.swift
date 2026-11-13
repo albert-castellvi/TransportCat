@@ -9,16 +9,12 @@ import Foundation
 /// lives (line, colors, place and destination) is a static attribute; the
 /// countdown itself lives in `ContentState`.
 struct ArrivalActivityAttributes: ActivityAttributes {
-    /// Everything a refresh can change: the expected arrival, its rounded
-    /// countdown and whether the feed has gone stale.
+    /// Everything a refresh can change. The countdown is derived from the
+    /// arrival date when the view is drawn, so it can never contradict the
+    /// date a refresh moved.
     struct ContentState: Codable, Hashable {
-        /// Expected arrival. The `Text(timerInterval:)` countdown ends here.
+        /// Expected arrival.
         var arrivalDate: Date
-        /// Minutes left as the feed announced them, when it announces any.
-        var minutes: Int?
-        /// The app has stopped confirming the arrival; the UI says so instead
-        /// of pretending the countdown is live.
-        var isStale: Bool
     }
 
     /// `Place.id` ("metroStation:128"), so an update can find the activity of
@@ -36,4 +32,30 @@ struct ArrivalActivityAttributes: ActivityAttributes {
     let textColorHex: String
     /// Head sign of the tracked train or bus.
     let destination: String
+
+    // MARK: - The place, read back from its id
+
+    /// What kind of place the activity tracks, parsed from `placeID`. Nil when
+    /// the id is not one this build writes.
+    var placeKind: PlaceKind? {
+        guard let raw = placeID.split(separator: ":", maxSplits: 1).first else { return nil }
+        return PlaceKind(rawValue: String(raw))
+    }
+
+    /// The operator code of the place (`ID_ESTACIO`, `CODI_PARADA`, FGC
+    /// initials), parsed from `placeID`.
+    var placeCode: String {
+        guard let code = placeID.split(separator: ":", maxSplits: 1).last else { return placeID }
+        return String(code)
+    }
+
+    /// Where tapping the activity takes the rider (F4).
+    var placeURL: URL? {
+        placeKind.flatMap { DeepLink.url(kind: $0, code: placeCode, name: placeName) }
+    }
+
+    /// "estació" or "parada", so the spoken sentence names the right thing.
+    var placeWord: String {
+        placeKind == .busStop ? "parada" : "estació"
+    }
 }

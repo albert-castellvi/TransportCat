@@ -84,6 +84,15 @@ final class FavoritesStore {
         Self.write(favoritePlaces, key: Self.placesKey, defaults: defaults)
     }
 
+    /// Reorders the favorite places (drag-to-reorder in Explora) and persists
+    /// the new order the same way `toggle` does. `source` and `destination`
+    /// are the offsets `.onMove` reports: `source` holds the rows being moved,
+    /// `destination` is the offset they move to in the list before the move.
+    func move(fromOffsets source: IndexSet, toOffset destination: Int) {
+        favoritePlaces = Self.moved(favoritePlaces, fromOffsets: source, toOffset: destination)
+        Self.write(favoritePlaces, key: Self.placesKey, defaults: defaults)
+    }
+
     // MARK: - Lines
 
     func isFavorite(_ line: FavoriteLine) -> Bool {
@@ -101,6 +110,23 @@ final class FavoritesStore {
     }
 
     // MARK: - Persistence
+
+    /// Foundation-only reorder equivalent of `.onMove`: removes the elements
+    /// at `source` and reinserts them, in their original order, before
+    /// `destination`, so `destination` is understood in the pre-move list
+    /// exactly as SwiftUI's `.onMove` reports it.
+    private static func moved<T>(_ elements: [T], fromOffsets source: IndexSet, toOffset destination: Int) -> [T] {
+        var elements = elements
+        let moving = source.sorted().map { elements[$0] }
+        for index in source.sorted(by: >) {
+            elements.remove(at: index)
+        }
+        let removedBefore = source.reduce(into: 0) { count, index in
+            if index < destination { count += 1 }
+        }
+        elements.insert(contentsOf: moving, at: destination - removedBefore)
+        return elements
+    }
 
     private static func read<T: Decodable>(_ type: T.Type, key: String, defaults: UserDefaults) -> T? {
         guard let data = defaults.data(forKey: key) else { return nil }

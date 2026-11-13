@@ -18,6 +18,8 @@ struct BusLinePickerSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var query = ""
+    @ScaledMetric(relativeTo: .footnote) private var searchIconSize: CGFloat = 13
+    @ScaledMetric(relativeTo: .subheadline) private var clearIconSize: CGFloat = 15
     /// Family the rider tapped in the chip row. Nil means "the family of the
     /// line on screen", resolved from the store on every render so a selection
     /// made elsewhere is reflected here.
@@ -46,6 +48,7 @@ struct BusLinePickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // The screens hosting the sheet load the catalog themselves; this only
         // covers a sheet opened before that task got a chance to run.
         .task {
@@ -63,10 +66,10 @@ struct BusLinePickerSheet: View {
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13))
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             TextField("Cerca línia o destí", text: $query)
-                .font(.system(size: 15))
+                .font(.subheadline)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
             if !query.isEmpty {
@@ -74,7 +77,7 @@ struct BusLinePickerSheet: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -122,7 +125,7 @@ struct BusLinePickerSheet: View {
                         pickedFamilyCode = family.code
                     } label: {
                         Text("\(family.name) \(family.lines.count)")
-                            .font(.system(size: 13, weight: isSelected ? .bold : .semibold))
+                            .font(.footnote.weight(isSelected ? .bold : .semibold))
                             .foregroundStyle(isSelected ? Color.black : Color.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
@@ -244,13 +247,13 @@ struct BusLinePickerSheet: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Línia \(line.name)")
+            .accessibilityLabel("Línia \(line.name), \(line.description)")
 
             Button {
                 store.toggleFavorite(line)
             } label: {
                 Image(systemName: starred ? "star.fill" : "star")
-                    .font(.system(size: 15))
+                    .font(.subheadline)
                     .foregroundStyle(starred ? Color(hex: "F59E0B") : Color(white: 0.55))
                     .frame(width: 30, height: 30)
                     .contentShape(Rectangle())

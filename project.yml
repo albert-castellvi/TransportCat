@@ -128,6 +128,10 @@ targets:
       - path: TransportCat/Core/Places/PlaceCatalogStore.swift
       - path: TransportCat/Core/Places/PlaceIndex.swift
       - path: TransportCat/Core/Favorites/FavoritesStore.swift
+      # The widget's link to a place, and the age wording it shows. Both are
+      # Foundation-only and shared with the app.
+      - path: TransportCat/Core/Navigation/DeepLink.swift
+      - path: TransportCat/Core/Freshness.swift
       - path: TransportCat/Core/ColorFromHex.swift
       - path: TransportCat/Core/HexLuminance.swift
       # The network motif of the icon, drawn faintly behind the widget.
@@ -168,9 +172,10 @@ targets:
       - path: TransportCatWatch
         excludes:
           - Info.plist
-      # The S15 arrivals fetcher (the only Intents file the watch compiles:
-      # AppIntents is not used on the wrist).
+      # The S15 arrivals fetcher and the board rules it feeds (the only
+      # Intents files the watch compiles: AppIntents is not used on the wrist).
       - path: TransportCat/Intents/NextArrivalsFetcher.swift
+      - path: TransportCat/Intents/ArrivalBoard.swift
       # Core closure of the fetcher, the place search and the local cache.
       - path: TransportCat/Core/TMB/JSONValue.swift
       - path: TransportCat/Core/TMB/TMBClient.swift
@@ -196,6 +201,19 @@ targets:
       - path: TransportCat/Core/Places/Place.swift
       - path: TransportCat/Core/Places/PlaceCatalogStore.swift
       - path: TransportCat/Core/Places/PlaceIndex.swift
+      # Data-age wording and the line-colour helpers, the same ones the app and
+      # the widget use.
+      - path: TransportCat/Core/Freshness.swift
+      - path: TransportCat/Core/ColorFromHex.swift
+      - path: TransportCat/Core/HexLuminance.swift
+      # Watch-facing logic shared with the app so the iOS unit tests cover it.
+      # Listed file by file on purpose: `Core/Watch/WatchSync.swift` is the
+      # phone's WatchConnectivity delegate and must not be compiled here.
+      - path: TransportCat/Core/Watch/WatchArrivalFormatting.swift
+      - path: TransportCat/Core/Watch/WatchArrivalsBoard.swift
+      - path: TransportCat/Core/Watch/WatchFavoritesPayload.swift
+      - path: TransportCat/Core/Watch/WatchFavoritesStore.swift
+      - path: TransportCat/Core/Watch/WatchRecentSearches.swift
     settings:
       base:
         PRODUCT_NAME: TransportCatWatch
@@ -225,6 +243,20 @@ targets:
     dependencies:
       - target: TransportCat
 
+  # Local-only UI driver (UITests/TourUITests.swift): taps through the real
+  # app in the simulator and saves screenshots. It has its own scheme, so the
+  # CI test action never runs it.
+  TransportCatUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: TransportCat
+
 schemes:
   TransportCat:
     build:
@@ -237,3 +269,12 @@ schemes:
       config: Debug
       targets:
         - TransportCatTests
+  TransportCatTour:
+    build:
+      targets:
+        TransportCat: all
+        TransportCatUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - TransportCatUITests

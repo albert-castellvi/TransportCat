@@ -160,3 +160,37 @@ enum PlannerFormat {
         }?.name
     }
 }
+
+// MARK: - Applying a planner pick
+
+/// Assigns a picked endpoint to the given target and clears the conflicting
+/// one so both endpoints never match (#96 remaining item).
+///
+/// - Parameters:
+///   - endpoint: the endpoint the rider just tapped.
+///   - target: which endpoint the sheet was editing.
+///   - origin: current origin value.
+///   - destination: current destination value.
+/// - Returns: the updated `(origin, destination)` tuple.
+func applyPlannerPick(
+    _ endpoint: PlannerEndpoint,
+    to target: PlannerPickerTarget,
+    origin: PlannerEndpoint?,
+    destination: PlannerEndpoint?
+) -> (origin: PlannerEndpoint?, destination: PlannerEndpoint?) {
+    var origin = origin
+    var destination = destination
+    switch target {
+    case .origin:
+        origin = endpoint
+        if endpoint.isCurrentLocation, destination?.isCurrentLocation == true {
+            destination = nil
+        }
+    case .destination:
+        destination = endpoint
+        if endpoint.isCurrentLocation, origin?.isCurrentLocation == true {
+            origin = nil
+        }
+    }
+    return (origin, destination)
+}

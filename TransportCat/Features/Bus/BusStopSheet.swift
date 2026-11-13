@@ -54,12 +54,10 @@ struct BusStopSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Text("Parada \(stop.code) · \(stop.address)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text("Parada \(String(stop.code)) · \(stop.address)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 if !incidents.isEmpty {
                     Section("Incidències") {
                         ForEach(incidents) { incident in
@@ -152,7 +150,7 @@ struct BusStopSheet: View {
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
                 if let busID = arrival.busID {
-                    Text("bus \(busID)")
+                    Text("bus \(String(busID))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -168,9 +166,10 @@ struct BusStopSheet: View {
                 }
             }
             Spacer(minLength: 0)
-            Text(Arrival.countdownText(seconds: arrival.seconds))
+            Text(ParadesTimeline.busTimeText(seconds: arrival.seconds))
                 .font(.title3.bold().monospacedDigit())
-                .foregroundStyle(lineColor(for: arrival))
+                .foregroundStyle(arrival.seconds <= ParadesTimeline.imminentThresholdSeconds
+                    ? Color(hex: "30D158") : .primary)
             if hasReminder(arrival) {
                 Image(systemName: "bell.fill")
                     .font(.subheadline)
@@ -317,13 +316,15 @@ struct BusStopSheet: View {
 
     /// Moves the running activity to the refreshed arrival of the same line
     /// and destination, so the lock-screen countdown follows the iBus feed.
+    /// No fallback to an unrelated bus of the same line (same destination
+    /// match as the station sheet; spec S20).
     private func refreshLiveActivity() {
         guard let running = ArrivalActivityController.shared.runningActivity(forPlace: favoritePlace.id) else {
             return
         }
         let matching = arrivals.first {
             String($0.lineCode) == running.lineCode && $0.destination == running.destination
-        } ?? arrivals.first { String($0.lineCode) == running.lineCode }
+        }
         guard let arrival = matching else { return }
         ArrivalActivityController.shared.update(
             id: running.id,

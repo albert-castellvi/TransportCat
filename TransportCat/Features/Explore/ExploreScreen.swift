@@ -260,7 +260,7 @@ struct ExploreScreen: View {
     @ViewBuilder
     private var favoritesSection: some View {
         let favoriteLines = favoriteLineResults
-        Section("Preferits") {
+        Section {
             if favorites.favoritePlaces.isEmpty && favoriteLines.isEmpty {
                 Text("Encara no tens preferits. Toca l'estrella d'una estació o parada.")
                     .font(.footnote)
@@ -276,8 +276,19 @@ struct ExploreScreen: View {
                         }
                     }
             }
+            .onMove { source, destination in
+                FavoritesStore.shared.move(fromOffsets: source, toOffset: destination)
+            }
             ForEach(favoriteLines) { result in
                 ExploreLineRow(result: result)
+            }
+        } header: {
+            HStack {
+                Text("Preferits")
+                Spacer()
+                if favorites.favoritePlaces.count >= 2 {
+                    EditButton()
+                }
             }
         }
     }
@@ -286,11 +297,19 @@ struct ExploreScreen: View {
     @ViewBuilder
     private func favoritePlaceRow(_ place: Place) -> some View {
         let arrivals = favoriteArrivals[place.id] ?? []
+        let modeLabel = modeLabel(for: place.kind)
         VStack(alignment: .leading, spacing: 6) {
             Button {
                 selectedPlace = place
             } label: {
-                ExplorePlaceRow(place: place)
+                // When arrivals are present, the line codes show in the
+                // arrival rows; avoid printing the code twice. Pass the
+                // mode word only as a standalone caption so the code is
+                // never repeated.
+                let caption = arrivals.isEmpty
+                    ? "\(modeLabel) · \(place.lineCodes.joined(separator: " · "))"
+                    : modeLabel
+                ExplorePlaceRow(place: place, caption: caption)
             }
             .buttonStyle(.plain)
             if arrivals.isEmpty {
@@ -318,7 +337,17 @@ struct ExploreScreen: View {
         guard arrivalsLoaded else { return "Carregant arribades…" }
         return failedFavoriteIDs.contains(place.id)
             ? "No s'han pogut carregar les arribades."
-            : "Sense arribades ara mateix."
+            : NearbyStops.noArrivalsText
+    }
+
+    /// Mode word for a place: "Metro", "Bus", or "FGC". Empty for unknown
+    /// kinds so the caller can gate the caption.
+    private func modeLabel(for kind: PlaceKind) -> String {
+        switch kind {
+        case .metroStation: return "Metro"
+        case .busStop: return "Bus"
+        case .fgcStation: return "FGC"
+        }
     }
 
     /// Favorite metro/FGC lines from `FavoritesStore` plus the catalog's own
@@ -366,39 +395,17 @@ struct ExploreScreen: View {
                     Button("Obre Configuració", action: openSettings)
                         .font(.footnote)
                 }
-            } else if let position = service.location {
-                nearbyRows(position: position)
             } else {
-                ProgressView("Cercant la teva ubicació…")
+                // The same list the "A prop teu" sheet and the Tot screen host
+                // (spec S10/S13); tapping opens Explora's own detail sheet
+                // instead of the router hand-off the sheet uses.
+                NearbyStopsList { place in
+                    selectedPlace = place
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
-        }
-    }
-
-    /// The ten nearest places within one kilometer (spec S12), with distance
-    /// and walking minutes in the caption.
-    @ViewBuilder
-    private func nearbyRows(position: GeoPoint) -> some View {
-        let found = PlaceIndex.nearest(
-            to: position,
-            places: catalog.places,
-            limit: ExploreFormatting.nearbyLimit,
-            maxDistance: ExploreFormatting.nearbyRadiusMeters
-        )
-        if found.isEmpty {
-            Text("No tens cap estació ni parada a menys d'un quilòmetre.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        ForEach(found) { item in
-            Button {
-                selectedPlace = item.place
-            } label: {
-                ExplorePlaceRow(
-                    place: item.place,
-                    caption: ExploreFormatting.nearbyCaption(meters: item.distance)
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 

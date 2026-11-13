@@ -48,7 +48,20 @@ struct NearbyStopEntry: Identifiable, Equatable {
 /// sort: 80 m/min (4.8 km/h), the same flat walking speed
 /// `ExploreFormatting.walkingSpeedMetersPerMinute` documents for the caption
 /// of Explora — one speed for the whole app, never two.
+///
+/// Empty-arrival text: `EmptyArrivalText` is a convenience to decide the right
+/// wording for an empty arrival section.
 enum NearbyStops {
+
+    // MARK: - Empty-arrival text
+
+    /// The one wording for "this place answered and nothing is due", shared
+    /// by the nearby cards and Explora's favourites (UX-13).
+    // ponytail: no terminus wording. Telling "no bus ever leaves from here"
+    // apart needs the stop's position in each direction, which these call
+    // sites do not have; add it when a caller can pass it.
+    static let noArrivalsText = "Cap arribada prevista"
+
     /// Flat walking speed in meters per minute the walking minutes assume.
     static let walkingSpeedMetersPerMinute: Double = 80
 

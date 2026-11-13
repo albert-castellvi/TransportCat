@@ -13,6 +13,10 @@ struct GlobalStationDot: Identifiable, Hashable {
     let name: String
     let colorHex: String
     let position: GeoPoint
+    /// The station as a place of the first line that listed it, so a tap can
+    /// open its sheet (#101). The catalog place with the same id, when loaded,
+    /// carries every line of an interchange.
+    let place: Place
 }
 
 /// One metro station with at least one active incident (spec S8). The map
@@ -288,7 +292,15 @@ final class GlobalNetworkState {
                     id: key,
                     name: station.name,
                     colorHex: line.colorHex,
-                    position: GeoPoint(latitude: station.latitude, longitude: station.longitude)
+                    position: GeoPoint(latitude: station.latitude, longitude: station.longitude),
+                    place: Place(
+                        kind: .metroStation,
+                        code: String(station.id ?? station.code),
+                        name: station.name,
+                        position: GeoPoint(latitude: station.latitude, longitude: station.longitude),
+                        lineCodes: [line.displayName],
+                        accessible: station.accessible
+                    )
                 ))
             }
         }

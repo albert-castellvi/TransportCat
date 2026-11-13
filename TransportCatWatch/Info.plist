@@ -27,6 +27,11 @@
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>cat.transport.app</string>
+	<!-- Review W13: the screens are not redrawn for the dimmed Always-On state,
+	     and their smallest text is grey, so the app stays out of it instead of
+	     keeping something unreadable on the wrist. -->
+	<key>WKSupportsAlwaysOnDisplay</key>
+	<false/>
 	<!-- TMB public API credentials, injected at build time exactly like the
 	     app's Info.plist. Never committed with real values. -->
 	<key>TMBAppId</key>

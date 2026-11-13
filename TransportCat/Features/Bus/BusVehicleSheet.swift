@@ -95,7 +95,9 @@ struct BusVehicleSheet: View {
 
             if allowFollow {
                 Button {
-                    followingVehicleID = followingVehicleID == positionID ? nil : positionID
+                    withAnimation {
+                        followingVehicleID = followingVehicleID == positionID ? nil : positionID
+                    }
                 } label: {
                     Label(
                         followingVehicleID == positionID ? "Deixar de seguir" : "Seguir",
@@ -105,6 +107,8 @@ struct BusVehicleSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color(hex: line.colorHex))
+                // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+                .sensoryFeedback(.selection, trigger: followingVehicleID)
             }
         }
     }
@@ -147,9 +151,7 @@ struct BusVehicleSheet: View {
     private func arrivalText(for position: BusPosition) -> String {
         let elapsed = state.arrivalsUpdatedAt.map { Date().timeIntervalSince($0) } ?? 0
         let remaining = max(0, Double(position.train.secondsToArrival) - elapsed)
-        if remaining <= 20 { return "Ara" }
-        let minutes = Int((remaining / 60).rounded(.up))
-        if minutes < 60 { return "en \(minutes) min" }
-        return "en \(minutes / 60) h"
+        let seconds = Int(remaining)
+        return ParadesTimeline.busTimeText(seconds: seconds)
     }
 }

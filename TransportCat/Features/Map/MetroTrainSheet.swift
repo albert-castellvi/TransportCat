@@ -76,6 +76,10 @@ struct MetroTrainSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Pròxima estació")
                         .font(.headline)
+                    let seconds = train.secondsToArrival
+                    let time = seconds <= ParadesTimeline.imminentThresholdSeconds
+                        ? ParadesTimeText.now
+                        : ParadesTimeText.minutes(Arrival.countdownText(seconds: seconds))
                     HStack(spacing: 10) {
                         Circle()
                             .fill(Color(hex: line.colorHex))
@@ -83,20 +87,24 @@ struct MetroTrainSheet: View {
                         Text(station.name)
                             .font(.subheadline)
                         Spacer(minLength: 8)
-                        Text(Arrival.countdownText(seconds: train.secondsToArrival))
+                        Text(time.text)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(time.isImminent ? Color(hex: "30D158") : .secondary)
                             .monospacedDigit()
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(
-                        "Pròxima estació \(station.name), arriba en \(Arrival.countdownText(seconds: train.secondsToArrival))"
+                        time.isImminent
+                            ? "Pròxima estació \(station.name), arriba ara"
+                            : "Pròxima estació \(station.name), arriba en \(time.text)"
                     )
                 }
             }
 
             Button {
-                followingTrainID = followingTrainID == trainID ? nil : trainID
+                withAnimation {
+                    followingTrainID = followingTrainID == trainID ? nil : trainID
+                }
             } label: {
                 Label(
                     followingTrainID == trainID ? "Deixar de seguir" : "Seguir",
@@ -106,6 +114,8 @@ struct MetroTrainSheet: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(Color(hex: line.colorHex))
+            // The follow happens on the map behind the sheet, so confirm it here (UX-20).
+            .sensoryFeedback(.selection, trigger: followingTrainID)
         }
     }
 }

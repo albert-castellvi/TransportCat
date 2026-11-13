@@ -238,4 +238,114 @@ final class NetworkArtTests: XCTestCase {
         XCTAssertEqual(AlertsStateSummary.facilityTitle(count: 0), "0 instal·lacions fora de servei")
         XCTAssertEqual(AlertsStateSummary.facilitySubtitle, "No afecten la circulació")
     }
+
+    // MARK: - Avisos with the bus feed (UX-15)
+
+    /// A bus alert as `BusAlertParser` builds it: its kind travels in
+    /// `categories.messageType`, so `severity` files it as a facility notice.
+    private func busAlert(
+        id: String,
+        typeName: String,
+        beginDate: Date? = nil,
+        endDate: Date? = nil
+    ) -> ServiceAlert {
+        ServiceAlert(
+            id: id,
+            lineCodes: ["212"],
+            stationNames: [],
+            beginDate: beginDate,
+            endDate: endDate,
+            text: "Desviament",
+            effectType: "ALTERATION",
+            typeName: typeName
+        )
+    }
+
+    /// 24 December 2025, noon UTC — the day the simulator showed an expired
+    /// bus alert still listed.
+    private var referenceNow: Date {
+        Date(timeIntervalSince1970: 1_766_577_600)
+    }
+
+    func testBusOnlyFeedHidesEmptyState() {
+        let summary = AlertsStateSummary(
+            alerts: [],
+            busAlerts: [busAlert(id: "b", typeName: "Modificació del recorregut")]
+        )
+        XCTAssertFalse(summary.showsEmptyState)
+        XCTAssertEqual(summary.busServiceAlerts.map(\.id), ["b"])
+        XCTAssertTrue(summary.serviceAlerts.isEmpty)
+    }
+
+    func testBusAlertsNeverJoinTheMetroOrFacilityGroups() {
+        let bus = busAlert(id: "b", typeName: "Modificació del recorregut")
+        let summary = AlertsStateSummary(alerts: [service, facility], busAlerts: [bus])
+        XCTAssertEqual(summary.serviceAlerts, [service])
+        XCTAssertEqual(summary.facilityAlerts, [facility])
+        XCTAssertEqual(summary.busServiceAlerts, [bus])
+        XCTAssertEqual(summary.facilityCount, 1)
+    }
+
+    func testBothFeedsEmptyShowsEmptyState() {
+        let summary = AlertsStateSummary(alerts: [], busAlerts: [])
+        XCTAssertTrue(summary.showsEmptyState)
+        XCTAssertTrue(summary.busServiceAlerts.isEmpty)
+    }
+
+    func testFacilityOnlyMetroFeedKeepsEmptyStateBesideBusAlerts() {
+        // The facility row and the empty state are metro-side decisions; a bus
+        // alert is a service one, so the empty state cannot appear with it.
+        let summary = AlertsStateSummary(
+            alerts: [facility],
+            busAlerts: [busAlert(id: "b", typeName: "Parada anul·lada")]
+        )
+        XCTAssertFalse(summary.showsEmptyState)
+        XCTAssertEqual(summary.facilityCount, 1)
+    }
+
+    func testExpiredBusAlertIsDropped() {
+        let expired = busAlert(
+            id: "expired",
+            typeName: "Modificació del recorregut",
+            beginDate: referenceNow.addingTimeInterval(-86_400 * 400),
+            endDate: referenceNow.addingTimeInterval(-86_400 * 300)
+        )
+        let summary = AlertsStateSummary(alerts: [], busAlerts: [expired], now: referenceNow)
+        XCTAssertTrue(summary.busServiceAlerts.isEmpty)
+        XCTAssertTrue(summary.showsEmptyState)
+    }
+
+    func testBusAlertThatHasNotBegunIsDropped() {
+        let scheduled = busAlert(
+            id: "scheduled",
+            typeName: "Modificació del recorregut",
+            beginDate: referenceNow.addingTimeInterval(86_400),
+            endDate: referenceNow.addingTimeInterval(86_400 * 3)
+        )
+        let summary = AlertsStateSummary(alerts: [], busAlerts: [scheduled], now: referenceNow)
+        XCTAssertTrue(summary.busServiceAlerts.isEmpty)
+        XCTAssertTrue(summary.showsEmptyState)
+    }
+
+    func testBusFeedKeepsActiveAlertsInFeedOrder() {
+        let running = busAlert(
+            id: "running",
+            typeName: "Parada anul·lada",
+            beginDate: referenceNow.addingTimeInterval(-86_400),
+            endDate: referenceNow.addingTimeInterval(86_400)
+        )
+        let openEnded = busAlert(id: "open", typeName: "Modificació del recorregut")
+        let expired = busAlert(
+            id: "expired",
+            typeName: "Modificació del recorregut",
+            endDate: referenceNow.addingTimeInterval(-60)
+        )
+        let summary = AlertsStateSummary(
+            alerts: [],
+            busAlerts: [running, expired, openEnded],
+            now: referenceNow
+        )
+        XCTAssertEqual(summary.busServiceAlerts.map(\.id), ["running", "open"])
+        XCTAssertFalse(summary.showsEmptyState)
+    }
 }

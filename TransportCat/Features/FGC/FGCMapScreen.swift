@@ -58,6 +58,8 @@ struct FGCMapScreen: View {
     /// future the camera is animating toward the focus, and the continuous
     /// callbacks carry our own interpolated centres, not a rider pan.
     @State private var focusFlightEndsAt: Date?
+    /// Station whose sheet is open (UX-06).
+    @State private var selectedPlace: Place?
     /// Camera bearing in degrees clockwise from north: the train markers
     /// rotate against it so they keep facing along the track whatever the
     /// rider does with the map, exactly like the bus markers (spec S7).
@@ -206,15 +208,23 @@ struct FGCMapScreen: View {
         .toolbar(.hidden, for: .navigationBar)
         // The train sheet is presented by the stack itself and declares its
         // detents here, as the metro and bus station sheets learned to do.
-        // Closing the sheet stops the follow (spec S8).
+        // Closing the sheet stops the follow (spec S8). The compact first
+        // detent fits the sheet's content — badge, destination and "Seguir" —
+        // without scrolling; `.large` stays for the next stops and occupancy.
         .sheet(item: $sheetVehicle, onDismiss: { followingVehicleID = nil }) { vehicle in
             FGCTrainSheet(
                 trainID: vehicle.id,
                 allowFollow: true,
                 followingVehicleID: $followingVehicleID
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.fraction(0.35), .medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        // UX-06: tap on a station dot opens the station sheet.
+        .sheet(item: $selectedPlace) { place in
+            FGCStationSheet(place: place)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -382,8 +392,22 @@ struct FGCMapScreen: View {
                 if let point = station.point {
                     // Empty title: the dot only shows where the line stops.
                     Annotation("", coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)) {
-                        FGCStationDot(colorHex: layer.colorHex)
-                            .accessibilityLabel("Estació \(station.name)")
+                        Button {
+                            selectedPlace = Place(
+                                kind: .fgcStation,
+                                code: station.code,
+                                name: station.name,
+                                position: point,
+                                lineCodes: [],
+                                accessible: nil
+                            )
+                        } label: {
+                            FGCStationDot(colorHex: layer.colorHex)
+                                .accessibilityLabel("Estació \(station.name)")
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -439,7 +463,7 @@ struct FGCMapScreen: View {
             }
         }
         // Attribution of the feed drawn here (spec S10).
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .bottomTrailing) {
             Text("Dades: FGC · CC BY 4.0")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -499,19 +523,22 @@ struct FGCMapScreen: View {
 
     /// Re-center on the followed train if it is still in the feed (spec S8).
     /// The span is kept as it is so following never zooms.
+    ///
+    /// The train sheet covers the bottom of the map while the follow is on, so
+    /// the centre moves south by half of the covered height and the train lands
+    /// in the middle of the band the sheet leaves visible. The anchor is the
+    /// shifted centre the camera reports back; anchoring the train itself would
+    /// read as a rider pan and release the follow.
     private func followVehicle(in vehicles: [MapVehicle]) {
         guard let id = followingVehicleID,
               let vehicle = vehicles.first(where: { $0.id == id }) else { return }
-        followAnchor = vehicle.position
-        cameraPosition = .region(
-            MKCoordinateRegion(
-                center: CLLocationCoordinate2D(
-                    latitude: vehicle.position.latitude,
-                    longitude: vehicle.position.longitude
-                ),
-                span: cameraSpan
-            )
+        let offset = cameraSpan.latitudeDelta * Self.vehicleSheetCoverFraction / 2
+        let center = CLLocationCoordinate2D(
+            latitude: vehicle.position.latitude - offset,
+            longitude: vehicle.position.longitude
         )
+        followAnchor = GeoPoint(latitude: center.latitude, longitude: center.longitude)
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: cameraSpan))
     }
 
     // MARK: - Focus (spec S11)
@@ -659,6 +686,11 @@ struct FGCMapScreen: View {
     /// 10 Hz follow commands would read as the rider moving the map.
     private static let followPanToleranceDegrees = 0.002
 
+    /// Fraction of the map height the train sheet covers at its compact detent,
+    /// the first one it is presented with. The follow camera shifts its centre
+    /// by half of it so the followed train stays in the visible band.
+    private static let vehicleSheetCoverFraction = 0.35
+
     /// How long a focus flight keeps the pan detector quiet: the 0.35 s camera
     /// animation plus a margin for the callbacks that trail it.
     private static let focusFlightDuration: TimeInterval = 0.5
@@ -734,7 +766,7 @@ private struct FGCVehicleCardRows: View {
                 stopRow(train)
                 Text(train.isOnTime ? "Puntual" : "Amb retard")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(train.isOnTime ? Color.green : Color.orange)
+                    .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
             }
             // FGC positions are GPS live data (spec S3): never an estimate.
             VehiclePositionSource(isEstimated: false, estimatedText: "")
@@ -750,7 +782,7 @@ private struct FGCVehicleCardRows: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         } else if let stopCode = train.nextStopCodes.first {
-            Label("Propera parada: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
+            Label("Pròxima: \(stationName(for: stopCode))", systemImage: "arrow.right.circle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

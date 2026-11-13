@@ -176,11 +176,19 @@ struct FGCStationSheet: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Línia \(style.label)")
             VStack(alignment: .leading, spacing: 2) {
-                Text(train.stoppedAtStopCode == place.code
-                    ? "Aturat a \(place.name)"
-                    : "Cap a \(destination)")
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(1)
+                if train.stoppedAtStopCode == place.code {
+                    Text("Aturat a \(place.name)")
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                } else if destination == place.name {
+                    Text("Acaba el trajecte a \(place.name)")
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                } else {
+                    Text("Cap a \(destination)")
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                }
                 Text(train.isOnTime ? "Puntual" : "Amb retard")
                     .font(.caption)
                     .foregroundStyle(train.isOnTime ? Color.green : Color(hex: "F59E0B"))
