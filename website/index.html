@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TransportCat — El transport públic de Barcelona, en directe al teu iPhone</title>
-  <meta name="description" content="Mapa en temps real del metro, el bus i els trens de FGC a Barcelona. Arribades al segon, avisos d'incidències, widget i Live Activity. Gratis, en català i sense anuncis.">
+  <meta name="description" content="Mapa en temps real del metro, el bus i els trens de FGC i Rodalies a Barcelona. Arribades al segon, avisos d'incidències, widget i Live Activity. Gratis, en català i sense anuncis.">
   <link rel="canonical" href="https://transportcat.app/">
   <link rel="alternate" hreflang="es" href="https://transportcat.app/es/">
   <link rel="alternate" hreflang="en" href="https://transportcat.app/en/">
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <meta property="og:type" content="website">
   <meta property="og:title" content="TransportCat — El transport públic de Barcelona, en directe">
-  <meta property="og:description" content="Mapa en temps real del metro, el bus i els trens de FGC. Arribades al segon, avisos, widget i Live Activity. Gratis i en català.">
+  <meta property="og:description" content="Mapa en temps real del metro, el bus i els trens de FGC i Rodalies. Arribades al segon, avisos, widget i Live Activity. Gratis i en català.">
   <meta property="og:url" content="https://transportcat.app/">
   <meta property="og:image" content="https://transportcat.app/assets/mapa-tot.jpg">
   <meta name="theme-color" content="#0b1220">
@@ -24,7 +24,7 @@
     "name": "TransportCat",
     "operatingSystem": "iOS 26",
     "applicationCategory": "TravelApplication",
-    "description": "Mapa en temps real del metro, el bus i els trens de FGC a Barcelona, amb arribades al segon, avisos d'incidències, widget i Live Activity.",
+    "description": "Mapa en temps real del metro, el bus i els trens de FGC i Rodalies a Barcelona, amb arribades al segon, avisos d'incidències, widget i Live Activity.",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
     "inLanguage": ["ca", "es", "en"],
     "url": "https://transportcat.app/"
@@ -60,7 +60,7 @@
     <section class="hero">
       <img class="motif" src="/assets/network-motif.svg" alt="" aria-hidden="true">
       <h1>El transport públic de Barcelona, en directe al teu iPhone.</h1>
-      <p class="sub">Tota la xarxa en un mapa viu: metro, bus i trens de FGC en temps real, amb les arribades de cada parada al segon. Gratis, en català i sense anuncis.</p>
+      <p class="sub">Tota la xarxa en un mapa viu: metro, bus i trens de FGC i Rodalies en temps real, amb les arribades de cada parada al segon. Gratis, en català i sense anuncis.</p>
       <a class="btn btn-lg" href="#">Baixa't a l'App Store</a>
       <p class="meta">Per a iPhone · iOS 26 o posterior · Widgets, Live Activity i Apple Watch</p>
       <div class="hero-duo">
@@ -101,7 +101,7 @@
             <p class="lead">Obre l'app i tens la ciutat sencera davant: el traçat de cada línia amb el seu color real, els trens i busos que s'hi mouen segon a segon i els incidents marcats allà on passen.</p>
           </div>
           <div class="step">
-            <h3>Quatre modes: Tot, Metro, Bus i FGC</h3>
+            <h3>Cinc modes: Tot, Metro, Bus, FGC i Rodalies</h3>
             <p>Canvia de mode amb un toc i el mapa es torna de l'un a l'altre. El mode Tot ho pinta tot; el mode inicial es tria a la Configuració.</p>
           </div>
           <div class="step">
@@ -238,18 +238,26 @@
         </div>
       </section>
 
-      <section class="chapter solo reveal" id="ben-aviat">
-        <h2>Ben aviat: Rodalies</h2>
-        <p class="lead">Els trens de Rodalies de Catalunya ja estan camí de TransportCat: horaris oficials publicats cada dia i temps real, amb el mateix esperit de sempre.</p>
-        <div class="teaser">
-          <span class="status"><span class="dot"></span>En desenvolupament</span>
-          <p>Estàs llegint aquesta pàgina des del mateix tren on es construeix: la xarxa de Rodalies ja s'està integrant i arribarà en una pròxima actualització.</p>
+      <section class="chapter flip reveal" id="rodalies">
+        <div class="chapter-text">
+          <h2>Ara també Rodalies</h2>
+          <p class="lead">Els trens de Rodalies de Catalunya ja tenen lloc a TransportCat: la línia triada al mapa amb els seus trens en directe i la posició GPS de Renfe, les estacions en ordre a Parades i les properes sortides de cada estació amb els retards del temps real.</p>
+          <ul class="points">
+            <li><span class="dot"></span>19 línies del nucli de Catalunya</li>
+            <li><span class="dot"></span>Trens en moviment amb el rètol «En directe»</li>
+            <li><span class="dot"></span>Horaris oficials de Renfe, publicats cada dia</li>
+          </ul>
+        </div>
+        <div class="chapter-media">
+          <figure class="device">
+            <img src="/assets/rodalies.jpg" alt="El mapa de TransportCat en mode Rodalies amb els trens R1 en directe pel Maresme i el rètol Dades: Renfe, CC BY 4.0." loading="lazy" width="900" height="1956">
+          </figure>
         </div>
       </section>
 
       <section class="chapter solo reveal" id="privadesa-dades">
         <h2>Les teves dades es queden al telèfon</h2>
-        <p class="lead">TransportCat no té compte, no et segueix i no recull dades personals. La ubicació només es fa servir al dispositiu per trobar les parades properes. Les dades de la xarxa vénen dels portals de dades obertes de TMB i FGC (CC BY 4.0).</p>
+        <p class="lead">TransportCat no té compte, no et segueix i no recull dades personals. La ubicació només es fa servir al dispositiu per trobar les parades properes. Les dades de la xarxa vénen dels portals de dades obertes de TMB, FGC i Renfe (CC BY 4.0).</p>
         <p><a href="/privadesa">Llegeix la política de privadesa</a></p>
       </section>
 
@@ -275,7 +283,7 @@
         <a href="/en/">English</a>
       </div>
       <small>
-        Dades de la xarxa: TMB i FGC, sota llicència CC BY 4.0. TransportCat no és una aplicació oficial de TMB ni de FGC.<br>
+        Dades de la xarxa: TMB, FGC i Renfe, sota llicència CC BY 4.0. TransportCat no és una aplicació oficial de TMB, FGC ni Renfe.<br>
         © 2026 Albert Castellví
       </small>
     </div>
