@@ -43,6 +43,16 @@ final class RodaliesNetworkState {
     private(set) var vehicles: [MapVehicle] = []
     /// The timetable, once it has been downloaded or read from the cache.
     private(set) var schedule: RodaliesSchedule?
+    /// When the timetable landed; nil until it does. Observed so a screen that
+    /// shows departures can redraw the moment the pack is decoded.
+    private(set) var scheduleLoadedAt: Date?
+    /// Whether a timetable read is in flight, so a board that asks for it
+    /// cannot stack a second download.
+    private(set) var isLoadingSchedule = false
+    /// Whether the last timetable read failed. A board shows its retry on this,
+    /// never on the realtime flag: the timetable and the live feed are two
+    /// different answers.
+    private(set) var scheduleLoadFailed = false
     /// Time of the last successful poll; nil until one succeeds.
     private(set) var arrivalsUpdatedAt: Date?
     /// Whether the last poll failed. A failed poll keeps the last markers
@@ -61,6 +71,15 @@ final class RodaliesNetworkState {
     static let tickIntervalNanoseconds: UInt64 = 100_000_000
     /// Departures a station board asks for.
     static let departureLimit = 8
+    /// Prefix of every drawable train id. `MapVehicle` carries the live feed's
+    /// train number behind this prefix, which is how the map and the sheets go
+    /// from a marker back to its train.
+    static let vehicleIDPrefix = "rodalies-"
+
+    /// The `MapVehicle.id` of a live train.
+    static func vehicleID(for trainID: String) -> String {
+        vehicleIDPrefix + trainID
+    }
 
     private let client: RodaliesClient
 
@@ -174,15 +193,24 @@ final class RodaliesNetworkState {
 
     /// Downloads (or reads from the cache) the timetable and indexes its trips.
     /// A failed load leaves `schedule` nil: the map still works and the station
-    /// board simply has no timetable to show.
+    /// board offers its retry. The in-flight guard makes every caller (the
+    /// mode's `run()`, a station sheet, Explora's favourites) share one read.
     func loadSchedule() async {
+        guard schedule == nil, !isLoadingSchedule else { return }
+        isLoadingSchedule = true
+        defer { isLoadingSchedule = false }
         let client = self.client
         let loaded = await Task.detached(priority: .utility) {
             await client.schedule()
         }.value
-        guard let loaded else { return }
+        guard let loaded else {
+            scheduleLoadFailed = true
+            return
+        }
         schedule = loaded
         tripIndex = loaded.tripIndex()
+        scheduleLoadedAt = Date()
+        scheduleLoadFailed = false
     }
 
     // MARK: - Polling
@@ -245,6 +273,33 @@ final class RodaliesNetworkState {
     /// they do not know.
     func colorHex(for lineCode: String) -> String {
         lines.first { $0.code == lineCode }?.colorHex ?? FGCNetwork.neutralColorHex
+    }
+
+    /// The name of a station as the billboard draws it, falling back to the id
+    /// when the topology does not know it.
+    func stationName(id: String) -> String {
+        topology?.station(id: id)?.name ?? id
+    }
+
+    /// The live train behind a drawable vehicle, or nil when the feed dropped it
+    /// while a sheet was open.
+    func liveTrain(id vehicleID: String) -> RodaliesLiveTrain? {
+        let trainID = vehicleID.hasPrefix(Self.vehicleIDPrefix)
+            ? String(vehicleID.dropFirst(Self.vehicleIDPrefix.count))
+            : vehicleID
+        return trains.first { $0.id == trainID }
+    }
+
+    /// Stations of one line in travel order, forward direction first.
+    func stations(ofLine code: String) -> [RodaliesStation] {
+        topology?.stations(ofLine: code) ?? []
+    }
+
+    /// The two directions of one line as the Parades timeline draws them, in
+    /// direction order, so a row can show one time column per direction.
+    func directions(ofLine code: String) -> [RodaliesDirection] {
+        guard let topology else { return [] }
+        return [0, 1].compactMap { topology.direction(line: code, direction: $0) }
     }
 
     // MARK: - Motion
@@ -323,12 +378,15 @@ final class RodaliesNetworkState {
     /// id so the map redraws deterministically.
     private func publishedVehicles(now: Date) -> [MapVehicle] {
         motions.values.compactMap { motion -> MapVehicle? in
-            let label = motion.train.headsign ?? motion.train.id
+            // Only the timetable knows where a train goes. Without it the label
+            // stays empty on purpose: the feed's train number is an identity,
+            // not a destination, and the UI words the empty case honestly.
+            let label = motion.train.headsign ?? ""
             guard let geometry = motion.geometry,
                   let points = geometry.polylines.first,
                   let cumulative = geometry.cumulative.first else {
                 return MapVehicle(
-                    id: "rodalies-\(motion.train.id)",
+                    id: Self.vehicleID(for: motion.train.id),
                     lineCode: motion.lineCode,
                     colorHex: motion.colorHex,
                     position: motion.train.position,
@@ -346,7 +404,7 @@ final class RodaliesNetworkState {
                 return nil
             }
             return MapVehicle(
-                id: "rodalies-\(motion.train.id)",
+                id: Self.vehicleID(for: motion.train.id),
                 lineCode: motion.lineCode,
                 colorHex: motion.colorHex,
                 position: position,
