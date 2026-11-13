@@ -5,8 +5,9 @@ import SwiftUI
 /// Mapa and Parades tabs through `RootView`'s `tabViewBottomAccessory`.
 ///
 /// It reads and writes the same state the screens read — the `appMode` key,
-/// `metroSelectedLine`, the bus catalog's selection, `fgcSelectedLine` and the
-/// global operators key — and runs no poller of its own: the labels come from
+/// `metroSelectedLine`, the bus catalog's selection, `fgcSelectedLine`,
+/// `rodaliesSelectedLine` and the global operators key — and runs no poller of
+/// its own: the labels come from
 /// shared stores and static catalog data (the topology caches), never from a
 /// second fetcher.
 @MainActor
@@ -33,6 +34,8 @@ struct BottomAccessory: View {
                     BusAccessoryControls()
                 case .fgc:
                     FGCLineChip()
+                case .rodalies:
+                    RodaliesLineChip()
                 case .global:
                     GlobalOperatorToggles()
                 }
@@ -43,14 +46,14 @@ struct BottomAccessory: View {
 
     // MARK: - Mode menu
 
-    /// The four modes in the order the menu lists and the map draws them
-    /// (spec S4): Metro, Bus, FGC and Tot, named by `AppMode` itself so the
+    /// The modes in the order the menu lists and the map draws them (spec S4):
+    /// Metro, Bus, FGC, Rodalies and Tot, named by `AppMode` itself so the
     /// Configuració picker says the same words.
     private static let modes: [AppMode] = AppMode.allCases
 
     /// Menu button labelled with the current mode and an up/down chevron; the
-    /// checkmark marks the mode on screen. Writes `appMode` with the raw
-    /// values the chips always used (spec S4).
+    /// checkmark marks the mode on screen and every other row keeps its icon.
+    /// Writes `appMode` with the raw values the chips always used (spec S4).
     private var modeMenu: some View {
         Menu {
             ForEach(Self.modes, id: \.self) { option in
@@ -60,7 +63,7 @@ struct BottomAccessory: View {
                     if option == mode {
                         Label(option.displayName, systemImage: "checkmark")
                     } else {
-                        Text(option.displayName)
+                        Label(option.displayName, systemImage: option.iconName)
                     }
                 }
             }
@@ -336,6 +339,71 @@ private struct FGCLineChip: View {
                 selectedLineCode = code
             }
         }
+    }
+}
+
+// MARK: - Rodalies
+
+/// Rodalies line chip of the accessory: the line code badge in its own colours,
+/// the termini pair and the line picker sheet behind the tap. The lines come
+/// from the bundled topology, so the chip names and colours a line before the
+/// mode has ever polled.
+@MainActor
+private struct RodaliesLineChip: View {
+    /// The same key the Rodalies screens read, so picking here moves the map.
+    @AppStorage(RodaliesLineSelection.storageKey)
+    private var selectedLineCode = RodaliesLineSelection.defaultLineCode
+    @State private var showPicker = false
+
+    private var lines: [RodaliesLine] { RodaliesLines.presented }
+
+    private var shownCode: String {
+        RodaliesLineSelection.resolve(selected: selectedLineCode, from: lines)
+    }
+
+    private var shownLine: RodaliesLine? {
+        lines.first { $0.code == shownCode }
+    }
+
+    var body: some View {
+        Button {
+            showPicker = true
+        } label: {
+            HStack(spacing: 8) {
+                RodaliesLineBadge(
+                    code: shownCode,
+                    colorHex: shownLine?.colorHex ?? FGCNetwork.neutralColorHex,
+                    textColorHex: shownLine?.textColorHex ?? FGCNetwork.neutralTextColorHex
+                )
+                if let name = shownLine?.name {
+                    Text(name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, 6)
+            .padding(.trailing, 12)
+            .frame(height: 46)
+            .glassEffect()
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityText)
+        .sheet(isPresented: $showPicker) {
+            RodaliesLinePickerSheet(selectedLineCode: shownCode, lines: lines) { code in
+                selectedLineCode = code
+            }
+        }
+    }
+
+    private var accessibilityText: String {
+        if let name = shownLine?.name {
+            return String(localized: "Línia \(shownCode), \(name). Canviar de línia")
+        }
+        return String(localized: "Línia \(shownCode). Canviar de línia")
     }
 }
 

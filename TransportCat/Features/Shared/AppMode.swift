@@ -14,20 +14,37 @@ enum AppMode: String, CaseIterable {
     /// Ferrocarrils de la Generalitat (spec S6). Its screens read
     /// `FGCNetworkState.shared` instead of the TMB model.
     case fgc
+    /// Renfe Rodalies de Catalunya. Its screens read
+    /// `RodaliesNetworkState.shared`: the bundled topology, the daily timetable
+    /// and Renfe's two GTFS-Realtime feeds.
+    case rodalies
     /// The global mode (spec S8): metro, FGC and the favorite bus routes on
     /// one map. Its screens read `GlobalNetworkState.shared` for the metro
     /// side and `FGCNetworkState.shared` for the FGC side.
     case global
 
-    /// The word the rider reads for this mode: "Metro", "Bus", "FGC", "Tot".
-    /// The mode menu and the Configuració picker share it, so a mode is never
-    /// named twice in two ways.
+    /// The word the rider reads for this mode: "Metro", "Bus", "FGC",
+    /// "Rodalies", "Tot". The mode menu and the Configuració picker share it,
+    /// so a mode is never named twice in two ways.
     var displayName: String {
         switch self {
         case .metro: return String(localized: "Metro")
         case .bus: return String(localized: "Bus")
         case .fgc: return String(localized: "FGC")
+        case .rodalies: return String(localized: "Rodalies")
         case .global: return String(localized: "Tot")
+        }
+    }
+
+    /// The mode's SF Symbol, drawn in the bottom accessory's menu next to its
+    /// name so the five modes read as one set.
+    var iconName: String {
+        switch self {
+        case .metro: return "tram.fill"
+        case .bus: return "bus.fill"
+        case .fgc: return "tram.fill.tunnel"
+        case .rodalies: return "train.side.front.car"
+        case .global: return "square.grid.2x2.fill"
         }
     }
 }

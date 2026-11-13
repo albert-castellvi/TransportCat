@@ -83,7 +83,14 @@ final class SettingsTests: XCTestCase {
     /// The Configuració picker lists every mode by the same word the bottom
     /// accessory's menu uses.
     func testEveryModeHasADisplayNameInMenuOrder() {
-        XCTAssertEqual(AppMode.allCases, [.metro, .bus, .fgc, .global])
-        XCTAssertEqual(AppMode.allCases.map(\.displayName), ["Metro", "Bus", "FGC", "Tot"])
+        // The menu order is the declaration order: Rodalies sits between FGC
+        // and Tot, where the mode menu shows it.
+        XCTAssertEqual(AppMode.allCases, [.metro, .bus, .fgc, .rodalies, .global])
+        XCTAssertEqual(
+            AppMode.allCases.map(\.displayName),
+            ["Metro", "Bus", "FGC", "Rodalies", "Tot"]
+        )
+        // Every mode names an SF Symbol the menu can draw.
+        XCTAssertTrue(AppMode.allCases.allSatisfy { !$0.iconName.isEmpty })
     }
 }

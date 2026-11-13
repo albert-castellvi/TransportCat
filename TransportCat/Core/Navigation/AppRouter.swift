@@ -18,11 +18,13 @@ enum AppModeCode {
     static let metro = "metro"
     static let bus = "bus"
     static let fgc = "fgc"
+    static let rodalies = "rodalies"
 }
 
 /// Where the app should take the rider next (spec S5).
 ///
-/// `operator` is the persisted app mode: "metro", "bus" or "fgc".
+/// `operator` is the persisted app mode: "metro", "bus", "fgc" or
+/// "rodalies".
 enum Destination: Hashable {
     case place(Place)
     /// `code` is the map's line code: metro "1", FGC "S1", bus "212" (the
@@ -31,7 +33,7 @@ enum Destination: Hashable {
     /// `lineCode` follows the same convention as `line`.
     case vehicle(operator: String, lineCode: String, vehicleID: String)
 
-    /// "metro", "bus" or "fgc".
+    /// "metro", "bus", "fgc" or "rodalies".
     var `operator`: String {
         switch self {
         case .place(let place):
@@ -39,9 +41,7 @@ enum Destination: Hashable {
             case .metroStation: return AppModeCode.metro
             case .busStop: return AppModeCode.bus
             case .fgcStation: return AppModeCode.fgc
-            // Rodalies has no mode of its own yet (part 2 of the operator), so
-            // its places route to the FGC mode as a placeholder.
-            case .rodaliesStation: return AppModeCode.fgc
+            case .rodaliesStation: return AppModeCode.rodalies
             }
         case .line(let `operator`, _): return `operator`
         case .vehicle(let `operator`, _, _): return `operator`
@@ -64,12 +64,15 @@ final class AppRouter {
     static let appModeKey = "appMode"
     static let metroSelectedLineKey = "metroSelectedLine"
     static let fgcSelectedLineKey = "fgcSelectedLine"
+    /// Same key the Rodalies screens and the accessory's chip read.
+    static let rodaliesSelectedLineKey = "rodaliesSelectedLine"
     /// Same key `BusCatalogStore` owns; it is reused, never renamed (spec S5).
     static let busSelectedLineKey = "busSelectedLine"
 
     static let metroMode = AppModeCode.metro
     static let busMode = AppModeCode.bus
     static let fgcMode = AppModeCode.fgc
+    static let rodaliesMode = AppModeCode.rodalies
 
     private let defaults: UserDefaults
 
@@ -128,7 +131,8 @@ final class AppRouter {
     // MARK: - Selected line
 
     /// Metro stores the TMB line code ("1", "94"); FGC stores the route code
-    /// ("S1"); bus stores the numeric `CODI_LINIA` the catalog uses ("212").
+    /// ("S1"); Rodalies stores the line code ("R1", "R2N"); bus stores the
+    /// numeric `CODI_LINIA` the catalog uses ("212").
     /// Metro also accepts the display name ("L1"), because places expose it.
     private func persistLineCode(_ code: String, operator name: String) {
         switch name {
@@ -139,6 +143,8 @@ final class AppRouter {
             defaults.set(lineCode, forKey: Self.metroSelectedLineKey)
         case Self.fgcMode:
             defaults.set(code, forKey: Self.fgcSelectedLineKey)
+        case Self.rodaliesMode:
+            defaults.set(code, forKey: Self.rodaliesSelectedLineKey)
         case Self.busMode:
             if let numeric = Int(code) {
                 defaults.set(numeric, forKey: Self.busSelectedLineKey)

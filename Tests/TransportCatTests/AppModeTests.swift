@@ -15,6 +15,8 @@ final class AppModeTests: XCTestCase {
         XCTAssertEqual(AppMode(rawValue: "metro"), .metro)
         XCTAssertEqual(AppMode(rawValue: "bus"), .bus)
         XCTAssertEqual(AppMode(rawValue: "fgc"), .fgc)
+        // Rodalies de Catalunya: raw "rodalies", chip label "Rodalies".
+        XCTAssertEqual(AppMode(rawValue: "rodalies"), .rodalies)
         // The global mode (spec S8): raw "global", chip label "Tot".
         XCTAssertEqual(AppMode(rawValue: "global"), .global)
     }
@@ -23,11 +25,12 @@ final class AppModeTests: XCTestCase {
         XCTAssertEqual(AppMode.metro.rawValue, "metro")
         XCTAssertEqual(AppMode.bus.rawValue, "bus")
         XCTAssertEqual(AppMode.fgc.rawValue, "fgc")
+        XCTAssertEqual(AppMode.rodalies.rawValue, "rodalies")
         XCTAssertEqual(AppMode.global.rawValue, "global")
     }
 
     func testRawValuesRoundTrip() {
-        for mode in [AppMode.metro, .bus, .fgc, .global] {
+        for mode in [AppMode.metro, .bus, .fgc, .rodalies, .global] {
             XCTAssertEqual(AppMode(rawValue: mode.rawValue), mode)
         }
     }
@@ -39,6 +42,8 @@ final class AppModeTests: XCTestCase {
         XCTAssertNil(AppMode(rawValue: "tram"))
         XCTAssertNil(AppMode(rawValue: "fg"))
         XCTAssertNil(AppMode(rawValue: "fgc2"))
+        // The display name is not the persisted value either.
+        XCTAssertNil(AppMode(rawValue: "Rodalies"))
         // The chip says "Tot", but "tot" is not the persisted "global".
         XCTAssertNil(AppMode(rawValue: "tot"))
     }

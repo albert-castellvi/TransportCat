@@ -32,7 +32,7 @@ struct RootView: View {
         )
     }
 
-    /// The four modes of the Mapa tab, all of them alive at once (spec S12).
+    /// The five modes of the Mapa tab, all of them alive at once (spec S12).
     ///
     /// They used to be swapped by a `switch`, which destroyed the outgoing
     /// screen together with its `MKMapView`, its tiles and its `@State` — the
@@ -59,6 +59,8 @@ struct RootView: View {
             .modifier(RetainedMode(isActive: mode == .bus))
             FGCMapScreen(onLocate: openNearby)
                 .modifier(RetainedMode(isActive: mode == .fgc))
+            RodaliesMapScreen(onLocate: openNearby)
+                .modifier(RetainedMode(isActive: mode == .rodalies))
             GlobalMapScreen(
                 isActive: mode == .global,
                 onLocate: openNearby
@@ -123,6 +125,9 @@ struct RootView: View {
                             .transition(.opacity)
                     case .fgc:
                         FGCLinesScreen()
+                            .transition(.opacity)
+                    case .rodalies:
+                        RodaliesLinesScreen()
                             .transition(.opacity)
                     case .global:
                         GlobalLinesScreen()
@@ -193,9 +198,18 @@ struct RootView: View {
         // task on the mode cancels it the moment the rider leaves FGC and
         // global alike, so there is still exactly one poller, and re-entering
         // a mode resumes on the state that is already loaded.
+        //
+        // The Rodalies poller follows the same rule: one `run()` while its mode
+        // is on screen, cancelled the moment the rider leaves it.
         .task(id: mode) {
-            guard mode == .fgc || mode == .global else { return }
-            await FGCNetworkState.shared.run()
+            switch mode {
+            case .fgc, .global:
+                await FGCNetworkState.shared.run()
+            case .rodalies:
+                await RodaliesNetworkState.shared.run()
+            case .metro, .bus:
+                return
+            }
         }
     }
 
