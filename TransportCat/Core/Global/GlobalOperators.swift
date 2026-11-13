@@ -10,9 +10,9 @@ enum GlobalOperator: String, CaseIterable {
     /// The chip title. These are brand names, identical in Catalan.
     var label: String {
         switch self {
-        case .metro: return "Metro"
-        case .bus: return "Bus"
-        case .fgc: return "FGC"
+        case .metro: return String(localized: "Metro")
+        case .bus: return String(localized: "Bus")
+        case .fgc: return String(localized: "FGC")
         }
     }
 }
