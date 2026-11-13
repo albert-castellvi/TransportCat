@@ -40,7 +40,7 @@ enum NextArrivalsOutcome: Equatable {
 enum NextArrivalsFetcher {
     /// Contract S15: the dialog speaks at most three arrivals.
     static let maxArrivals = 3
-    static let noArrivalsText = "No hi ha arribades previstes ara mateix."
+    static let noArrivalsText = String(localized: "No hi ha arribades previstes ara mateix.")
 
     /// The arrivals of one place, without telling a failed feed from an empty
     /// one. The spoken and watch surfaces keep this shape: for them both mean
@@ -189,18 +189,20 @@ enum NextArrivalsFetcher {
     static func dialog(for place: Place, arrivals: [NextArrival], now: Date) -> String {
         let soonest = Array(arrivals.prefix(maxArrivals))
         guard !soonest.isEmpty else { return noArrivalsText }
-        let head = place.kind == .busStop ? "Propers busos a" : "Propers trens a"
+        let head = place.kind == .busStop
+            ? String(localized: "Propers busos a")
+            : String(localized: "Propers trens a")
         let items = soonest.map {
-            "\($0.line) cap a \($0.destination)\(timeSuffix(until: $0.date, now: now))"
+            String(localized: "\($0.line) cap a \($0.destination)\(timeSuffix(until: $0.date, now: now))")
         }
-        return "\(head) \(place.name): " + items.joined(separator: ", ")
+        return String(localized: "\(head) \(place.name): ") + items.joined(separator: ", ")
     }
 
     /// " en 2 min", rounded up; " ara mateix" when the feed carries no minutes
     /// or the arrival is already due.
     static func timeSuffix(until date: Date, now: Date) -> String {
         let seconds = date.timeIntervalSince(now)
-        guard seconds > 0 else { return " ara mateix" }
-        return " en \(Int(ceil(seconds / 60))) min"
+        guard seconds > 0 else { return String(localized: " ara mateix") }
+        return String(localized: " en \(Int(ceil(seconds / 60))) min")
     }
 }

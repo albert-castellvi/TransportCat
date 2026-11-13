@@ -62,8 +62,8 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         var items: [UIApplicationShortcutItem] = [
             UIApplicationShortcutItem(
                 type: QuickActionType.nearby,
-                localizedTitle: "A prop teu",
-                localizedSubtitle: "Properes arribades on ets",
+                localizedTitle: String(localized: "A prop teu"),
+                localizedSubtitle: String(localized: "Properes arribades on ets"),
                 icon: UIApplicationShortcutIcon(systemImageName: "location.fill"),
                 userInfo: nil
             )
@@ -75,14 +75,14 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
             contentsOf: [
                 UIApplicationShortcutItem(
                     type: QuickActionType.alerts,
-                    localizedTitle: "Avisos",
+                    localizedTitle: String(localized: "Avisos"),
                     localizedSubtitle: nil,
                     icon: UIApplicationShortcutIcon(systemImageName: "exclamationmark.triangle"),
                     userInfo: nil
                 ),
                 UIApplicationShortcutItem(
                     type: QuickActionType.searchStop,
-                    localizedTitle: "Cercar una parada",
+                    localizedTitle: String(localized: "Cercar una parada"),
                     localizedSubtitle: nil,
                     icon: UIApplicationShortcutIcon(systemImageName: "magnifyingglass"),
                     userInfo: nil
@@ -145,7 +145,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
         return UIApplicationShortcutItem(
             type: QuickActionType.lastLine,
             localizedTitle: QuickActions.lastLineTitle(displayCode: displayCode, detail: detail),
-            localizedSubtitle: "L'última línia que has mirat",
+            localizedSubtitle: String(localized: "L'última línia que has mirat"),
             icon: nil,
             userInfo: [
                 "mode": mode as NSString,

@@ -103,17 +103,17 @@ enum ArrivalBoard {
     /// never seconds: the whole app speaks minutes (`Arrival.countdownText`,
     /// the Parades timeline) and the feed announces no seconds.
     static func minutesText(until date: Date, now: Date) -> String {
-        if isDue(date, now: now) { return "ara" }
-        return "\(Int(ceil(date.timeIntervalSince(now) / 60))) min"
+        if isDue(date, now: now) { return String(localized: "ara") }
+        return String(localized: "\(Int(ceil(date.timeIntervalSince(now) / 60))) min")
     }
 
     /// One spoken row: the line, where it goes, how long and, when the pixels
     /// show it, the one after.
     static func spokenRow(_ row: ArrivalBoardRow, now: Date) -> String {
-        var text = "Línia \(row.line) cap a \(row.destination), "
+        var text = String(localized: "Línia \(row.line) cap a \(row.destination), ")
             + minutesText(until: row.next, now: now)
         if let following = row.following {
-            text += ". Següent: " + minutesText(until: following, now: now)
+            text += String(localized: ". Següent: ") + minutesText(until: following, now: now)
         }
         return text
     }
