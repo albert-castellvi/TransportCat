@@ -12,6 +12,7 @@ import XCTest
 ///     tapxy:<x>,<y>               tap a normalized screen point (0...1)
 ///     press:<x>,<y>               long-press a normalized screen point
 ///     sbtap:<label>               tap a SpringBoard element (permission alert, banner)
+///     sbpress:<x>,<y> / sbtapxy:<x>,<y> / sbtype:<text> / sbtree:<name>   the same on SpringBoard (home screen, widget gallery)
 ///     home / notifications / activate   go home, pull the notification centre, return to the app
 ///     pinch:<scale>               pinch the map (above 1 zooms in)
 ///     type:<text>                 type into the focused field
@@ -63,11 +64,27 @@ final class TourUITests: XCTestCase {
             case "sbtap":
                 // System alerts (permissions) and notification banners live in SpringBoard.
                 let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-                // Exact label: "Permitir" must not match "No permitir".
-                let target = springboard.buttons
+                // Exact button label first ("Permitir" must not match "No permitir"),
+                // then any element that contains the text (search results, cells).
+                let exact = springboard.buttons
                     .matching(NSPredicate(format: "label ==[c] %@", argument)).firstMatch
+                let target = exact.waitForExistence(timeout: 4)
+                    ? exact
+                    : springboard.descendants(matching: .any)
+                        .matching(NSPredicate(format: "label CONTAINS[c] %@", argument)).firstMatch
                 XCTAssertTrue(target.waitForExistence(timeout: 10), "no SpringBoard element matching '\(argument)'")
                 target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            case "sbpress":
+                let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+                point(argument, in: springboard).press(forDuration: 1.5)
+            case "sbtapxy":
+                let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+                point(argument, in: springboard).tap()
+            case "sbtype":
+                XCUIApplication(bundleIdentifier: "com.apple.springboard").typeText(argument)
+            case "sbtree":
+                try XCUIApplication(bundleIdentifier: "com.apple.springboard").debugDescription
+                    .write(to: directory.appendingPathComponent("\(argument).txt"), atomically: true, encoding: .utf8)
             case "home":
                 XCUIDevice.shared.press(.home)
             case "notifications":
