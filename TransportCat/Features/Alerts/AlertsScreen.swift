@@ -59,9 +59,6 @@ struct AlertsStateSummary: Equatable {
 @MainActor
 struct AlertsScreen: View {
     @EnvironmentObject private var app: AppModel
-    /// Incident alerts for the rider's favorite lines (spec S14), off by
-    /// default. Same key the `IncidentWatcher` reads.
-    @AppStorage(IncidentWatcher.enabledKey) private var incidentAlertsEnabled = false
 
     /// Catalog behind the bus rows' badges: a bus alert names its line by the
     /// numeric code, and the badge component needs the whole `BusLine`.
@@ -70,28 +67,9 @@ struct AlertsScreen: View {
     var body: some View {
         NavigationStack {
             List {
-                Toggle(isOn: $incidentAlertsEnabled) {
-                    Text("Avisa'm de les incidències de les meves línies")
-                        .font(.footnote)
-                }
-                .onChange(of: incidentAlertsEnabled) { _, enabled in
-                    Task { @MainActor in
-                        if enabled {
-                            // The switch asks for notification permission (S14);
-                            // a denial flips it back off.
-                            let granted = await ArrivalReminder.shared.ensurePermissionGranted()
-                            if granted {
-                                IncidentWatcher.scheduleNextRefresh()
-                            } else {
-                                incidentAlertsEnabled = false
-                            }
-                        } else {
-                            await ArrivalReminder.shared.cancelPendingNotifications(
-                                withPrefix: IncidentWatcher.notificationIDPrefix
-                            )
-                        }
-                    }
-                }
+                // Shared with Configuració (unit `settings`): the switch and
+                // the permission work it triggers live in one view.
+                IncidentAlertsToggle()
                 let summary = AlertsStateSummary(alerts: app.alerts, busAlerts: app.busAlerts)
                 if let message = app.missingCredentialsMessage {
                     ConfigurationNotice(message: message)
