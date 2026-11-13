@@ -3,24 +3,30 @@
 El sitio vive en `website/` dentro de este repo. Es 100% estático: HTML + CSS +
 un JS mínimo, sin framework, sin build step y sin dependencias.
 
-## Cloudflare Pages (elegido — el dominio ya está en Cloudflare)
+## Cloudflare Pages vía GitHub Actions (elegido)
 
-1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**.
-2. Selecciona el repo `albert-castellvi/TransportCat`.
-3. Configuración del proyecto:
-   - **Production branch**: `main`
-   - **Build command**: *vacío* (no hay build)
-   - **Build output directory**: `website`
-   - **Root directory (avanzado)**: `website` — así los cambios de la app no
-     disparan deploys de la web.
-4. Custom domain: añade `transportcat.app` (zone ya gestionada por Cloudflare,
-   el DNS se crea solo).
-5. Deploy. HTTPS y HTTP/3 van incluidos.
+El workflow `.github/workflows/deploy-web.yml` publica `website/` en el proyecto
+Pages `transportcat` con cada cambio en `main` que toque `website/` (o con
+`workflow_dispatch` manual desde la pestaña Actions). Requiere, una vez:
 
-### Reglas para evitar deploys inútiles
+1. Proyecto Pages creado: dashboard → *Workers & Pages* → *Create* → *Pages* →
+   *Upload assets* → nombre `transportcat`, production branch `main` (o
+   `wrangler pages project create transportcat --production-branch=main`).
+2. Token de API con permiso *Account · Cloudflare Pages · Edit*, guardado como
+   secret `CLOUDFLARE_API_TOKEN` en el repo, junto con `CLOUDFLARE_ACCOUNT_ID`.
+3. (Opcional) Environment `website` en GitHub con deployment branch policy `main`.
 
-Settings → Builds & deployments → **Ignore deployments**: `^((?!website/).)*$`
-(solo despliega cuando cambian ficheros bajo `website/`).
+Las dos actions del workflow van pineadas a SHA de su tag. Las app pushes que no
+tocan `website/` no disparan deploy (paths filter).
+
+Después del primer deploy verde: proyecto `transportcat` → *Custom domains* →
+añadir `transportcat.app` (la zone ya está en Cloudflare; el DNS se crea solo).
+
+## Alternativa no usada: integración Git de Pages
+
+Conectar el repo desde el dashboard de Pages también funcionaría (build command
+vacío, output `website`), pero se descartó por tener el deploy visible y
+auditado en Actions, junto al resto de la pipeline.
 
 ## Pendiente al publicar la app
 
