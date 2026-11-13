@@ -8,11 +8,28 @@ struct RootView: View {
     /// bottom accessory's mode menu writes, so picking a mode anywhere — menu,
     /// map or Parades screen — switches all of them.
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
+    /// First-run introduction (unit `onboarding`): shown while the rider has
+    /// neither walked through nor skipped it. Configuració's "Torna a veure la
+    /// introducció" writes this same key back to false, so the cover comes
+    /// back without a relaunch.
+    @AppStorage(OnboardingFlow.hasSeenKey) private var hasSeenOnboarding = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
     private var mode: AppMode {
         AppMode(rawValue: modeRaw) ?? .metro
+    }
+
+    /// The cover's binding: it presents while the flag is false and marks the
+    /// tour as seen when it is dismissed.
+    private var showsOnboarding: Binding<Bool> {
+        Binding(
+            get: { OnboardingFlow.isPresented(hasSeen: hasSeenOnboarding) },
+            set: { isPresented in
+                guard !isPresented else { return }
+                hasSeenOnboarding = true
+            }
+        )
     }
 
     /// The four modes of the Mapa tab, all of them alive at once (spec S12).
@@ -134,6 +151,12 @@ struct RootView: View {
             isShown: router.selectedTab == .map || router.selectedTab == .lines,
             app: app
         ))
+        // The introduction sits over everything, tab bar included: the rider is
+        // told what the app does before being dropped into the map. Skipping or
+        // finishing sets the flag, and the flag is the only dismissal.
+        .fullScreenCover(isPresented: showsOnboarding) {
+            OnboardingView()
+        }
         .environmentObject(app)
         .onAppear { syncFrameMonitoring() }
         .onDisappear {

@@ -1,5 +1,13 @@
 import Foundation
 
+#if canImport(CoreLocation)
+import CoreLocation
+#endif
+
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
+
 /// The pure logic behind the Configuració screen: how a permission state is
 /// worded, how the app's current language is named, and the version row.
 ///
@@ -24,6 +32,34 @@ enum SettingsSupport {
         case .notAsked: return String(localized: "Sense demanar")
         }
     }
+
+    #if canImport(CoreLocation)
+    /// The when-in-use authorization, folded into the screen's three words. A
+    /// denied or restricted permission both mean "the app cannot ask again",
+    /// which is the one thing a row has to say. Shared by Configuració and the
+    /// introduction's permission page so the two cannot word it differently.
+    static func permission(for status: CLAuthorizationStatus) -> Permission {
+        switch status {
+        case .authorizedAlways, .authorizedWhenInUse: return .granted
+        case .denied, .restricted: return .denied
+        case .notDetermined: return .notAsked
+        @unknown default: return .notAsked
+        }
+    }
+    #endif
+
+    #if canImport(UserNotifications)
+    /// The notification authorization. Provisional and ephemeral grants do
+    /// deliver notifications, so they count as granted here.
+    static func permission(for status: UNAuthorizationStatus) -> Permission {
+        switch status {
+        case .authorized, .provisional, .ephemeral: return .granted
+        case .denied: return .denied
+        case .notDetermined: return .notAsked
+        @unknown default: return .notAsked
+        }
+    }
+    #endif
 
     /// The language code of a localization identifier: "ca-ES" and "ca_ES"
     /// both read "ca". Nil when the identifier starts with a separator, so
