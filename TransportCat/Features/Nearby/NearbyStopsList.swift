@@ -45,11 +45,15 @@ struct NearbyStopsList: View {
                 // The fix has not landed yet (or the host shows its own denied
                 // state): say what is happening instead of drawing nothing.
                 ProgressView("Cercant la teva ubicació…")
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
             } else if catalogLoading {
                 // The catalog is still landing (possibly loaded by another
                 // screen): keep the loading state instead of claiming there is
                 // nothing around (#97).
                 ProgressView("Cercant la teva ubicació…")
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
             } else if entries.isEmpty {
                 emptyText(hasLoaded: arrivalsLoaded)
             } else {
@@ -206,10 +210,14 @@ struct NearbyStopsList: View {
     private func emptyText(hasLoaded: Bool) -> some View {
         if !hasLoaded {
             ProgressView("Cercant la teva ubicació…")
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
         } else {
             Text("No tens cap estació ni parada a menys d'un quilòmetre.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
         }
     }
 }

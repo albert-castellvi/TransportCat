@@ -116,15 +116,14 @@ private struct ArrivalActivityBadge: View {
     }
 }
 
-/// The countdown, in the words the app uses everywhere else: "ara" once the
-/// arrival is due, otherwise a minute offset the system keeps updated on its
-/// own.
+/// The countdown: "ara" once the arrival is due, otherwise a timer the system
+/// ticks on its own.
 ///
-/// The offset must be fed from `TimeDataSource<Date>.currentDate`, not from a
-/// `Date()` read at render time: a static date makes the text static, and a
-/// Live Activity is only re-rendered when the app updates it — which does not
-/// happen in the background (regression seen on device: "11 min" at 22:51,
-/// still "11 min" at 22:57).
+/// A Live Activity is only re-rendered when the app updates it, which does not
+/// happen in the background, so a static "N min" string froze on the lock
+/// screen. A system minute offset ticks too, but it is worded in the phone's
+/// language and ends on "0 minutos"; the m:ss timer is exact and reads the
+/// same everywhere.
 private struct ArrivalActivityCountdown: View {
     let context: ActivityViewContext<ArrivalActivityAttributes>
 
@@ -134,18 +133,10 @@ private struct ArrivalActivityCountdown: View {
                 Text("ara")
                     .monospacedDigit()
             } else {
-                // `allowedFields: [.minute]` picks the units representation ("11
-                // min"), never the time-pattern one ("10:32") that a minute and
-                // second pair would produce, and `sign: .never` drops the minus
-                // once the arrival has passed.
                 Text(
-                    TimeDataSource<Date>.currentDate,
-                    format: .offset(
-                        to: context.state.arrivalDate,
-                        allowedFields: [.minute],
-                        maxFieldCount: 1,
-                        sign: .never
-                    )
+                    timerInterval: Date()...max(Date(), context.state.arrivalDate),
+                    countsDown: true,
+                    showsHours: false
                 )
                 .monospacedDigit()
             }
