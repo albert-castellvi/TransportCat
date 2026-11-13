@@ -39,6 +39,7 @@ struct SettingsScreen: View {
             mapSection
             permissionSection
             dataSection
+            introductionSection
         }
         .navigationTitle("Configuració")
         .navigationBarTitleDisplayMode(.inline)
@@ -162,38 +163,22 @@ struct SettingsScreen: View {
         }
     }
 
-    /// The when-in-use authorization, folded into the screen's three words. A
-    /// denied or restricted permission both mean "the app cannot ask again",
-    /// which is the one thing the row has to say.
+    /// The when-in-use authorization, read from the shared service that already
+    /// publishes it and worded by `SettingsSupport`, like the introduction's own
+    /// permission page.
     private var locationPermission: SettingsSupport.Permission {
-        switch locationService.authorization {
-        case .authorizedAlways, .authorizedWhenInUse: return .granted
-        case .denied, .restricted: return .denied
-        case .notDetermined: return .notAsked
-        @unknown default: return .notAsked
-        }
+        SettingsSupport.permission(for: locationService.authorization)
     }
 
     /// Re-read on every visit: the rider may have changed it in the system
     /// Settings between two pushes of this screen.
     private func loadNotificationPermission() async {
         #if canImport(UserNotifications)
-        notificationPermission = Self.permission(for: await UNUserNotificationCenter.current().notificationSettings().authorizationStatus)
+        notificationPermission = SettingsSupport.permission(
+            for: await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+        )
         #endif
     }
-
-    #if canImport(UserNotifications)
-    /// Provisional and ephemeral grants do deliver notifications, so they count
-    /// as granted here.
-    private static func permission(for status: UNAuthorizationStatus) -> SettingsSupport.Permission {
-        switch status {
-        case .authorized, .provisional, .ephemeral: return .granted
-        case .denied: return .denied
-        case .notDetermined: return .notAsked
-        @unknown default: return .notAsked
-        }
-    }
-    #endif
 
     // MARK: - Dades i privacitat
 
@@ -214,6 +199,23 @@ struct SettingsScreen: View {
             shortVersion: info?["CFBundleShortVersionString"] as? String,
             build: info?["CFBundleVersion"] as? String
         )
+    }
+
+    // MARK: - Introducció
+
+    /// Reopens the first-run tour (unit `onboarding`): the row writes the flag
+    /// back to false, and `RootView` presents the cover again without a
+    /// relaunch.
+    private var introductionSection: some View {
+        Section {
+            Button("Torna a veure la introducció") {
+                OnboardingFlow.reopen(in: .standard)
+            }
+        } header: {
+            Text("Introducció")
+        } footer: {
+            Text("Torna a explicar què fa cada pantalla, pàgina a pàgina.")
+        }
     }
 
     // MARK: - Actions
