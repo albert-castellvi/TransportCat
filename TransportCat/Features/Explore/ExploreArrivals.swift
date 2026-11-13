@@ -57,6 +57,7 @@ enum ExploreArrivals {
         for places: [Place],
         client: TMBClient,
         fgcState: FGCNetworkState,
+        rodaliesState: RodaliesNetworkState,
         busLines: [BusLine]
     ) async -> (arrivals: [String: [FavoriteArrival]], failedPlaceIDs: Set<String>) {
         var result: [String: [FavoriteArrival]] = [:]
@@ -64,6 +65,7 @@ enum ExploreArrivals {
         await addMetro(places: places, client: client, into: &result, failed: &failed)
         await addBus(places: places, client: client, busLines: busLines, into: &result, failed: &failed)
         addFGC(places: places, state: fgcState, into: &result)
+        addRodalies(places: places, state: rodaliesState, into: &result)
         for place in places where result[place.id] == nil && !failed.contains(place.id) {
             result[place.id] = []
         }
@@ -206,6 +208,53 @@ enum ExploreArrivals {
                         statusIsOnTime: train.isOnTime
                     )
                 }
+        }
+    }
+
+    // MARK: - Rodalies
+
+    /// The next departures of a favorite Rodalies station, read from the shared
+    /// timetable and the delays of the last poll. Pure state reading: whichever
+    /// poller is alive owns the refresh — `RootView` under the Rodalies mode,
+    /// the station sheet under the others — so this never starts a second one.
+    /// A timetable that has not landed yet leaves the place without rows, which
+    /// the row words as loading rather than as an empty board.
+    @MainActor
+    private static func addRodalies(
+        places: [Place],
+        state: RodaliesNetworkState,
+        into result: inout [String: [FavoriteArrival]]
+    ) {
+        guard let schedule = state.schedule else { return }
+        let now = Date()
+        let timeZone = RodaliesDepartures.timeZone(of: schedule)
+        for place in places where place.kind == .rodaliesStation {
+            let board = state.nextDepartures(
+                stationID: place.code,
+                now: now,
+                limit: ExploreFormatting.arrivalsPerPlace
+            )
+            guard !board.isEmpty else { continue }
+            result[place.id] = board.map { departure in
+                let line = state.lines.first { $0.code == departure.lineCode }
+                let status = RodaliesDepartureText.delay(seconds: departure.delaySeconds)
+                return FavoriteArrival(
+                    id: departure.id,
+                    lineLabel: departure.lineCode,
+                    colorHex: line?.colorHex ?? FGCNetwork.neutralColorHex,
+                    textColorHex: line?.textColorHex ?? FGCNetwork.neutralTextColorHex,
+                    destination: departure.headsign,
+                    countdown: RodaliesDepartureText.text(
+                        until: departure.expectedAt,
+                        now: now,
+                        timeZone: timeZone
+                    ),
+                    // A timetable row says nothing about punctuality: the
+                    // caption appears only when the feed knows the train.
+                    status: status == .scheduled ? nil : status.text,
+                    statusIsOnTime: status == .onTime
+                )
+            }
         }
     }
 }

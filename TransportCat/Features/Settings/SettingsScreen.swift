@@ -219,7 +219,7 @@ struct SettingsScreen: View {
 
     private var dataSection: some View {
         Section {
-            Text("Dades de TMB i FGC (CC BY 4.0)")
+            Text("Dades de TMB, FGC i Renfe (CC BY 4.0)")
             Text("TransportCat no recull dades personals. La ubicació només es fa servir al dispositiu.")
             Text(versionString)
         } header: {

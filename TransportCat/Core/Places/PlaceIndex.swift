@@ -57,8 +57,15 @@ enum PlaceIndex {
             .map(\.place)
     }
 
+    /// Whether one of the name's words starts with `needle`.
+    ///
+    /// The words are split on whitespace and on the punctuation the catalogs
+    /// use inside names: "Barcelona-Sants" and "Barcelona-Passeig de Gràcia"
+    /// are single hyphenated tokens, and a rider typing "Sants" or "Passeig"
+    /// means that word, not an inner substring.
     static func hasWordPrefix(_ name: String, _ needle: String) -> Bool {
-        name.split(separator: " ").contains { $0.hasPrefix(needle) }
+        name.split { $0.isWhitespace || $0.isPunctuation || $0.isSymbol }
+            .contains { $0.hasPrefix(needle) }
     }
 
     /// The places within `maxDistance` meters of `point`, closest first.

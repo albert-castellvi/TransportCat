@@ -46,6 +46,7 @@ struct ExploreScreen: View {
     private var favorites: FavoritesStore { FavoritesStore.shared }
     private var busStore: BusCatalogStore { BusCatalogStore.shared }
     private var fgc: FGCNetworkState { FGCNetworkState.shared }
+    private var rodalies: RodaliesNetworkState { RodaliesNetworkState.shared }
 
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -161,6 +162,12 @@ struct ExploreScreen: View {
             LocationService.shared.stop()
         }
         .onChange(of: favorites.favoritePlaces.count) { _, _ in
+            ensureRodaliesTimetable()
+            Task { await refreshFavoriteArrivals() }
+        }
+        // The timetable landing is what turns a Rodalies favorite's rows from
+        // "loading" into departures.
+        .onChange(of: rodalies.scheduleLoadedAt) { _, _ in
             Task { await refreshFavoriteArrivals() }
         }
     }
@@ -184,9 +191,14 @@ struct ExploreScreen: View {
             await fgc.loadTopology()
         }
         LocationService.shared.start()
+        // A favorite Rodalies station needs the daily timetable, which is large
+        // and slow to decode: it loads on the side, once, and the loop below
+        // redraws the rows as soon as it lands.
+        ensureRodaliesTimetable()
 
         while !Task.isCancelled {
             await refreshFGCSnapshotIfNeeded()
+            await refreshRodaliesSnapshotIfNeeded()
             await refreshFavoriteArrivals()
             do {
                 try await Task.sleep(nanoseconds: Self.arrivalsRefreshIntervalNanoseconds)
@@ -206,6 +218,31 @@ struct ExploreScreen: View {
         let mode = AppMode(rawValue: modeRaw) ?? .metro
         guard mode != .fgc, mode != .global, !fgc.lines.isEmpty else { return }
         await fgc.poll()
+    }
+
+    /// Reads the Rodalies timetable once when a favorite is a Rodalies station
+    /// and it is not loaded yet. The state shares one in-flight read, so this
+    /// cannot stack a second download.
+    @MainActor
+    private func ensureRodaliesTimetable() {
+        guard favorites.favoritePlaces.contains(where: { $0.kind == .rodaliesStation }),
+              rodalies.schedule == nil else { return }
+        Task { await rodalies.loadSchedule() }
+    }
+
+    /// Keeps Renfe's live delays fresh while Explora is visible and the map's
+    /// Rodalies poller is not running, exactly as the FGC snapshot above does.
+    /// Only when there is a Rodalies favorite to show: the two feeds cost a
+    /// request each.
+    @MainActor
+    private func refreshRodaliesSnapshotIfNeeded() async {
+        let mode = AppMode(rawValue: modeRaw) ?? .metro
+        guard mode != .rodalies,
+              rodalies.schedule != nil,
+              favorites.favoritePlaces.contains(where: { $0.kind == .rodaliesStation })
+        else { return }
+        if rodalies.lines.isEmpty { rodalies.loadTopology() }
+        await rodalies.poll()
     }
 
     /// One refresh pass over the favorite places. A cancelled pass throws away
@@ -230,6 +267,7 @@ struct ExploreScreen: View {
             for: places,
             client: client,
             fgcState: fgc,
+            rodaliesState: rodalies,
             busLines: busStore.lines
         )
         guard !Task.isCancelled, arrivalsGeneration.isCurrent(generation) else { return }

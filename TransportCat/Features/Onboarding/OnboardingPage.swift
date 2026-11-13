@@ -54,12 +54,12 @@ extension OnboardingPage {
     static let all: [OnboardingPage] = [
         OnboardingPage(
             id: "welcome",
-            title: String(localized: "Metro, bus i FGC en un sol mapa"),
+            title: String(localized: "Metro, bus, FGC i Rodalies en un sol mapa"),
             artwork: .network,
             bullets: [
                 Bullet(
                     systemImage: "map.fill",
-                    text: String(localized: "Barcelona sencera en un mapa: metro, bus i FGC, cadascun amb el seu mode.")
+                    text: String(localized: "Barcelona sencera en un mapa: metro, bus, FGC i Rodalies, cadascun amb el seu mode.")
                 ),
                 Bullet(
                     systemImage: "dot.radiowaves.left.and.right",
@@ -82,7 +82,7 @@ extension OnboardingPage {
             bullets: [
                 Bullet(
                     systemImage: "line.3.horizontal",
-                    text: String(localized: "El menú de baix canvia de mode (Metro, Bus, FGC o Tot) i el xip del costat tria la línia.")
+                    text: String(localized: "El menú de baix canvia de mode (Metro, Bus, FGC, Rodalies o Tot) i el xip del costat tria la línia.")
                 ),
                 Bullet(
                     systemImage: "tram.fill",

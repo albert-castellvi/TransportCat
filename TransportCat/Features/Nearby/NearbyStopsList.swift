@@ -192,13 +192,15 @@ struct NearbyStopsList: View {
                 for: [place],
                 client: client,
                 fgcState: FGCNetworkState.shared,
+                rodaliesState: RodaliesNetworkState.shared,
                 busLines: busStore.lines
             )
             fgc = fetched.arrivals[place.id] ?? []
         case .rodaliesStation:
-            // Part 2 wires the Rodalies board here. Until then the card still
-            // shows the station, its line and its walking time, with no rows.
-            break
+            // Rodalies has no per-stop endpoint: its card reads the timetable
+            // and the delays of the shared state, exactly as the station sheet
+            // does.
+            return rodaliesRows(for: place)
         }
 
         return NearbyStops.lineRows(
@@ -207,6 +209,44 @@ struct NearbyStopsList: View {
             fgcArrivals: fgc,
             busLines: busStore.lines
         )
+    }
+
+    /// The card rows of a Rodalies station: one per line serving it, with the
+    /// next departure of the timetable and the countdown the sheet would show.
+    /// Empty until the timetable lands (or when the station has nothing ahead),
+    /// which the card words as no arrival expected.
+    @MainActor
+    private func rodaliesRows(for place: Place) -> [NearbyLineRow] {
+        let state = RodaliesNetworkState.shared
+        if state.schedule == nil {
+            Task { await state.loadSchedule() }
+        }
+        guard let schedule = state.schedule else { return [] }
+        let now = Date()
+        let timeZone = RodaliesDepartures.timeZone(of: schedule)
+        let board = state.nextDepartures(stationID: place.code, now: now, limit: 12)
+        var seen: Set<String> = []
+        var rows: [NearbyLineRow] = []
+        for departure in board where seen.insert(departure.lineCode).inserted {
+            let line = state.lines.first { $0.code == departure.lineCode }
+            rows.append(
+                NearbyLineRow(
+                    lineLabel: departure.lineCode,
+                    colorHex: line?.colorHex ?? FGCNetwork.neutralColorHex,
+                    textColorHex: line?.textColorHex ?? FGCNetwork.neutralTextColorHex,
+                    firstDestination: departure.headsign,
+                    firstTime: RodaliesDepartureText.text(
+                        until: departure.expectedAt,
+                        now: now,
+                        timeZone: timeZone
+                    ),
+                    secondDestination: nil,
+                    secondTime: nil,
+                    discriminator: departure.id
+                )
+            )
+        }
+        return Array(rows.prefix(NearbyStops.maxRowsPerStop))
     }
 
     /// Empty wording: loading vs. genuinely nothing around.

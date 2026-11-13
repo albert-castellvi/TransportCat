@@ -144,8 +144,13 @@ struct ExplorePlaceDetailSheet: View {
                 FGCStationSheet(place: place)
                     .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
             case .rodaliesStation:
-                RodaliesStationSheet(place: place)
-                    .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
+                // The Rodalies sheet owns its own "Veure al mapa" bar: it is
+                // the one place detail whose bottom action the sheet itself
+                // draws, so the generic bar below is skipped for it.
+                RodaliesStationSheet(place: place) {
+                    dismiss()
+                    AppRouter.shared.open(.place(place))
+                }
             }
         }
     }

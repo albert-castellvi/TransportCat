@@ -76,6 +76,31 @@ final class PlaceIndexTests: XCTestCase {
         XCTAssertEqual(PlaceIndex.search(query: "catal", places: places, limit: 10).map(\.code), ["3", "2"])
     }
 
+    /// Rodalies names the terminus with a hyphen ("Barcelona-Sants"), and the
+    /// catalogues also join with dots and middots. The part after the separator
+    /// is a word: a rider typing it means that station.
+    func testPunctuationSeparatesWordsLikeWhitespaceDoes() {
+        let places = [
+            place(kind: .rodaliesStation, code: "rod", name: "Barcelona-Sants"),
+            place(kind: .fgcStation, code: "fgc", name: "Barcelona-Passeig de Gràcia"),
+            place(code: "metro", name: "Pl. Catalunya"),
+        ]
+        XCTAssertEqual(PlaceIndex.hasWordPrefix("barcelona-sants", "sants"), true)
+        XCTAssertEqual(PlaceIndex.hasWordPrefix("pl. catalunya", "catalunya"), true)
+        XCTAssertEqual(
+            PlaceIndex.search(query: "sants", places: places, limit: 10).map(\.code),
+            ["rod"]
+        )
+        XCTAssertEqual(
+            PlaceIndex.search(query: "passeig", places: places, limit: 10).map(\.code),
+            ["fgc"]
+        )
+        XCTAssertEqual(
+            PlaceIndex.search(query: "catalunya", places: places, limit: 10).map(\.code),
+            ["metro"]
+        )
+    }
+
     func testSearchHonoursTheLimit() {
         let places = (1...10).map { place(code: "\($0)", name: "Estació \($0)") }
         XCTAssertEqual(PlaceIndex.search(query: "estacio", places: places, limit: 3).count, 3)
