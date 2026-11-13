@@ -98,11 +98,22 @@ struct BusStopSheet: View {
                 timetableSection
             }
             .navigationTitle(stop.name)
-            // Inline-large keeps the title on the leading edge and lets it
-            // shrink before truncating: centred, a short name sits off-centre
-            // next to the star and a long one truncates.
-            .toolbarTitleDisplayMode(.inlineLarge)
+            .navigationBarTitleDisplayMode(.inline)
+            // Draw the title as a leading toolbar item: centred between the
+            // star and "Tancar", a short name reads off-centre and a long one
+            // truncates early. The system title is removed, and the item drops
+            // the shared glass background of the bar's buttons.
+            .toolbar(removing: .title)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text(stop.name)
+                        .font(.headline)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .multilineTextAlignment(.leading)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
                 }
