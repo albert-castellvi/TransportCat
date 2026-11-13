@@ -1,0 +1,4 @@
+{
+ "note": "gzip of the timetable pack fixture, base64 so the test bundle carries it as a resource",
+ "gzipBase64": "H4sIAAAAAAAC/3WQz0oDMRDG7z7FkouXiJmJ+8ceBalIBanQi/QwdkMNxN0lGwta9l18Dq99MSdpS/dgWZbkm+/3TZLZipqC6cXkVaDCAgBQyONWi6Vk/4vt7cnmfQmVAs4oqSQiqrgqZkvUKj/WoTjUh1HDFM6VYggkf7cVQ1rexPA/TSH9mEeK16SrUrFCqQ8ZTJlI4Z46cxFYDnyTd0N1b9dNevId+ZVxbUNXz9T3xq6z2mRTv/tZWeIxzC4f2r6zgZwJ0Zm59s2bNQX2FtZR024os5mjbGpc8Ltfrp9avlAT+jhBZ5v9hOfAwByKWAz2w3y3jRETcf/p285cP1Htbc1E8LZLfA6QPwK/Vqcky2KBealhLAsYuVABYjxhpPXhxI2YwHDxBxRUaPTxAQAA"
+}
