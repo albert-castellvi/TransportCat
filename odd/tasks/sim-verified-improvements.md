@@ -29,10 +29,11 @@ Branch `feat/sim-verified-improvements`. Workers are pi sessions in herdr panes;
 | T7 | #93 metro station markers by zoom band | S4 | pi nan/glm5.3 | done, seen in simulator (threshold recalibrated from a measurement) |
 | T8 | Station sheet neutral countdown, attribution chip off the Maps legal mark | S1 | pi nan/qwen3.8-flash | done, seen in simulator (FGC map chip not captured) |
 | T9 | Deep UI/UX review: app screens, widget + Live Activity, watch app | S6 S7 | 3 read-only pi reviewers (flash) | done: 19 + 18 + 18 findings |
-| T10 | Fixes from T9: sheets, flow, maps, explore, parades, widget, watch (pass 1) | S6 S7 | 7 pi flash workers | merged; app + widget + watch build; 639 tests green before the maps and explore commits; visual check in progress |
-| T13 | Follow and notifications tested in the simulator | S8 | tour driver | follow works; Live Activity countdown froze (fix written, unverified); reminder test rerunning |
-| T14 | Follow camera above the sheet, compact vehicle sheets, leading sheet titles | S8 | pi nan/deepseek-v4-flash, worktree ux-follow | running |
-| T15 | Watch pass 2 (shared code: W3, W7, W16, W17, W18), widget on a home screen, watch app on a watchOS simulator | S7 | pending | pending |
+| T10 | Fixes from T9: sheets, flow, maps, explore, parades, widget, watch (two passes) | S6 S7 | 8 pi flash workers | merged and built; 681 tests green; checked in simulator screenshots |
+| T13 | Follow and notifications tested in the simulator | S8 | tour driver | done: follow, two arrival reminders, denied-permission message, Live Activity with a ticking timer |
+| T14 | Follow camera above the sheet, compact vehicle sheets | S8 | pi nan/deepseek-v4-flash | done, seen in simulator; the two sheet-title attempts were reverted (truncated title) |
+| T15 | Widget on a home screen, watch app on a watchOS simulator | S7 | tour driver | widget attempt in progress; watch not rendered (simulator boot did not finish before the Mac slept) |
+| T16 | Ship: PR, CI, merge, TestFlight | S10 | inline | in progress |
 | T11 | #78 capture `arrivalsByStop` with live data | S4 | pending | pending |
 | T12 | #102 localization (es, en), separate branch | S4 | pi, after T10 | pending |
 
@@ -50,4 +51,6 @@ Branch `feat/sim-verified-improvements`. Workers are pi sessions in herdr panes;
 - L10: compile errors the Mac caught in the UX batch, fixed inline (a few lines each): an invented `sensoryFeedback(_:_:)` form in three sheets, a `let` scoped inside an HStack and read outside it, an optional caption in Explora.
 - L11: a worker on qwen3.8-flash edited the main checkout instead of its worktree; its three files were moved with `git diff | git apply` and the brief now says "use only relative paths".
 - L12: runtime findings from the follow and notification tests: the followed train is centred under the sheet (T14); the Live Activity countdown was a static string after the widget unit's F5 and froze in the background; the denied-permission message works. The first reminder run was invalid: the driver matched "No permitir" for "Permitir".
+- L13: final local state before the PR: 681 unit tests, 0 failures. Reverted or replaced after looking at them: the terminus wording helper (never looked at the stop), `.inlineLarge` and the leading toolbar title (oversized, then truncated to "Tor…"), the Live Activity minute offset (worded in the phone's language, ended on "0 minutos"; now a m:ss timer).
+- L14: not done in this batch: #102 localization, the cause of #78, MapKit's default "map pin" accessibility containers, a watch complication (needs a new bundle id and profile), the watch app seen on a watchOS simulator.
 
