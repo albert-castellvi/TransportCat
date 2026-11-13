@@ -1,0 +1,1818 @@
+{
+  " ara mateix": {
+    "en": " right now",
+    "es": " ahora mismo"
+  },
+  " en %lld min": {
+    "en": " in %lld min",
+    "es": " en %lld min"
+  },
+  "!": {
+    "en": "!",
+    "es": "!"
+  },
+  "%@": {
+    "en": "%@",
+    "es": "%@"
+  },
+  "%@ %@, ": {
+    "en": "%@ %@, ",
+    "es": "%@ %@, "
+  },
+  "%@ %@: ": {
+    "en": "%@ %@: ",
+    "es": "%@ %@: "
+  },
+  "%@ %lld": {
+    "en": "%@ %lld",
+    "es": "%@ %lld"
+  },
+  "%@ cap a %@": {
+    "en": "%@ towards %@",
+    "es": "%@ hacia %@"
+  },
+  "%@ cap a %@%@": {
+    "en": "%@ towards %@%@",
+    "es": "%@ hacia %@%@"
+  },
+  "%@ cap a %@, ": {
+    "en": "%@ towards %@, ",
+    "es": "%@ hacia %@, "
+  },
+  "%@ cap a %@, %@": {
+    "en": "%@ towards %@, %@",
+    "es": "%@ hacia %@, %@"
+  },
+  "%@ · cap a %@": {
+    "en": "%@ · towards %@",
+    "es": "%@ · hacia %@"
+  },
+  "%@ → %@": {
+    "en": "%@ → %@",
+    "es": "%@ → %@"
+  },
+  "%@, servei afectat": {
+    "en": "%@, service affected",
+    "es": "%@, servicio afectado"
+  },
+  "%@. %@": {
+    "en": "%@. %@",
+    "es": "%@. %@"
+  },
+  "%lld afectades": {
+    "en": "%lld affected",
+    "es": "%lld afectadas"
+  },
+  "%lld avisos a %@": {
+    "en": "%lld alerts at %@",
+    "es": "%lld avisos en %@"
+  },
+  "%lld instal·lacions fora de servei": {
+    "en": "%lld facilities out of service",
+    "es": "%lld instalaciones fuera de servicio"
+  },
+  "%lld línies": {
+    "en": "%lld lines",
+    "es": "%lld líneas"
+  },
+  "%lld m": {
+    "en": "%lld m",
+    "es": "%lld m"
+  },
+  "%lld min": {
+    "en": "%lld min",
+    "es": "%lld min"
+  },
+  "%lld min a peu": {
+    "en": "%lld min walk",
+    "es": "%lld min a pie"
+  },
+  "%lld min abans": {
+    "en": "%lld min before",
+    "es": "%lld min antes"
+  },
+  "%lld min d'avanç · estimat": {
+    "en": "%lld min early · estimated",
+    "es": "%lld min de adelanto · estimado"
+  },
+  "%lld min · %lld m": {
+    "en": "%lld min · %lld m",
+    "es": "%lld min · %lld m"
+  },
+  "%lld parades: %@": {
+    "en": "%lld stops: %@",
+    "es": "%lld paradas: %@"
+  },
+  "%lld resultats": {
+    "en": "%lld results",
+    "es": "%lld resultados"
+  },
+  "%lld transbords": {
+    "en": "%lld changes",
+    "es": "%lld transbordos"
+  },
+  "%lld%%": {
+    "en": "%lld%%",
+    "es": "%lld%%"
+  },
+  "%lld,%lld km": {
+    "en": "%lld,%lld km",
+    "es": "%lld,%lld km"
+  },
+  "+%lld min tard · estimat": {
+    "en": "+%lld min late · estimated",
+    "es": "+%lld min de retraso · estimado"
+  },
+  ", 1 avís": {
+    "en": ", 1 alert",
+    "es": ", 1 aviso"
+  },
+  ". Canviar de línia": {
+    "en": ". Change line",
+    "es": ". Cambiar de línea"
+  },
+  ". Següent: ": {
+    "en": ". Next: ",
+    "es": ". Siguiente: "
+  },
+  "1 afectada": {
+    "en": "1 affected",
+    "es": "1 afectada"
+  },
+  "1 instal·lació fora de servei": {
+    "en": "1 facility out of service",
+    "es": "1 instalación fuera de servicio"
+  },
+  "1 resultat": {
+    "en": "1 result",
+    "es": "1 resultado"
+  },
+  "1 transbord": {
+    "en": "1 change",
+    "es": "1 transbordo"
+  },
+  "<1 min": {
+    "en": "<1 min",
+    "es": "<1 min"
+  },
+  "A peu": {
+    "en": "Walk",
+    "es": "A pie"
+  },
+  "A preferits": {
+    "en": "Add to favourites",
+    "es": "A favoritos"
+  },
+  "A prop": {
+    "en": "Nearby",
+    "es": "Cerca"
+  },
+  "A prop teu": {
+    "en": "Near you",
+    "es": "Cerca de ti"
+  },
+  "A «Més detalls» tens la línia, el destí i la propera parada.": {
+    "en": "In “More details” you get the line, the destination and the next stop.",
+    "es": "En «Más detalles» tienes la línea, el destino y la próxima parada."
+  },
+  "Acaba el trajecte a %@": {
+    "en": "End the journey at %@",
+    "es": "Termina el trayecto en %@"
+  },
+  "Accessibilitat": {
+    "en": "Accessibility",
+    "es": "Accesibilidad"
+  },
+  "Accessible": {
+    "en": "Step-free",
+    "es": "Accesible"
+  },
+  "Accessos": {
+    "en": "Entrances",
+    "es": "Accesos"
+  },
+  "Accés %@, %@": {
+    "en": "Entrance %@, %@",
+    "es": "Acceso %@, %@"
+  },
+  "Accés tancat": {
+    "en": "Entrance closed",
+    "es": "Acceso cerrado"
+  },
+  "Accés tancat: %@": {
+    "en": "Entrance closed: %@",
+    "es": "Acceso cerrado: %@"
+  },
+  "Activa": {
+    "en": "Enable",
+    "es": "Activar"
+  },
+  "Activa la ubicació": {
+    "en": "Turn on location",
+    "es": "Activa la ubicación"
+  },
+  "Activa la ubicació a Configuració per sortir de la teva posició.": {
+    "en": "Turn on location in Settings to start from where you are.",
+    "es": "Activa la ubicación en Ajustes para partir de tu posición."
+  },
+  "Activa la ubicació a Configuració per veure què tens a prop.": {
+    "en": "Turn on location in Settings to see what's nearby.",
+    "es": "Activa la ubicación en Ajustes para ver qué tienes cerca."
+  },
+  "Activa les notificacions": {
+    "en": "Turn on notifications",
+    "es": "Activa las notificaciones"
+  },
+  "Activa les notificacions per rebre avisos d'arribada.": {
+    "en": "Turn on notifications to get arrival alerts.",
+    "es": "Activa las notificaciones para recibir avisos de llegada."
+  },
+  "Activa «Avisa'm de les incidències de les meves línies» i et notifiquem cada avís nou.": {
+    "en": "Turn on “Alert me about issues on my lines” and we'll notify you of every new alert.",
+    "es": "Activa «Avísame de las incidencias de mis líneas» y te avisamos de cada aviso nuevo."
+  },
+  "Actualitza les arribades": {
+    "en": "Refresh arrivals",
+    "es": "Actualiza las llegadas"
+  },
+  "Actualitzant…": {
+    "en": "Updating…",
+    "es": "Actualizando…"
+  },
+  "Actualitzat %@": {
+    "en": "Updated %@",
+    "es": "Actualizado %@"
+  },
+  "Actualitzat %@ · TMB iBus": {
+    "en": "Updated %@ · TMB iBus",
+    "es": "Actualizado %@ · TMB iBus"
+  },
+  "Afectació a la infraestructura": {
+    "en": "Infrastructure disruption",
+    "es": "Afección a la infraestructura"
+  },
+  "Afectació del servei": {
+    "en": "Service disruption",
+    "es": "Afección al servicio"
+  },
+  "Afegeix a preferides": {
+    "en": "Add to favourites",
+    "es": "Añadir a favoritas"
+  },
+  "Afegeix a preferits": {
+    "en": "Add to favourites",
+    "es": "Añadir a favoritos"
+  },
+  "Afegeix un origen": {
+    "en": "Add a starting point",
+    "es": "Añade un origen"
+  },
+  "Afegeix una destinació": {
+    "en": "Add a destination",
+    "es": "Añade un destino"
+  },
+  "Ajustos": {
+    "en": "Settings",
+    "es": "Ajustes"
+  },
+  "Alteració del servei": {
+    "en": "Service alteration",
+    "es": "Alteración del servicio"
+  },
+  "Amb retard": {
+    "en": "Delayed",
+    "es": "Con retraso"
+  },
+  "Amb retard %lld min": {
+    "en": "Delayed %lld min",
+    "es": "Con %lld min de retraso"
+  },
+  "Amb «Seguir», el mapa acompanya el vehicle sense que l'hagis de moure.": {
+    "en": "With “Follow”, the map keeps up with the vehicle so you don't have to move it.",
+    "es": "Con «Seguir», el mapa acompaña al vehículo sin que tengas que moverlo."
+  },
+  "Ara mateix": {
+    "en": "Right now",
+    "es": "Ahora mismo"
+  },
+  "Arriba a les…": {
+    "en": "Arrive by…",
+    "es": "Llega a las…"
+  },
+  "Arribada a %@": {
+    "en": "Arrival at %@",
+    "es": "Llegada a %@"
+  },
+  "Ascensor fora de servei": {
+    "en": "Lift out of service",
+    "es": "Ascensor fuera de servicio"
+  },
+  "Aturat a %@": {
+    "en": "Stopped at %@",
+    "es": "Parado en %@"
+  },
+  "Avisa'm": {
+    "en": "Alert me",
+    "es": "Avísame"
+  },
+  "Avisa'm de les incidències de les meves línies": {
+    "en": "Alert me about issues on my lines",
+    "es": "Avísame de las incidencias de mis líneas"
+  },
+  "Avisos": {
+    "en": "Alerts",
+    "es": "Avisos"
+  },
+  "Avís de servei": {
+    "en": "Service notice",
+    "es": "Aviso de servicio"
+  },
+  "Avís programat": {
+    "en": "Alert scheduled",
+    "es": "Aviso programado"
+  },
+  "Barcelona sencera en un mapa: metro, bus, FGC i Rodalies, cadascun amb el seu mode.": {
+    "en": "All of Barcelona on one map: metro, bus, FGC and Rodalies, each in its own mode.",
+    "es": "Toda Barcelona en un mapa: metro, bus, FGC y Rodalies, cada uno con su modo."
+  },
+  "Bus": {
+    "en": "Bus",
+    "es": "Bus"
+  },
+  "Bus %@ cap a %@": {
+    "en": "Bus %@ towards %@",
+    "es": "Bus %@ hacia %@"
+  },
+  "Bus de la línia %@ cap a %@": {
+    "en": "Bus on line %@ towards %@",
+    "es": "Bus de la línea %@ hacia %@"
+  },
+  "Bus en %@": {
+    "en": "Bus at %@",
+    "es": "Bus en %@"
+  },
+  "CFBundleDisplayName": {
+    "en": "TransportCat",
+    "es": "TransportCat"
+  },
+  "Cada parada porta les properes arribades dels dos sentits.": {
+    "en": "Each stop shows the next arrivals in both directions.",
+    "es": "Cada parada lleva las próximas llegadas de los dos sentidos."
+  },
+  "Cafè": {
+    "en": "Coffee",
+    "es": "Café"
+  },
+  "Calculant la ruta…": {
+    "en": "Working out the route…",
+    "es": "Calculando la ruta…"
+  },
+  "Cancel·la": {
+    "en": "Cancel",
+    "es": "Cancelar"
+  },
+  "Canvia l'idioma": {
+    "en": "Change language",
+    "es": "Cambia el idioma"
+  },
+  "Canviar de línia": {
+    "en": "Change line",
+    "es": "Cambiar de línea"
+  },
+  "Cap a %@": {
+    "en": "Towards %@",
+    "es": "Hacia %@"
+  },
+  "Cap a %@ i cap a %@": {
+    "en": "Towards %@ and towards %@",
+    "es": "Hacia %@ y hacia %@"
+  },
+  "Cap a %@, pròxims busos": {
+    "en": "Towards %@, next buses",
+    "es": "Hacia %@, próximos buses"
+  },
+  "Cap a %@: %@": {
+    "en": "Towards %@: %@",
+    "es": "Hacia %@: %@"
+  },
+  "Cap arribada prevista": {
+    "en": "No arrivals expected",
+    "es": "Ninguna llegada prevista"
+  },
+  "Cap bus en servei ara": {
+    "en": "No buses in service now",
+    "es": "Ningún bus en servicio ahora"
+  },
+  "Cap bus previst a aquesta parada.": {
+    "en": "No buses expected at this stop.",
+    "es": "Ningún bus previsto en esta parada."
+  },
+  "Cap estació publicada per a aquesta línia.": {
+    "en": "No stations published for this line.",
+    "es": "Ninguna estación publicada para esta línea."
+  },
+  "Cap incidència de servei al metro ni al bus.": {
+    "en": "No service issues on the metro or the bus.",
+    "es": "Ninguna incidencia de servicio en el metro ni en el bus."
+  },
+  "Cap pròxima parada anunciada.": {
+    "en": "No next stop announced.",
+    "es": "Ninguna próxima parada anunciada."
+  },
+  "Cap resultat": {
+    "en": "No results",
+    "es": "Sin resultados"
+  },
+  "Cap resultat. Prova amb un altre nom.": {
+    "en": "No results. Try another name.",
+    "es": "Sin resultados. Prueba con otro nombre."
+  },
+  "Cap resultat. Prova-ho amb un altre nom.": {
+    "en": "No results. Try another name.",
+    "es": "Sin resultados. Pruébalo con otro nombre."
+  },
+  "Cap sortida prevista": {
+    "en": "No departures expected",
+    "es": "Ninguna salida prevista"
+  },
+  "Cap tren proper ara mateix.": {
+    "en": "No trains nearby right now.",
+    "es": "Ningún tren cerca ahora mismo."
+  },
+  "Carregant arribades…": {
+    "en": "Loading arrivals…",
+    "es": "Cargando llegadas…"
+  },
+  "Carregant dades FGC…": {
+    "en": "Loading FGC data…",
+    "es": "Cargando datos FGC…"
+  },
+  "Carregant els horaris…": {
+    "en": "Loading timetables…",
+    "es": "Cargando los horarios…"
+  },
+  "Carregant els imports…": {
+    "en": "Loading prices…",
+    "es": "Cargando los importes…"
+  },
+  "Carregant la xarxa…": {
+    "en": "Loading the network…",
+    "es": "Cargando la red…"
+  },
+  "Carregant línies…": {
+    "en": "Loading lines…",
+    "es": "Cargando líneas…"
+  },
+  "Carregant…": {
+    "en": "Loading…",
+    "es": "Cargando…"
+  },
+  "Cerca": {
+    "en": "Search",
+    "es": "Buscar"
+  },
+  "Cerca estacions o parades": {
+    "en": "Search stations or stops",
+    "es": "Busca estaciones o paradas"
+  },
+  "Cerca estacions, parades i línies pel nom.": {
+    "en": "Search stations, stops and lines by name.",
+    "es": "Busca estaciones, paradas y líneas por el nombre."
+  },
+  "Cerca estacions, parades o línies": {
+    "en": "Search stations, stops or lines",
+    "es": "Busca estaciones, paradas o líneas"
+  },
+  "Cerca línia o destí": {
+    "en": "Search line or destination",
+    "es": "Busca línea o destino"
+  },
+  "Cerca, guarda i planifica": {
+    "en": "Search, save and plan",
+    "es": "Busca, guarda y planifica"
+  },
+  "Cercant la teva ubicació…": {
+    "en": "Finding your location…",
+    "es": "Buscando tu ubicación…"
+  },
+  "Cercar una parada": {
+    "en": "Search for a stop",
+    "es": "Buscar una parada"
+  },
+  "Comença": {
+    "en": "Get started",
+    "es": "Empezar"
+  },
+  "Configuració": {
+    "en": "Settings",
+    "es": "Ajustes"
+  },
+  "Consulta les properes arribades a una estació de metro o FGC, o a una parada d'autobús.": {
+    "en": "Check the next arrivals at a metro or FGC station, or at a bus stop.",
+    "es": "Consulta las próximas llegadas en una estación de metro o FGC, o en una parada de autobús."
+  },
+  "Consultant arribades…": {
+    "en": "Checking arrivals…",
+    "es": "Consultando llegadas…"
+  },
+  "Continua": {
+    "en": "Continue",
+    "es": "Continuar"
+  },
+  "Corredors tancats": {
+    "en": "Corridors closed",
+    "es": "Pasillos cerrados"
+  },
+  "Correspondència FGC, %@ a %@": {
+    "en": "FGC connection, %@ to %@",
+    "es": "Correspondencia FGC, %@ a %@"
+  },
+  "Correspondència amb %@": {
+    "en": "Connection with %@",
+    "es": "Correspondencia con %@"
+  },
+  "Correspondència, línia %@": {
+    "en": "Connection, line %@",
+    "es": "Correspondencia, línea %@"
+  },
+  "Correspondències": {
+    "en": "Connections",
+    "es": "Correspondencias"
+  },
+  "Cotxe %@, ocupació %lld per cent": {
+    "en": "Carriage %@, %lld per cent full",
+    "es": "Coche %@, %lld por ciento de ocupación"
+  },
+  "Dades actualitzades %@.": {
+    "en": "Data updated %@.",
+    "es": "Datos actualizados %@."
+  },
+  "Dades antigues": {
+    "en": "Stale data",
+    "es": "Datos antiguos"
+  },
+  "Dades de %@": {
+    "en": "Data from %@",
+    "es": "Datos de %@"
+  },
+  "Dades de %@. Actualitza-les.": {
+    "en": "Data from %@. Refresh it.",
+    "es": "Datos de %@. Actualízalos."
+  },
+  "Dades de TMB, FGC i Renfe (CC BY 4.0)": {
+    "en": "Data from TMB, FGC and Renfe (CC BY 4.0)",
+    "es": "Datos de TMB, FGC y Renfe (CC BY 4.0)"
+  },
+  "Dades i privacitat": {
+    "en": "Data and privacy",
+    "es": "Datos y privacidad"
+  },
+  "Dades: FGC · CC BY 4.0": {
+    "en": "Data: FGC · CC BY 4.0",
+    "es": "Datos: FGC · CC BY 4.0"
+  },
+  "Dades: Renfe · CC BY 4.0": {
+    "en": "Data: Renfe · CC BY 4.0",
+    "es": "Datos: Renfe · CC BY 4.0"
+  },
+  "Dades: TMB · FGC (CC BY 4.0)": {
+    "en": "Data: TMB · FGC (CC BY 4.0)",
+    "es": "Datos: TMB · FGC (CC BY 4.0)"
+  },
+  "Deixar de seguir": {
+    "en": "Stop following",
+    "es": "Dejar de seguir"
+  },
+  "Del %@ al %@": {
+    "en": "From %@ to %@",
+    "es": "De %@ a %@"
+  },
+  "Denegada": {
+    "en": "Denied",
+    "es": "Denegada"
+  },
+  "Des del %@": {
+    "en": "From %@",
+    "es": "Desde %@"
+  },
+  "Desconegut": {
+    "en": "Unknown",
+    "es": "Desconocido"
+  },
+  "Desplegat": {
+    "en": "Expanded",
+    "es": "Desplegado"
+  },
+  "Destinació": {
+    "en": "Destination",
+    "es": "Destino"
+  },
+  "Destí desconegut": {
+    "en": "Unknown destination",
+    "es": "Destino desconocido"
+  },
+  "Digues o escriu un lloc": {
+    "en": "Say or type a place",
+    "es": "Di o escribe un lugar"
+  },
+  "Direccions de la línia": {
+    "en": "Line directions",
+    "es": "Direcciones de la línea"
+  },
+  "Doble": {
+    "en": "Double espresso",
+    "es": "Doble"
+  },
+  "Dona suport al desenvolupament": {
+    "en": "Support development",
+    "es": "Apoya el desarrollo"
+  },
+  "Dues coses que et podem demanar": {
+    "en": "Two things we may ask you",
+    "es": "Dos cosas que podemos pedirte"
+  },
+  "El %@ cap a %@ arriba a %@ en %lld min": {
+    "en": "The %@ towards %@ arrives at %@ in %lld min",
+    "es": "El %@ hacia %@ llega a %@ en %lld min"
+  },
+  "El botó de la ubicació et centra i obre «A prop teu», les parades que tens a mà.": {
+    "en": "The location button centres the map and opens “Near you”, the stops within reach.",
+    "es": "El botón de la ubicación te centra y abre «Cerca de ti», las paradas que tienes a mano."
+  },
+  "El bus ja no circula per la línia ara mateix.": {
+    "en": "The bus is no longer running on this line right now.",
+    "es": "El bus ya no circula por la línea ahora mismo."
+  },
+  "El catàleg de llocs ha arribat buit.": {
+    "en": "The place catalogue came back empty.",
+    "es": "El catálogo de lugares ha llegado vacío."
+  },
+  "El mapa, en directe": {
+    "en": "The map, live",
+    "es": "El mapa, en directo"
+  },
+  "El menú de baix canvia de mode (Metro, Bus, FGC, Rodalies o Tot) i el xip del costat tria la línia.": {
+    "en": "The bottom menu switches mode (Metro, Bus, FGC, Rodalies or All) and the chip next to it picks the line.",
+    "es": "El menú de abajo cambia de modo (Metro, Bus, FGC, Rodalies o Todo) y el chip de al lado elige la línea."
+  },
+  "El planificador et diu com anar d'un lloc a l'altre: origen, destinació i hora de sortida o d'arribada.": {
+    "en": "The planner tells you how to get from one place to another: origin, destination and departure or arrival time.",
+    "es": "El planificador te dice cómo ir de un sitio a otro: origen, destino y hora de salida o de llegada."
+  },
+  "El teu correu (opcional)": {
+    "en": "Your email (optional)",
+    "es": "Tu correo (opcional)"
+  },
+  "El teu missatge": {
+    "en": "Your message",
+    "es": "Tu mensaje"
+  },
+  "El tren ja no circula per la línia ara mateix.": {
+    "en": "The train is no longer running on this line right now.",
+    "es": "El tren ya no circula por la línea ahora mismo."
+  },
+  "El tren ja no circula per la xarxa ara mateix.": {
+    "en": "The train is no longer running on the network right now.",
+    "es": "El tren ya no circula por la red ahora mismo."
+  },
+  "El widget «Properes arribades» a la pantalla d'inici, en tres mides i a la pantalla bloquejada.": {
+    "en": "The “Next arrivals” widget on the Home Screen, in three sizes and on the Lock Screen.",
+    "es": "El widget «Próximas llegadas» en la pantalla de inicio, en tres tamaños y en la pantalla bloqueada."
+  },
+  "Els ascensors i les escales mecàniques fora de servei, amb l'estació.": {
+    "en": "Lifts and escalators out of service, with the station.",
+    "es": "Los ascensores y las escaleras mecánicas fuera de servicio, con la estación."
+  },
+  "Els avisos de servei del metro i del bus, amb les línies afectades.": {
+    "en": "Metro and bus service alerts, with the affected lines.",
+    "es": "Los avisos de servicio del metro y del bus, con las líneas afectadas."
+  },
+  "Els preferits surten amb les properes arribades; pots canviar-los l'ordre i treure'ls.": {
+    "en": "Favourites show the next arrivals; you can reorder them and remove them.",
+    "es": "Los favoritos salen con las próximas llegadas; puedes cambiarles el orden y quitarlos."
+  },
+  "Els trens de FGC també diuen quanta gent hi ha a cada cotxe.": {
+    "en": "FGC trains also show how busy each carriage is.",
+    "es": "Los trenes de FGC también dicen cuánta gente hay en cada coche."
+  },
+  "Els trens que hi ha ara mateix es dibuixen sobre la línia.": {
+    "en": "The trains running right now are drawn on the line.",
+    "es": "Los trenes que hay ahora mismo se dibujan sobre la línea."
+  },
+  "En directe": {
+    "en": "Live",
+    "es": "En directo"
+  },
+  "En hora": {
+    "en": "On time",
+    "es": "En hora"
+  },
+  "Encara no tens preferits. Toca l'estrella d'una estació o parada.": {
+    "en": "No favourites yet. Tap the star on a station or stop.",
+    "es": "Aún no tienes favoritos. Toca la estrella de una estación o parada."
+  },
+  "Envia": {
+    "en": "Send",
+    "es": "Enviar"
+  },
+  "Es mostra l'horari teòric.": {
+    "en": "Showing the timetable.",
+    "es": "Se muestra el horario teórico."
+  },
+  "Esborra la cerca": {
+    "en": "Clear search",
+    "es": "Borra la búsqueda"
+  },
+  "Escala mecànica fora de servei": {
+    "en": "Escalator out of service",
+    "es": "Escalera mecánica fuera de servicio"
+  },
+  "Escriu el nom d'una estació o parada.": {
+    "en": "Type a station or stop name.",
+    "es": "Escribe el nombre de una estación o parada."
+  },
+  "Escriu-nos": {
+    "en": "Write to us",
+    "es": "Escríbenos"
+  },
+  "Escriu-nos des de l'app: què no ha funcionat, què hi falta o què milloraries. Ho arriba tot a l'equip.": {
+    "en": "Write to us from the app: what didn't work, what's missing or what you'd improve. It all reaches the team.",
+    "es": "Escríbenos desde la app: qué no ha funcionado, qué falta o qué mejorarías. Le llega todo al equipo."
+  },
+  "Estacions i parades": {
+    "en": "Stations and stops",
+    "es": "Estaciones y paradas"
+  },
+  "Estació %@": {
+    "en": "Station %@",
+    "es": "Estación %@"
+  },
+  "Estació accessible": {
+    "en": "Step-free station",
+    "es": "Estación accesible"
+  },
+  "Estació no accessible": {
+    "en": "Station not step-free",
+    "es": "Estación no accesible"
+  },
+  "Estació o parada": {
+    "en": "Station or stop",
+    "es": "Estación o parada"
+  },
+  "Estat de les línies": {
+    "en": "Line status",
+    "es": "Estado de las líneas"
+  },
+  "Ets aquí · %lld m": {
+    "en": "You're here · %lld m",
+    "es": "Estás aquí · %lld m"
+  },
+  "Ets aquí · %lld,%lld km": {
+    "en": "You're here · %lld,%lld km",
+    "es": "Estás aquí · %lld,%lld km"
+  },
+  "Explica'ns què ha passat…": {
+    "en": "Tell us what happened…",
+    "es": "Cuéntanos qué ha pasado…"
+  },
+  "Explora": {
+    "en": "Explore",
+    "es": "Explora"
+  },
+  "FGC": {
+    "en": "FGC",
+    "es": "FGC"
+  },
+  "Falten les credencials TMB (TMBAppId/TMBAppKey). Comprova la configuració de build.": {
+    "en": "TMB credentials are missing (TMBAppId/TMBAppKey). Check the build configuration.",
+    "es": "Faltan las credenciales TMB (TMBAppId/TMBAppKey). Comprueba la configuración de compilación."
+  },
+  "Final": {
+    "en": "End",
+    "es": "Final"
+  },
+  "Final del trajecte": {
+    "en": "End of journey",
+    "es": "Final del trayecto"
+  },
+  "Fins al %@": {
+    "en": "To %@",
+    "es": "Hasta %@"
+  },
+  "Fora de l'app": {
+    "en": "Outside the app",
+    "es": "Fuera de la app"
+  },
+  "Gràcies pel cafè!": {
+    "en": "Thanks for the coffee!",
+    "es": "¡Gracias por el café!"
+  },
+  "Gràcies pel doble!": {
+    "en": "Thanks for the double espresso!",
+    "es": "¡Gracias por el doble!"
+  },
+  "Gràcies per la ronda!": {
+    "en": "Thanks for the round!",
+    "es": "¡Gracias por la ronda!"
+  },
+  "Gràcies! Ho hem rebut.": {
+    "en": "Thanks! We've got it.",
+    "es": "¡Gracias! Lo hemos recibido."
+  },
+  "Horari": {
+    "en": "Timetable",
+    "es": "Horario"
+  },
+  "Horari previst": {
+    "en": "Scheduled time",
+    "es": "Horario previsto"
+  },
+  "Horari teòric": {
+    "en": "Timetable",
+    "es": "Horario teórico"
+  },
+  "Idioma": {
+    "en": "Language",
+    "es": "Idioma"
+  },
+  "Idioma actual": {
+    "en": "Current language",
+    "es": "Idioma actual"
+  },
+  "Il·lustració de la xarxa de metro": {
+    "en": "Metro network illustration",
+    "es": "Ilustración de la red de metro"
+  },
+  "Incidència": {
+    "en": "Issue",
+    "es": "Incidencia"
+  },
+  "Incidència a %@": {
+    "en": "Issue in %@",
+    "es": "Incidencia en %@"
+  },
+  "Incidència a l'estació": {
+    "en": "Station issue",
+    "es": "Incidencia en la estación"
+  },
+  "Incidència a la xarxa": {
+    "en": "Network issue",
+    "es": "Incidencia en la red"
+  },
+  "Incidència d'instal·lació a l'estació %@": {
+    "en": "Facility issue at station %@",
+    "es": "Incidencia de instalación en la estación %@"
+  },
+  "Incidència d'instal·lació a la parada %@": {
+    "en": "Facility issue at stop %@",
+    "es": "Incidencia de instalación en la parada %@"
+  },
+  "Incidència d'instal·lació en una estació": {
+    "en": "Facility issue at a station",
+    "es": "Incidencia de instalación en una estación"
+  },
+  "Incidència d'instal·lació en una parada": {
+    "en": "Facility issue at a stop",
+    "es": "Incidencia de instalación en una parada"
+  },
+  "Incidències": {
+    "en": "Issues",
+    "es": "Incidencias"
+  },
+  "Inici": {
+    "en": "Start",
+    "es": "Inicio"
+  },
+  "Inici del trajecte": {
+    "en": "Start of journey",
+    "es": "Inicio del trayecto"
+  },
+  "Instal·lacions": {
+    "en": "Facilities",
+    "es": "Instalaciones"
+  },
+  "Intercanvia l'origen i la destinació": {
+    "en": "Swap origin and destination",
+    "es": "Intercambia el origen y el destino"
+  },
+  "Introducció": {
+    "en": "Introduction",
+    "es": "Introducción"
+  },
+  "Invertir la direcció": {
+    "en": "Reverse direction",
+    "es": "Invertir la dirección"
+  },
+  "L'API TMB ha respost amb l'estat %lld.": {
+    "en": "The TMB API responded with status %lld.",
+    "es": "La API TMB ha respondido con el estado %lld."
+  },
+  "L'app de l'Apple Watch amb els teus preferits i les properes arribades.": {
+    "en": "The Apple Watch app with your favourites and next arrivals.",
+    "es": "La app del Apple Watch con tus favoritos y las próximas llegadas."
+  },
+  "L'app millora amb les dades de TMB, FGC i Renfe, i s'afina amb l'ús que en fem tots.": {
+    "en": "The app improves with TMB, FGC and Renfe data, and gets sharper with how we all use it.",
+    "es": "La app mejora con los datos de TMB, FGC y Renfe, y se afina con el uso que hacemos todos."
+  },
+  "L'estrella de dalt la guarda a preferits.": {
+    "en": "The star at the top saves it to your favourites.",
+    "es": "La estrella de arriba la guarda en favoritos."
+  },
+  "L'idioma es tria a la Configuració de l'iPhone. Disponible en català, castellà i anglès.": {
+    "en": "Choose the language in iPhone Settings. Available in Catalan, Spanish and English.",
+    "es": "El idioma se elige en los Ajustes del iPhone. Disponible en catalán, castellano e inglés."
+  },
+  "L'última línia que has mirat": {
+    "en": "The last line you looked at",
+    "es": "La última línea que has mirado"
+  },
+  "La càpsula de dalt diu si vas en directe i fa quants segons s'ha actualitzat.": {
+    "en": "The capsule at the top tells you if data is live and how many seconds ago it updated.",
+    "es": "La cápsula de arriba dice si vas en directo y cuántos segundos hace que se actualizó."
+  },
+  "La línia, parada a parada": {
+    "en": "The line, stop by stop",
+    "es": "La línea, parada a parada"
+  },
+  "La meva ubicació": {
+    "en": "My location",
+    "es": "Mi ubicación"
+  },
+  "La pestanya Parades llista les estacions de la línia que tinguis triada.": {
+    "en": "The Stops tab lists the stations on the line you've chosen.",
+    "es": "La pestaña Paradas lista las estaciones de la línea que tengas elegida."
+  },
+  "La ubicació centra el mapa i et diu quines parades tens a prop.": {
+    "en": "Location centres the map and tells you which stops are nearby.",
+    "es": "La ubicación centra el mapa y te dice qué paradas tienes cerca."
+  },
+  "Les incidències de la línia surten al capdamunt, amb l'hora.": {
+    "en": "Line issues appear at the top, with the time.",
+    "es": "Las incidencias de la línea salen arriba del todo, con la hora."
+  },
+  "Les notificacions porten els avisos d'arribada i les incidències de les teves línies.": {
+    "en": "Notifications bring arrival alerts and issues on your lines.",
+    "es": "Las notificaciones traen los avisos de llegada y las incidencias de tus líneas."
+  },
+  "Les posicions i les arribades arriben en directe, cada pocs segons.": {
+    "en": "Positions and arrivals come in live, every few seconds.",
+    "es": "Las posiciones y las llegadas llegan en directo, cada pocos segundos."
+  },
+  "Les properes arribades a les teves estacions i parades.": {
+    "en": "The next arrivals at your stations and stops.",
+    "es": "Las próximas llegadas en tus estaciones y paradas."
+  },
+  "Les properes arribades, amb els minuts que falten i el primer i l'últim tren del dia.": {
+    "en": "The next arrivals, with the minutes to go and the first and last train of the day.",
+    "es": "Las próximas llegadas, con los minutos que faltan y el primer y el último tren del día."
+  },
+  "Lloc": {
+    "en": "Place",
+    "es": "Lugar"
+  },
+  "Línia %@": {
+    "en": "Line %@",
+    "es": "Línea %@"
+  },
+  "Línia %@ cap a %@, ": {
+    "en": "Line %@ towards %@, ",
+    "es": "Línea %@ hacia %@, "
+  },
+  "Línia %@, %@": {
+    "en": "Line %@, %@",
+    "es": "Línea %@, %@"
+  },
+  "Línia %@, %@. Canviar de línia": {
+    "en": "Line %@, %@. Change line",
+    "es": "Línea %@, %@. Cambiar de línea"
+  },
+  "Línia %@. Canviar de línia": {
+    "en": "Line %@. Change line",
+    "es": "Línea %@. Cambiar de línea"
+  },
+  "Línia de FGC": {
+    "en": "FGC line",
+    "es": "Línea de FGC"
+  },
+  "Línia de Rodalies": {
+    "en": "Rodalies line",
+    "es": "Línea de Rodalies"
+  },
+  "Línia de metro": {
+    "en": "Metro line",
+    "es": "Línea de metro"
+  },
+  "Línia o estació": {
+    "en": "Line or station",
+    "es": "Línea o estación"
+  },
+  "Línies": {
+    "en": "Lines",
+    "es": "Líneas"
+  },
+  "Línies de bus": {
+    "en": "Bus lines",
+    "es": "Líneas de bus"
+  },
+  "Línies preferides": {
+    "en": "Favourite lines",
+    "es": "Líneas favoritas"
+  },
+  "Mantén premut el widget per editar-lo.": {
+    "en": "Touch and hold the widget to edit it.",
+    "es": "Mantén pulsado el widget para editarlo."
+  },
+  "Mapa": {
+    "en": "Map",
+    "es": "Mapa"
+  },
+  "Mapa del trajecte de %@": {
+    "en": "Map of the journey to %@",
+    "es": "Mapa del trayecto de %@"
+  },
+  "Marca com a preferit el que fas servir cada dia i ho tindràs a mà.": {
+    "en": "Save what you use every day as a favourite and it's always at hand.",
+    "es": "Marca como favorito lo que usas cada día y lo tendrás a mano."
+  },
+  "Marca preferits a l'iPhone": {
+    "en": "Add favourites on your iPhone",
+    "es": "Marca favoritos en el iPhone"
+  },
+  "Metro": {
+    "en": "Metro",
+    "es": "Metro"
+  },
+  "Metro · Bus · FGC": {
+    "en": "Metro · Bus · FGC",
+    "es": "Metro · Bus · FGC"
+  },
+  "Metro, bus, FGC i Rodalies en un sol mapa": {
+    "en": "Metro, bus, FGC and Rodalies on one map",
+    "es": "Metro, bus, FGC y Rodalies en un solo mapa"
+  },
+  "Mode inicial": {
+    "en": "Default mode",
+    "es": "Modo inicial"
+  },
+  "Mode: %@. Canviar de mode": {
+    "en": "Mode: %@. Change mode",
+    "es": "Modo: %@. Cambiar de modo"
+  },
+  "Mostra o amaga la llista d'avisos": {
+    "en": "Show or hide the alerts list",
+    "es": "Muestra u oculta la lista de avisos"
+  },
+  "Més detalls": {
+    "en": "More details",
+    "es": "Más detalles"
+  },
+  "Més parades": {
+    "en": "More stops",
+    "es": "Más paradas"
+  },
+  "NSLocationWhenInUseUsageDescription": {
+    "en": "TransportCat uses your location to show you nearby stations and stops.",
+    "es": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas."
+  },
+  "No accessible": {
+    "en": "Not step-free",
+    "es": "No accesible"
+  },
+  "No afecten la circulació": {
+    "en": "No impact on service",
+    "es": "No afectan a la circulación"
+  },
+  "No hi ha arribades previstes ara mateix.": {
+    "en": "No arrivals expected right now.",
+    "es": "No hay llegadas previstas ahora mismo."
+  },
+  "No hi ha cap bus previst en aquesta línia ara mateix.": {
+    "en": "No buses expected on this line right now.",
+    "es": "No hay ningún bus previsto en esta línea ahora mismo."
+  },
+  "No s'ha pogut calcular la ruta. Torna-ho a provar.": {
+    "en": "Couldn't work out the route. Try again.",
+    "es": "No se ha podido calcular la ruta. Inténtalo de nuevo."
+  },
+  "No s'ha pogut carregar el catàleg.": {
+    "en": "Couldn't load the catalogue.",
+    "es": "No se ha podido cargar el catálogo."
+  },
+  "No s'ha pogut carregar la línia. Torna-ho a provar.": {
+    "en": "Couldn't load the line. Try again.",
+    "es": "No se ha podido cargar la línea. Inténtalo de nuevo."
+  },
+  "No s'ha pogut carregar la xarxa": {
+    "en": "Couldn't load the network",
+    "es": "No se ha podido cargar la red"
+  },
+  "No s'ha pogut carregar la xarxa FGC. Torna-ho a provar.": {
+    "en": "Couldn't load the FGC network. Try again.",
+    "es": "No se ha podido cargar la red FGC. Inténtalo de nuevo."
+  },
+  "No s'ha pogut carregar la xarxa de Rodalies.": {
+    "en": "Couldn't load the Rodalies network.",
+    "es": "No se ha podido cargar la red de Rodalies."
+  },
+  "No s'ha pogut completar.": {
+    "en": "Couldn't complete.",
+    "es": "No se ha podido completar."
+  },
+  "No s'ha pogut connectar": {
+    "en": "Couldn't connect",
+    "es": "No se ha podido conectar"
+  },
+  "No s'ha pogut enviar. Torna-ho a provar.": {
+    "en": "Couldn't send it. Try again.",
+    "es": "No se ha podido enviar. Inténtalo de nuevo."
+  },
+  "No s'ha pogut projectar la línia sobre la seva geometria.": {
+    "en": "Couldn't project the line onto its geometry.",
+    "es": "No se ha podido proyectar la línea sobre su geometría."
+  },
+  "No s'ha trobat cap ruta.": {
+    "en": "No route found.",
+    "es": "No se ha encontrado ninguna ruta."
+  },
+  "No s'han pogut actualitzar les dades de FGC.": {
+    "en": "Couldn't update the FGC data.",
+    "es": "No se han podido actualizar los datos de FGC."
+  },
+  "No s'han pogut carregar els horaris de Rodalies.": {
+    "en": "Couldn't load the Rodalies timetables.",
+    "es": "No se han podido cargar los horarios de Rodalies."
+  },
+  "No s'han pogut carregar els imports. Torna-ho a provar.": {
+    "en": "Couldn't load the prices. Try again.",
+    "es": "No se han podido cargar los importes. Inténtalo de nuevo."
+  },
+  "No s'han pogut carregar les arribades de FGC.": {
+    "en": "Couldn't load the FGC arrivals.",
+    "es": "No se han podido cargar las llegadas de FGC."
+  },
+  "No s'han pogut carregar les arribades.": {
+    "en": "Couldn't load the arrivals.",
+    "es": "No se han podido cargar las llegadas."
+  },
+  "No tens cap estació ni parada a menys d'un quilòmetre.": {
+    "en": "You have no station or stop within a kilometre.",
+    "es": "No tienes ninguna estación ni parada a menos de un kilómetro."
+  },
+  "Notificacions": {
+    "en": "Notifications",
+    "es": "Notificaciones"
+  },
+  "Obre Configuració": {
+    "en": "Open Settings",
+    "es": "Abrir Ajustes"
+  },
+  "Obre TransportCat a l'iPhone per sincronitzar els preferits": {
+    "en": "Open TransportCat on your iPhone to sync favourites",
+    "es": "Abre TransportCat en el iPhone para sincronizar los favoritos"
+  },
+  "Obre TransportCat per saber-ne més.": {
+    "en": "Open TransportCat to find out more.",
+    "es": "Abre TransportCat para saber más."
+  },
+  "Obre la Configuració de l'iPhone": {
+    "en": "Open iPhone Settings",
+    "es": "Abre los Ajustes del iPhone"
+  },
+  "Ocupació": {
+    "en": "Occupancy",
+    "es": "Ocupación"
+  },
+  "Ocupació alta": {
+    "en": "High occupancy",
+    "es": "Ocupación alta"
+  },
+  "Ocupació baixa": {
+    "en": "Low occupancy",
+    "es": "Ocupación baja"
+  },
+  "Ocupació mitjana": {
+    "en": "Medium occupancy",
+    "es": "Ocupación media"
+  },
+  "Origen": {
+    "en": "Origin",
+    "es": "Origen"
+  },
+  "Parada %@": {
+    "en": "Stop %@",
+    "es": "Parada %@"
+  },
+  "Parada %@ · %@": {
+    "en": "Stop %@ · %@",
+    "es": "Parada %@ · %@"
+  },
+  "Parada %lld": {
+    "en": "Stop %lld",
+    "es": "Parada %lld"
+  },
+  "Parada anul·lada": {
+    "en": "Stop closed",
+    "es": "Parada anulada"
+  },
+  "Parades": {
+    "en": "Stops",
+    "es": "Paradas"
+  },
+  "Parades a menys de 15 min a peu": {
+    "en": "Stops within 15 min on foot",
+    "es": "Paradas a menos de 15 min a pie"
+  },
+  "Parcialment accessible": {
+    "en": "Partly step-free",
+    "es": "Parcialmente accesible"
+  },
+  "Permesa": {
+    "en": "Allowed",
+    "es": "Permitida"
+  },
+  "Planifica un viatge": {
+    "en": "Plan a trip",
+    "es": "Planifica un viaje"
+  },
+  "Plegat": {
+    "en": "Collapsed",
+    "es": "Plegado"
+  },
+  "Posició estimada a partir de l'horari": {
+    "en": "Estimated position from the timetable",
+    "es": "Posición estimada a partir del horario"
+  },
+  "Posició estimada a partir de les arribades (iBus)": {
+    "en": "Estimated position from arrivals (iBus)",
+    "es": "Posición estimada a partir de las llegadas (iBus)"
+  },
+  "Posició teòrica segons l'horari": {
+    "en": "Theoretical position from the timetable",
+    "es": "Posición teórica según el horario"
+  },
+  "Preferides": {
+    "en": "Favourites",
+    "es": "Favoritas"
+  },
+  "Preferits": {
+    "en": "Favourites",
+    "es": "Favoritos"
+  },
+  "Primer %@ · Últim %@": {
+    "en": "First %@ · Last %@",
+    "es": "Primero %@ · Último %@"
+  },
+  "Primer i últim": {
+    "en": "First and last",
+    "es": "Primero y último"
+  },
+  "Properes arribades": {
+    "en": "Next arrivals",
+    "es": "Próximas llegadas"
+  },
+  "Properes arribades a ${place}": {
+    "en": "Next arrivals at ${place}",
+    "es": "Próximas llegadas a ${place}"
+  },
+  "Properes arribades amb ${applicationName}": {
+    "en": [
+      "Next arrivals with ${applicationName}",
+      "When's the next train with ${applicationName}",
+      "When's the bus to ${place} with ${applicationName}"
+    ],
+    "es": [
+      "Próximas llegadas con ${applicationName}",
+      "Cuándo pasa el próximo tren con ${applicationName}",
+      "Cuándo pasa el bus a ${place} con ${applicationName}"
+    ]
+  },
+  "Properes arribades on ets": {
+    "en": "Next arrivals where you are",
+    "es": "Próximas llegadas donde estás"
+  },
+  "Properes parades": {
+    "en": "Next stops",
+    "es": "Próximas paradas"
+  },
+  "Properes sortides": {
+    "en": "Next departures",
+    "es": "Próximas salidas"
+  },
+  "Propers busos": {
+    "en": "Next buses",
+    "es": "Próximos buses"
+  },
+  "Propers busos a": {
+    "en": "Next buses at",
+    "es": "Próximos buses en"
+  },
+  "Propers trens a": {
+    "en": "Next trains at",
+    "es": "Próximos trenes en"
+  },
+  "Prova-ho amb un altre nom d'estació, parada o línia.": {
+    "en": "Try another station, stop or line name.",
+    "es": "Pruébalo con otro nombre de estación, parada o línea."
+  },
+  "Pròxima %@, arriba en %@": {
+    "en": "Next %@, arriving in %@",
+    "es": "Próxima %@, llega en %@"
+  },
+  "Pròxima estació": {
+    "en": "Next station",
+    "es": "Próxima estación"
+  },
+  "Pròxima estació %@, arriba ara": {
+    "en": "Next station %@, arriving now",
+    "es": "Próxima estación %@, llega ahora"
+  },
+  "Pròxima estació %@, arriba en %@": {
+    "en": "Next station %@, arriving in %@",
+    "es": "Próxima estación %@, llega en %@"
+  },
+  "Pròxima parada": {
+    "en": "Next stop",
+    "es": "Próxima parada"
+  },
+  "Pròxima parada %@, %@": {
+    "en": "Next stop %@, %@",
+    "es": "Próxima parada %@, %@"
+  },
+  "Pròxima: %@": {
+    "en": "Next: %@",
+    "es": "Próxima: %@"
+  },
+  "Pròxima: %@ · %@": {
+    "en": "Next: %@ · %@",
+    "es": "Próxima: %@ · %@"
+  },
+  "Pròxims busos": {
+    "en": "Next buses",
+    "es": "Próximos buses"
+  },
+  "Puntual": {
+    "en": "On time",
+    "es": "Puntual"
+  },
+  "Pàgina %lld de %lld": {
+    "en": "Page %lld of %lld",
+    "es": "Página %lld de %lld"
+  },
+  "Quan": {
+    "en": "When",
+    "es": "Cuándo"
+  },
+  "Quan alguna cosa no va": {
+    "en": "When something goes wrong",
+    "es": "Cuando algo no va"
+  },
+  "Què hi ha dins d'una estació": {
+    "en": "What's inside a station",
+    "es": "Qué hay dentro de una estación"
+  },
+  "Recarrega": {
+    "en": "Reload",
+    "es": "Recargar"
+  },
+  "Recorregut modificat": {
+    "en": "Route diverted",
+    "es": "Recorrido modificado"
+  },
+  "Reintenta": {
+    "en": "Retry",
+    "es": "Reintentar"
+  },
+  "Resposta de l'API TMB inesperada: %@": {
+    "en": "Unexpected TMB API response: %@",
+    "es": "Respuesta inesperada de la API TMB: %@"
+  },
+  "Resultats": {
+    "en": "Results",
+    "es": "Resultados"
+  },
+  "Rodalies": {
+    "en": "Rodalies",
+    "es": "Rodalies"
+  },
+  "Ronda": {
+    "en": "Round",
+    "es": "Ronda"
+  },
+  "Rutes": {
+    "en": "Routes",
+    "es": "Rutas"
+  },
+  "S'enviant…": {
+    "en": "Sending…",
+    "es": "Enviando…"
+  },
+  "S'està processant el pagament. Ho rebràs quan s'aprovi.": {
+    "en": "The payment is being processed. You'll get it once it's approved.",
+    "es": "Se está procesando el pago. Lo recibirás cuando se apruebe."
+  },
+  "Salta": {
+    "en": "Skip",
+    "es": "Saltar"
+  },
+  "Segueix en directe": {
+    "en": "Follow live",
+    "es": "Sigue en directo"
+  },
+  "Segueix un vehicle": {
+    "en": "Follow a vehicle",
+    "es": "Sigue un vehículo"
+  },
+  "Seguir": {
+    "en": "Follow",
+    "es": "Seguir"
+  },
+  "Sempre millorant": {
+    "en": "Always improving",
+    "es": "Siempre mejorando"
+  },
+  "Sense arribades": {
+    "en": "No arrivals",
+    "es": "Sin llegadas"
+  },
+  "Sense arribades ara mateix": {
+    "en": "No arrivals right now",
+    "es": "Sin llegadas ahora mismo"
+  },
+  "Sense connexió": {
+    "en": "No connection",
+    "es": "Sin conexión"
+  },
+  "Sense connexió · dades de %@": {
+    "en": "No connection · data from %@",
+    "es": "Sin conexión · datos de %@"
+  },
+  "Sense dada": {
+    "en": "No data",
+    "es": "Sin dato"
+  },
+  "Sense dades": {
+    "en": "No data",
+    "es": "Sin datos"
+  },
+  "Sense dades en temps real": {
+    "en": "No live data",
+    "es": "Sin datos en tiempo real"
+  },
+  "Sense demanar": {
+    "en": "Not asked",
+    "es": "Sin solicitar"
+  },
+  "Sense informació": {
+    "en": "No information",
+    "es": "Sin información"
+  },
+  "Sense transbords": {
+    "en": "No changes",
+    "es": "Sin transbordos"
+  },
+  "Servei afectat": {
+    "en": "Service affected",
+    "es": "Servicio afectado"
+  },
+  "Servei afectat a %lld línies": {
+    "en": "Service affected on %lld lines",
+    "es": "Servicio afectado en %lld líneas"
+  },
+  "Servei afectat a la %@": {
+    "en": "Service affected on the %@",
+    "es": "Servicio afectado en la %@"
+  },
+  "Servei afectat a la %@ i la %@. Toca per veure-les": {
+    "en": "Service affected on the %@ and the %@. Tap to see them",
+    "es": "Servicio afectado en la %@ y la %@. Toca para verlas"
+  },
+  "Servei afectat a la línia %@": {
+    "en": "Service affected on line %@",
+    "es": "Servicio afectado en la línea %@"
+  },
+  "Si allunyes, les estacions queden en punts; si t'hi acostes, surten amb el nom.": {
+    "en": "Zoom out and stations become dots; zoom in and their names appear.",
+    "es": "Si te alejas, las estaciones quedan en puntos; si te acercas, salen con el nombre."
+  },
+  "Si hi ha res que no va o que hi falta, escriu-nos des de Configuració › Suport i millores.": {
+    "en": "If something's broken or missing, write to us from Settings › Support and improvements.",
+    "es": "Si hay algo que no va o que falta, escríbenos desde Ajustes › Soporte y mejoras."
+  },
+  "Si l'app et serveix bé, pots donar-li suport des de Configuració › Dona suport al desenvolupament.": {
+    "en": "If the app works for you, you can support it from Settings › Support development.",
+    "es": "Si la app te sirve bien, puedes apoyarla desde Ajustes › Apoya el desarrollo."
+  },
+  "Si l'estació és accessible i quins accessos té.": {
+    "en": "Whether the station is step-free and which entrances it has.",
+    "es": "Si la estación es accesible y qué accesos tiene."
+  },
+  "Suport i millores": {
+    "en": "Support and improvements",
+    "es": "Soporte y mejoras"
+  },
+  "Surt a les…": {
+    "en": "Leave at…",
+    "es": "Sale a las…"
+  },
+  "Surt ara": {
+    "en": "Leave now",
+    "es": "Sal ahora"
+  },
+  "TMB no publica les arribades d'aquesta línia ara mateix.": {
+    "en": "TMB isn't publishing arrivals for this line right now.",
+    "es": "TMB no publica las llegadas de esta línea ahora mismo."
+  },
+  "TMB no publica les arribades d'aquesta línia.": {
+    "en": "TMB doesn't publish arrivals for this line.",
+    "es": "TMB no publica las llegadas de esta línea."
+  },
+  "Tancar": {
+    "en": "Close",
+    "es": "Cerrar"
+  },
+  "Toca el widget i s'obre la parada que mostra.": {
+    "en": "Tap the widget and the stop it shows opens.",
+    "es": "Toca el widget y se abre la parada que muestra."
+  },
+  "Toca un tren o un bus al mapa i s'obre la seva fitxa.": {
+    "en": "Tap a train or a bus on the map and its card opens.",
+    "es": "Toca un tren o un bus en el mapa y se abre su ficha."
+  },
+  "Toca una línia, una parada o un vehicle i veuràs què hi passa.": {
+    "en": "Tap a line, a stop or a vehicle and see what's going on.",
+    "es": "Toca una línea, una parada o un vehículo y verás qué pasa allí."
+  },
+  "Torna a explicar què fa cada pantalla, pàgina a pàgina.": {
+    "en": "Walks through what each screen does again, page by page.",
+    "es": "Vuelve a explicar qué hace cada pantalla, página a página."
+  },
+  "Torna a veure la introducció": {
+    "en": "See the introduction again",
+    "es": "Volver a ver la introducción"
+  },
+  "Torna-ho a provar": {
+    "en": "Try again",
+    "es": "Inténtalo de nuevo"
+  },
+  "Tot": {
+    "en": "All",
+    "es": "Todo"
+  },
+  "Tot funciona": {
+    "en": "All good",
+    "es": "Todo funciona"
+  },
+  "Totes dues són opcionals: l'app funciona igual sense.": {
+    "en": "Both are optional: the app works just the same without them.",
+    "es": "Las dos son opcionales: la app funciona igual sin ellas."
+  },
+  "Totes les línies": {
+    "en": "All lines",
+    "es": "Todas las líneas"
+  },
+  "Tramvia": {
+    "en": "Tram",
+    "es": "Tranvía"
+  },
+  "TransportCat": {
+    "en": "TransportCat",
+    "es": "TransportCat"
+  },
+  "TransportCat no recull dades personals. La ubicació només es fa servir al dispositiu.": {
+    "en": "TransportCat collects no personal data. Location is only used on your device.",
+    "es": "TransportCat no recoge datos personales. La ubicación solo se usa en el dispositivo."
+  },
+  "TransportCat és gratis i ho seguirà sent. Si vols donar suport al desenvolupament, ho agrairem molt — no desbloqueja res, és només suport.": {
+    "en": "TransportCat is free and will stay free. If you'd like to support development, we'd really appreciate it — it unlocks nothing, it's just support.",
+    "es": "TransportCat es gratis y lo seguirá siendo. Si quieres apoyar el desarrollo, te lo agradeceremos mucho: no desbloquea nada, es solo apoyo."
+  },
+  "Tren": {
+    "en": "Train",
+    "es": "Tren"
+  },
+  "Tren %@ aturat, cap a %@": {
+    "en": "Train %@ stopped, towards %@",
+    "es": "Tren %@ parado, hacia %@"
+  },
+  "Tren %@ cap a %@": {
+    "en": "Train %@ towards %@",
+    "es": "Tren %@ hacia %@"
+  },
+  "Tren %@ en marxa, cap a %@": {
+    "en": "Train %@ running, towards %@",
+    "es": "Tren %@ en marcha, hacia %@"
+  },
+  "Tren de la %@": {
+    "en": "Train on the %@",
+    "es": "Tren de la %@"
+  },
+  "Tren de la %@ cap a %@": {
+    "en": "Train on the %@ towards %@",
+    "es": "Tren de la %@ hacia %@"
+  },
+  "Trens ara mateix": {
+    "en": "Trains right now",
+    "es": "Trenes ahora mismo"
+  },
+  "Trens i busos es mouen al mapa a mesura que avancen.": {
+    "en": "Trains and buses move on the map as they go.",
+    "es": "Trenes y buses se mueven en el mapa a medida que avanzan."
+  },
+  "Treu de preferides": {
+    "en": "Remove from favourites",
+    "es": "Quitar de favoritas"
+  },
+  "Treu de preferits": {
+    "en": "Remove from favourites",
+    "es": "Quitar de favoritos"
+  },
+  "Tria estacions de metro o FGC, o parades d'autobús.": {
+    "en": "Choose metro or FGC stations, or bus stops.",
+    "es": "Elige estaciones de metro o FGC, o paradas de autobús."
+  },
+  "Tria un lloc": {
+    "en": "Choose a place",
+    "es": "Elige un lugar"
+  },
+  "URL de l'API TMB no vàlida.": {
+    "en": "Invalid TMB API URL.",
+    "es": "La URL de la API TMB no es válida."
+  },
+  "Ubicació": {
+    "en": "Location",
+    "es": "Ubicación"
+  },
+  "Ubicació i notificacions": {
+    "en": "Location and notifications",
+    "es": "Ubicación y notificaciones"
+  },
+  "Un cafè, com quan convides algú que t'ha estalviat una espera.": {
+    "en": "A coffee, like when you treat someone who saved you a wait.",
+    "es": "Un café, como cuando invitas a alguien que te ha ahorrado una espera."
+  },
+  "Un doble, per als dies en què la xarxa va de bòlit.": {
+    "en": "A double espresso, for the days when the network is heaving.",
+    "es": "Un doble, para los días en que la red va a tope."
+  },
+  "Una ronda per a l'equip, si vols que això segueixi creixent.": {
+    "en": "A round for the team, if you want this to keep growing.",
+    "es": "Una ronda para el equipo, si quieres que esto siga creciendo."
+  },
+  "Versió %@": {
+    "en": "Version %@",
+    "es": "Versión %@"
+  },
+  "Versió %@ (%@)": {
+    "en": "Version %@ (%@)",
+    "es": "Versión %@ (%@)"
+  },
+  "Versió (%@)": {
+    "en": "Version (%@)",
+    "es": "Versión (%@)"
+  },
+  "Versió desconeguda": {
+    "en": "Unknown version",
+    "es": "Versión desconocida"
+  },
+  "Veure a Avisos": {
+    "en": "View in Alerts",
+    "es": "Ver en Avisos"
+  },
+  "Veure a la línia": {
+    "en": "View on the line",
+    "es": "Ver en la línea"
+  },
+  "Veure al mapa": {
+    "en": "View on map",
+    "es": "Ver en el mapa"
+  },
+  "ara": {
+    "en": "now",
+    "es": "ahora"
+  },
+  "ara mateix": {
+    "en": "right now",
+    "es": "ahora mismo"
+  },
+  "bus %@": {
+    "en": "bus %@",
+    "es": "bus %@"
+  },
+  "cap a %@": {
+    "en": "towards %@",
+    "es": "hacia %@"
+  },
+  "cap a %@ en %@": {
+    "en": "towards %@ in %@",
+    "es": "hacia %@ en %@"
+  },
+  "dades desades i horaris teòrics": {
+    "en": "saved data and timetable",
+    "es": "datos guardados y horarios teóricos"
+  },
+  "des de les %@": {
+    "en": "from %@",
+    "es": "desde las %@"
+  },
+  "destí desconegut": {
+    "en": "unknown destination",
+    "es": "destino desconocido"
+  },
+  "en %@": {
+    "en": "at %@",
+    "es": "en %@"
+  },
+  "en %lld minuts": {
+    "en": "in %lld minutes",
+    "es": "en %lld minutos"
+  },
+  "en 1 minut": {
+    "en": "in 1 minute",
+    "es": "en 1 minuto"
+  },
+  "en menys d'un minut": {
+    "en": "in under a minute",
+    "es": "en menos de un minuto"
+  },
+  "estació": {
+    "en": "station",
+    "es": "estación"
+  },
+  "fa %lld h": {
+    "en": "%lld h ago",
+    "es": "hace %lld h"
+  },
+  "fa %lld min": {
+    "en": "%lld min ago",
+    "es": "hace %lld min"
+  },
+  "fa %lld s": {
+    "en": "%lld s ago",
+    "es": "hace %lld s"
+  },
+  "fa 3 s": {
+    "en": "3 s ago",
+    "es": "hace 3 s"
+  },
+  "fins al ": {
+    "en": "until ",
+    "es": "hasta el "
+  },
+  "i cap a %@ en %@": {
+    "en": "and towards %@ in %@",
+    "es": "y hacia %@ en %@"
+  },
+  "i en %@": {
+    "en": "and in %@",
+    "es": "y en %@"
+  },
+  "parada": {
+    "en": "stop",
+    "es": "parada"
+  },
+  "rampa amb incidència": {
+    "en": "ramp out of service",
+    "es": "rampa con incidencia"
+  },
+  "rampa operativa": {
+    "en": "ramp working",
+    "es": "rampa operativa"
+  },
+  "«A prop» llista les parades més properes amb el temps real.": {
+    "en": "“Nearby” lists the closest stops with live times.",
+    "es": "«Cerca» lista las paradas más cercanas con el tiempo real."
+  },
+  "«Avisa'm» t'avisa 1, 3 o 5 minuts abans que arribi el tren.": {
+    "en": "“Alert me” notifies you 1, 3 or 5 minutes before the train arrives.",
+    "es": "«Avísame» te avisa 1, 3 o 5 minutos antes de que llegue el tren."
+  },
+  "«Segueix en directe» posa la compte enrere a la pantalla bloquejada i a la Dynamic Island.": {
+    "en": "“Follow live” puts the countdown on the Lock Screen and in the Dynamic Island.",
+    "es": "«Sigue en directo» pone la cuenta atrás en la pantalla bloqueada y en la Dynamic Island."
+  },
+  "· Actualitzant…": {
+    "en": "· Updating…",
+    "es": "· Actualizando…"
+  },
+  "És el mode amb què s'obre el mapa. El pots canviar quan vulguis des del mapa.": {
+    "en": "The mode the map opens in. You can change it any time from the map.",
+    "es": "Es el modo con el que se abre el mapa. Puedes cambiarlo cuando quieras desde el mapa."
+  },
+  "És gratis, sense anuncis i sense compte.": {
+    "en": "It's free, no ads and no account.",
+    "es": "Es gratis, sin anuncios y sin cuenta."
+  },
+  "—": {
+    "en": "—",
+    "es": "—"
+  },
+  "↑ %@": {
+    "en": "↑ %@",
+    "es": "↑ %@"
+  },
+  "↓ %@": {
+    "en": "↓ %@",
+    "es": "↓ %@"
+  }
+}

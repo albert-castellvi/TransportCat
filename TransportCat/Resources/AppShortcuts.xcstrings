@@ -1,0 +1,30 @@
+{
+  "sourceLanguage": "ca",
+  "strings": {
+    "Properes arribades amb ${applicationName}": {
+      "localizations": {
+        "es": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Próximas llegadas con ${applicationName}",
+              "Cuándo pasa el próximo tren con ${applicationName}",
+              "Cuándo pasa el bus a ${place} con ${applicationName}"
+            ]
+          }
+        },
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Next arrivals with ${applicationName}",
+              "When's the next train with ${applicationName}",
+              "When's the bus to ${place} with ${applicationName}"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version": "1.1"
+}

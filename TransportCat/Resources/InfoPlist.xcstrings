@@ -1,0 +1,38 @@
+{
+  "sourceLanguage": "ca",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TransportCat"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TransportCat"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TransportCat uses your location to show you nearby stations and stops."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.1"
+}
