@@ -329,7 +329,7 @@ final class LineState {
                 TrainPositionEngine.make(stations: loadedStations, geometry: $0)
             }
             errorMessage = engine == nil && loadedStations.count >= 2
-                ? "No s'ha pogut projectar la línia sobre la seva geometria."
+                ? String(localized: "No s'ha pogut projectar la línia sobre la seva geometria.")
                 : nil
             // Spec S21: a successful load is the moment to refresh this
             // line's offline copy. S5: the encode and the write happen off the
@@ -346,7 +346,7 @@ final class LineState {
             // trains instead of an error. The copy applied above is that
             // fallback; only a cold start without one reports the error.
             if !applyCachedTopology() {
-                errorMessage = "No s'ha pogut carregar la línia. Torna-ho a provar."
+                errorMessage = String(localized: "No s'ha pogut carregar la línia. Torna-ho a provar.")
             }
         }
     }
@@ -376,7 +376,7 @@ final class LineState {
             TrainPositionEngine.make(stations: cached.stations, geometry: $0)
         }
         errorMessage = engine == nil && cached.stations.count >= 2
-            ? "No s'ha pogut projectar la línia sobre la seva geometria."
+            ? String(localized: "No s'ha pogut projectar la línia sobre la seva geometria.")
             : nil
         Self.log.info("Line \(self.line.code, privacy: .public): \(cached.stations.count) stations (offline cache)")
         return true

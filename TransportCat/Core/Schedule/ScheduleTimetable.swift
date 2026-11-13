@@ -89,7 +89,7 @@ enum ScheduleTimetable {
     /// The Catalan first/last line of one direction (spec S19 wording):
     /// "Primer 05:00 · Últim 00:12".
     static func firstLastText(_ service: TimetableDirection, timeZone: TimeZone) -> String {
-        "Primer \(clockText(service.first, timeZone: timeZone)) · Últim \(clockText(service.last, timeZone: timeZone))"
+        String(localized: "Primer \(clockText(service.first, timeZone: timeZone)) · Últim \(clockText(service.last, timeZone: timeZone))")
     }
 
     /// Departure instants at `stopCode` of one direction on the service day of

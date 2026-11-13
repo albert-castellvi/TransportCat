@@ -124,19 +124,19 @@ enum IncidentIndex {
 
     private static func title(for kind: IncidentKind, entrance: String?, text: String?) -> String {
         switch kind {
-        case .escalator: return "Escala mecànica fora de servei"
-        case .elevator: return "Ascensor fora de servei"
+        case .escalator: return String(localized: "Escala mecànica fora de servei")
+        case .elevator: return String(localized: "Ascensor fora de servei")
         case .accessClosed:
-            guard let entrance, !entrance.isEmpty else { return "Accés tancat" }
-            return "Accés tancat: \(entrance)"
-        case .stopClosed: return "Parada anul·lada"
-        case .detour: return "Recorregut modificat"
+            guard let entrance, !entrance.isEmpty else { return String(localized: "Accés tancat") }
+            return String(localized: "Accés tancat: \(entrance)")
+        case .stopClosed: return String(localized: "Parada anul·lada")
+        case .detour: return String(localized: "Recorregut modificat")
         case .other: return firstSentence(from: text)
         }
     }
 
     /// Used when the text says nothing usable.
-    private static let genericTitle = "Incidència a l'estació"
+    private static let genericTitle = String(localized: "Incidència a l'estació")
     /// Longest snippet taken from a text that has no sentence break.
     private static let maxTitleLength = 70
 

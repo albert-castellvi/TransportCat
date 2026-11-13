@@ -12,7 +12,7 @@ enum ParadesTimeText: Equatable {
     /// The plain text the column draws.
     var text: String {
         switch self {
-        case .now: return "ara"
+        case .now: return String(localized: "ara")
         case .minutes(let text): return text
         case .none: return "—"
         }
@@ -101,9 +101,9 @@ enum ParadesTimeline {
     /// decimal in kilometers above, matching the mockup's "250 m".
     static func hereText(distanceMeters: Double) -> String {
         let clamped = max(0, distanceMeters.rounded())
-        if clamped < 1_000 { return "Ets aquí · \(Int(clamped)) m" }
+        if clamped < 1_000 { return String(localized: "Ets aquí · \(Int(clamped)) m") }
         let tenths = Int((clamped / 100).rounded())
-        return "Ets aquí · \(tenths / 10),\(tenths % 10) km"
+        return String(localized: "Ets aquí · \(tenths / 10),\(tenths % 10) km")
     }
 
     // Metro interchange badges: `StationInterchange.metroLineDisplayNames`,
@@ -179,7 +179,7 @@ enum ParadesTimeline {
     /// (iBus always carries seconds), so the rule is only imminent/countdown.
     static func busTimeText(seconds: Int) -> String {
         seconds <= imminentThresholdSeconds
-            ? "ara"
+            ? String(localized: "ara")
             : Arrival.countdownText(seconds: seconds)
     }
 }

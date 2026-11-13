@@ -22,10 +22,10 @@ enum WatchArrivalFormatting {
     /// minuts", "en menys d'un minut", "ara mateix".
     static func spokenCountdown(until date: Date, now: Date = Date()) -> String {
         let seconds = Int(date.timeIntervalSince(now))
-        guard seconds > 0 else { return "ara mateix" }
-        if seconds < 60 { return "en menys d'un minut" }
+        guard seconds > 0 else { return String(localized: "ara mateix") }
+        if seconds < 60 { return String(localized: "en menys d'un minut") }
         let minutes = seconds / 60
-        return minutes == 1 ? "en 1 minut" : "en \(minutes) minuts"
+        return minutes == 1 ? String(localized: "en 1 minut") : String(localized: "en \(minutes) minuts")
     }
 
     /// The arrivals still worth showing at `now` from a fetch made at
@@ -71,7 +71,7 @@ enum WatchArrivalFormatting {
     /// ("L1 cap a Fondo"). The destination is not optional on the watch: at a
     /// station the soonest train is often not the one the rider wants.
     static func lead(_ arrival: NextArrival) -> String {
-        "\(arrival.line) cap a \(arrival.destination)"
+        String(localized: "\(arrival.line) cap a \(arrival.destination)")
     }
 }
 

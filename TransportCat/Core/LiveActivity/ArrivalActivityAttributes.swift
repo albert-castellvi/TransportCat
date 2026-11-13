@@ -56,6 +56,6 @@ struct ArrivalActivityAttributes: ActivityAttributes {
 
     /// "estació" or "parada", so the spoken sentence names the right thing.
     var placeWord: String {
-        placeKind == .busStop ? "parada" : "estació"
+        placeKind == .busStop ? String(localized: "parada") : String(localized: "estació")
     }
 }

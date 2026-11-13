@@ -60,7 +60,7 @@ enum NearbyStops {
     // ponytail: no terminus wording. Telling "no bus ever leaves from here"
     // apart needs the stop's position in each direction, which these call
     // sites do not have; add it when a caller can pass it.
-    static let noArrivalsText = "Cap arribada prevista"
+    static let noArrivalsText = String(localized: "Cap arribada prevista")
 
     /// Flat walking speed in meters per minute the walking minutes assume.
     static let walkingSpeedMetersPerMinute: Double = 80
@@ -236,7 +236,7 @@ enum NearbyStops {
     /// row does.
     static func timeText(seconds: Int?) -> String {
         guard let seconds else { return "—" }
-        if seconds <= ParadesTimeline.imminentThresholdSeconds { return "ara" }
+        if seconds <= ParadesTimeline.imminentThresholdSeconds { return String(localized: "ara") }
         return Arrival.countdownText(seconds: seconds)
     }
 }

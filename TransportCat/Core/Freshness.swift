@@ -57,14 +57,14 @@ enum Freshness {
     static func ageText(since: Date, now: Date) -> String {
         let age = max(0, now.timeIntervalSince(since))
         if age < 5 {
-            return "ara mateix"
+            return String(localized: "ara mateix")
         }
         if age < 60 {
-            return "fa \(Int(age)) s"
+            return String(localized: "fa \(Int(age)) s")
         }
         if age < 3600 {
-            return "fa \(Int(age / 60)) min"
+            return String(localized: "fa \(Int(age / 60)) min")
         }
-        return "fa \(Int(age / 3600)) h"
+        return String(localized: "fa \(Int(age / 3600)) h")
     }
 }

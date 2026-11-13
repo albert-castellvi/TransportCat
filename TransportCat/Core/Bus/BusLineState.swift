@@ -196,7 +196,7 @@ final class BusLineState {
                 publishDirections(stops: cached.stops, routes: cached.routes)
                 Self.log.info("Bus line \(self.line.name, privacy: .public): \(cached.stops.count) stops (offline cache)")
             } else {
-                errorMessage = "No s'ha pogut carregar la línia. Torna-ho a provar."
+        errorMessage = String(localized: "No s'ha pogut carregar la línia. Torna-ho a provar.")
             }
         }
     }
@@ -212,7 +212,7 @@ final class BusLineState {
             maxRequests: Self.maxRequestsPerPoll
         )
         errorMessage = directions.isEmpty
-            ? "No s'ha pogut projectar la línia sobre la seva geometria."
+            ? String(localized: "No s'ha pogut projectar la línia sobre la seva geometria.")
             : nil
     }
 

@@ -70,10 +70,10 @@ enum WatchBoardStatus: Equatable {
     /// The line the screen prints, and the one VoiceOver reads.
     var text: String {
         switch self {
-        case .loading: return "Carregant…"
-        case .unreachable: return "No s'ha pogut connectar"
-        case .noArrivals: return "Sense arribades ara mateix"
-        case .aged: return "Actualitzant…"
+        case .loading: return String(localized: "Carregant…")
+        case .unreachable: return String(localized: "No s'ha pogut connectar")
+        case .noArrivals: return String(localized: "Sense arribades ara mateix")
+        case .aged: return String(localized: "Actualitzant…")
         }
     }
 }

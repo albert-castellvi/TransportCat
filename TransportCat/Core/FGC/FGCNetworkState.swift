@@ -168,7 +168,7 @@ final class FGCNetworkState {
             if let cached = OfflineCache.loadFGCTopology() {
                 publishTopology(cached.lines, loadedStations: cached.stations, persist: false)
             } else {
-                errorMessage = "No s'ha pogut carregar la xarxa FGC. Torna-ho a provar."
+                errorMessage = String(localized: "No s'ha pogut carregar la xarxa FGC. Torna-ho a provar.")
             }
         }
     }

@@ -97,10 +97,10 @@ final class IncidentWatcher {
         isBus: Bool,
         busNames: [String: String]
     ) -> String {
-        guard let code = alert.lineCodes.first else { return "Incidència a la xarxa" }
-        if isBus { return "Incidència a \(busNames[code] ?? code)" }
+        guard let code = alert.lineCodes.first else { return String(localized: "Incidència a la xarxa") }
+        if isBus { return String(localized: "Incidència a \(busNames[code] ?? code)") }
         let line = MetroLine.line(forCode: code)?.displayName ?? code
-        return "Incidència a \(line)"
+        return String(localized: "Incidència a \(line)")
     }
 
     /// Adds an id to the rolling seen window; a repeat changes nothing and the
@@ -171,7 +171,7 @@ final class IncidentWatcher {
     private func notify(_ alert: ServiceAlert, isBus: Bool, busNames: [String: String]) async -> Bool {
         let body = AlertText.cleaned(alert.text)
             ?? AlertText.effect(for: alert)
-            ?? "Obre TransportCat per saber-ne més."
+            ?? String(localized: "Obre TransportCat per saber-ne més.")
         // Ask first, then take the date: the grant can outlast the one second
         // of lead, which left the trigger in the past.
         let granted = await ArrivalReminder.shared.ensurePermissionGranted()

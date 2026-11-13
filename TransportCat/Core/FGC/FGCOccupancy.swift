@@ -19,12 +19,12 @@ enum FGCOccupancy {
         guard !reported.isEmpty else { return nil }
         let mean = Double(reported.reduce(0, +)) / Double(reported.count)
         if mean < Double(lowCeilingPercent) {
-            return "Ocupació baixa"
+            return String(localized: "Ocupació baixa")
         }
         if mean <= Double(mediumCeilingPercent) {
-            return "Ocupació mitjana"
+            return String(localized: "Ocupació mitjana")
         }
-        return "Ocupació alta"
+        return String(localized: "Ocupació alta")
     }
 
     /// The summary of one train's cars, in feed order.

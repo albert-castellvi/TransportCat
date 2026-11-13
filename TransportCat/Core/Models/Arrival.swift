@@ -40,6 +40,6 @@ extension Arrival {
     /// The single countdown formatter of the app: arrivals under a minute read
     /// "<1 min" instead of the "0 min" that integer division would produce.
     static func countdownText(seconds: Int) -> String {
-        seconds < 60 ? "<1 min" : "\(seconds / 60) min"
+        seconds < 60 ? String(localized: "<1 min") : String(localized: "\(seconds / 60) min")
     }
 }

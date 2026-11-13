@@ -133,7 +133,7 @@ enum PlaceCatalogError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .empty:
-            return "El catàleg de llocs ha arribat buit."
+            return String(localized: "El catàleg de llocs ha arribat buit.")
         }
     }
 }

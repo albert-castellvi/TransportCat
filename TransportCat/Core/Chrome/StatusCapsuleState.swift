@@ -61,8 +61,8 @@ enum StatusCapsule {
         guard isOnline else {
             return StatusCapsuleState(
                 icon: .wifiOff,
-                label: "Sense connexió",
-                detail: "dades desades i horaris teòrics"
+                label: String(localized: "Sense connexió"),
+                detail: String(localized: "dades desades i horaris teòrics")
             )
         }
         // Trains computed from the timetable: the age of the schedule is not a
@@ -70,7 +70,7 @@ enum StatusCapsule {
         if theoretical {
             return StatusCapsuleState(
                 icon: .dot(.theoretical),
-                label: "Horari teòric",
+                label: String(localized: "Horari teòric"),
                 detail: ""
             )
         }
@@ -79,7 +79,7 @@ enum StatusCapsule {
         if feedEmpty {
             return StatusCapsuleState(
                 icon: .dot(.unavailable),
-                label: "Sense dades en temps real",
+                label: String(localized: "Sense dades en temps real"),
                 detail: ""
             )
         }
@@ -91,26 +91,26 @@ enum StatusCapsule {
         case .live:
             return StatusCapsuleState(
                 icon: .dot(.live),
-                label: "En directe",
+                label: String(localized: "En directe"),
                 detail: age(of: updatedAt, now: now)
             )
         case .delayed:
             return StatusCapsuleState(
                 icon: .dot(.delayed),
-                label: "Amb retard",
+                label: String(localized: "Amb retard"),
                 detail: age(of: updatedAt, now: now)
             )
         case .stale:
             return StatusCapsuleState(
                 icon: .dot(.stale),
-                label: "Dades antigues",
+                label: String(localized: "Dades antigues"),
                 detail: age(of: updatedAt, now: now)
             )
         case .unavailable:
             // No successful poll yet: there is no age to show.
             return StatusCapsuleState(
                 icon: .dot(.unavailable),
-                label: "Sense dades",
+                label: String(localized: "Sense dades"),
                 detail: ""
             )
         }

@@ -30,13 +30,13 @@ enum TMBAccessKind: Hashable {
     var label: String {
         switch self {
         case .accessible:
-            return "Accessible"
+            return String(localized: "Accessible")
         case .partiallyAccessible:
-            return "Parcialment accessible"
+            return String(localized: "Parcialment accessible")
         case .notAccessible:
-            return "No accessible"
+            return String(localized: "No accessible")
         case .unknown:
-            return "Sense informació"
+            return String(localized: "Sense informació")
         }
     }
 }

@@ -91,9 +91,9 @@ enum PlannerError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .noRoute:
-            return "No s'ha trobat cap ruta."
+            return String(localized: "No s'ha trobat cap ruta.")
         case .failed:
-            return "No s'ha pogut calcular la ruta. Torna-ho a provar."
+            return String(localized: "No s'ha pogut calcular la ruta. Torna-ho a provar.")
         }
     }
 }
@@ -108,18 +108,18 @@ enum PlannerFormat {
     }
 
     static func totalLabel(seconds: TimeInterval) -> String {
-        "\(minutes(seconds: seconds)) min"
+        String(localized: "\(minutes(seconds: seconds)) min")
     }
 
     static func walkingLabel(seconds: TimeInterval) -> String {
-        "\(minutes(seconds: seconds)) min a peu"
+        String(localized: "\(minutes(seconds: seconds)) min a peu")
     }
 
     static func transfersLabel(_ count: Int) -> String {
         switch count {
-        case 0: return "Sense transbords"
-        case 1: return "1 transbord"
-        default: return "\(count) transbords"
+        case 0: return String(localized: "Sense transbords")
+        case 1: return String(localized: "1 transbord")
+        default: return String(localized: "\(count) transbords")
         }
     }
 
@@ -142,11 +142,11 @@ enum PlannerFormat {
     /// Catalan name of an OTP mode; unknown modes keep the raw token.
     static func modeLabel(_ mode: String) -> String {
         switch mode {
-        case "WALK": return "A peu"
-        case "SUBWAY", "METRO": return "Metro"
-        case "BUS": return "Bus"
-        case "TRAM": return "Tramvia"
-        case "RAIL": return "Tren"
+        case "WALK": return String(localized: "A peu")
+        case "SUBWAY", "METRO": return String(localized: "Metro")
+        case "BUS": return String(localized: "Bus")
+        case "TRAM": return String(localized: "Tramvia")
+        case "RAIL": return String(localized: "Tren")
         default: return mode
         }
     }

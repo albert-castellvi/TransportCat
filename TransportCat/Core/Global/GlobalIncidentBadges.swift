@@ -119,7 +119,7 @@ enum GlobalIncidentBadges {
                 lineNames: group.lineNames,
                 badgeText: group.lineNames.count == 1
                     ? group.lineNames[0]
-                    : "\(group.lineNames.count) línies",
+                    : String(localized: "\(group.lineNames.count) línies"),
                 alerts: group.alerts
             )
         }
