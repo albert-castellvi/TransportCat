@@ -1,0 +1,35 @@
+# Deploys the static site in website/ to Cloudflare Pages on every change that
+# reaches main. Nothing else touches this job: app pushes that don't touch
+# website/ skip it through the paths filter, and PRs never deploy.
+name: deploy-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'albert-castellvi/TransportCat'
+    runs-on: ubuntu-latest
+    environment: website
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website --project-name=transportcat --branch=main --commit-dirty=true
