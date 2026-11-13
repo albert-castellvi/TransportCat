@@ -125,6 +125,40 @@ final class FavoritesStoreTests: XCTestCase {
         XCTAssertEqual(store.favoriteLines.map(\.id), ["metro:1", "fgc:S1"])
     }
 
+    /// `.onDelete` in Configuració's editable favourites list: the removed
+    /// places leave the persisted list in one step and the order of the rest
+    /// is untouched.
+    func testRemoveAtOffsetsDeletesPlacesAndPersists() {
+        let store = FavoritesStore(defaults: defaults)
+        let a = place(code: "1", name: "A")
+        let b = place(code: "2", name: "B")
+        let c = place(code: "3", name: "C")
+        store.toggle(a)
+        store.toggle(b)
+        store.toggle(c)
+        store.toggle(line())
+
+        store.remove(atOffsets: IndexSet(integer: 1))
+
+        XCTAssertEqual(store.favoritePlaces, [a, c])
+        XCTAssertFalse(store.isFavorite(b))
+        XCTAssertEqual(store.favoriteLines.map(\.id), ["metro:1"])
+
+        let reopened = FavoritesStore(defaults: defaults)
+        XCTAssertEqual(reopened.favoritePlaces, [a, c])
+    }
+
+    func testRemoveAtSeveralOffsetsKeepsTheUntouchedOnesInOrder() {
+        let store = FavoritesStore(defaults: defaults)
+        for (code, name) in [("1", "A"), ("2", "B"), ("3", "C"), ("4", "D")] {
+            store.toggle(place(code: code, name: name))
+        }
+
+        store.remove(atOffsets: IndexSet([0, 2]))
+
+        XCTAssertEqual(store.favoritePlaces.map(\.name), ["B", "D"])
+    }
+
     // MARK: - Lines
 
     func testLineTogglePersistsAcrossInstances() {

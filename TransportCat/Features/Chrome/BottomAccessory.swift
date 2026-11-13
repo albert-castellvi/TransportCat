@@ -44,27 +44,23 @@ struct BottomAccessory: View {
     // MARK: - Mode menu
 
     /// The four modes in the order the menu lists and the map draws them
-    /// (spec S4): Metro, Bus, FGC and Tot.
-    private static let modes: [(AppMode, String)] = [
-        (.metro, String(localized: "Metro")),
-        (.bus, String(localized: "Bus")),
-        (.fgc, String(localized: "FGC")),
-        (.global, String(localized: "Tot"))
-    ]
+    /// (spec S4): Metro, Bus, FGC and Tot, named by `AppMode` itself so the
+    /// Configuració picker says the same words.
+    private static let modes: [AppMode] = AppMode.allCases
 
     /// Menu button labelled with the current mode and an up/down chevron; the
     /// checkmark marks the mode on screen. Writes `appMode` with the raw
     /// values the chips always used (spec S4).
     private var modeMenu: some View {
         Menu {
-            ForEach(Self.modes, id: \.0) { option in
+            ForEach(Self.modes, id: \.self) { option in
                 Button {
-                    modeRaw = option.0.rawValue
+                    modeRaw = option.rawValue
                 } label: {
-                    if option.0 == mode {
-                        Label(option.1, systemImage: "checkmark")
+                    if option == mode {
+                        Label(option.displayName, systemImage: "checkmark")
                     } else {
-                        Text(option.1)
+                        Text(option.displayName)
                     }
                 }
             }
@@ -86,12 +82,7 @@ struct BottomAccessory: View {
     }
 
     private func label(for mode: AppMode) -> String {
-        switch mode {
-        case .metro: return String(localized: "Metro")
-        case .bus: return String(localized: "Bus")
-        case .fgc: return String(localized: "FGC")
-        case .global: return String(localized: "Tot")
-        }
+        mode.displayName
     }
 }
 

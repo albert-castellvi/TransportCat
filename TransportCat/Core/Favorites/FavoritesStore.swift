@@ -93,6 +93,13 @@ final class FavoritesStore {
         Self.write(favoritePlaces, key: Self.placesKey, defaults: defaults)
     }
 
+    /// Removes the favorite places at `offsets`, the way `.onDelete` reports
+    /// them (Configuració's editable list), and persists the shorter list.
+    func remove(atOffsets offsets: IndexSet) {
+        favoritePlaces.remove(atOffsets: offsets)
+        Self.write(favoritePlaces, key: Self.placesKey, defaults: defaults)
+    }
+
     // MARK: - Lines
 
     func isFavorite(_ line: FavoriteLine) -> Bool {

@@ -100,6 +100,19 @@ struct ExploreScreen: View {
             .navigationTitle("Explora")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Cerca estacions, parades o línies")
+            // Configuració (unit `settings`) is pushed from here: Explora is
+            // the tab that holds the rider's own things, so the gear lives in
+            // its top-trailing corner.
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsScreen()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Configuració")
+                }
+            }
         }
         // The same presentation contract the maps use: detents declared at the
         // sheet site, never inside the presented view.
@@ -351,30 +364,10 @@ struct ExploreScreen: View {
     }
 
     /// Favorite metro/FGC lines from `FavoritesStore` plus the catalog's own
-    /// bus favorites (spec S4 keeps them separate). Lines the catalogs have
-    /// not loaded yet appear once their operator's data arrives.
+    /// bus favorites (spec S4 keeps them separate), folded by the same helper
+    /// Configuració reads.
     private var favoriteLineResults: [ExploreLineResult] {
-        var results: [ExploreLineResult] = []
-        for line in favorites.favoriteLines {
-            switch line.operator {
-            case FavoriteLine.metro:
-                if let metro = MetroLine.line(forCode: line.code) {
-                    results.append(ExploreLineResult(kind: .metro(metro), rank: 0))
-                }
-            case FavoriteLine.fgc:
-                if let fgcLine = fgc.lines.first(where: { $0.code == line.code }) {
-                    results.append(ExploreLineResult(kind: .fgc(fgcLine), rank: 0))
-                }
-            default:
-                break
-            }
-        }
-        for code in busStore.favorites {
-            if let busLine = busStore.lines.first(where: { $0.code == code }) {
-                results.append(ExploreLineResult(kind: .bus(busLine), rank: 0))
-            }
-        }
-        return results
+        FavoriteLineRows.results(favorites: favorites, fgcLines: fgc.lines, busStore: busStore)
     }
 
     // MARK: - A prop

@@ -97,6 +97,43 @@ struct ExploreLineResult: Identifiable {
     }
 }
 
+/// The rider's favourite lines as rows, over the three operator models
+/// (spec S4). Explora lists them under its Preferits section and Configuració
+/// lists them read-only, so the folding lives here instead of twice.
+@MainActor
+enum FavoriteLineRows {
+    /// Metro and FGC favourites from `FavoritesStore` plus the bus catalog's
+    /// own favourites (spec S4 keeps them apart), in the rider's order. A line
+    /// whose catalog has not loaded yet is left out rather than guessed.
+    static func results(
+        favorites: FavoritesStore,
+        fgcLines: [FGCLine],
+        busStore: BusCatalogStore
+    ) -> [ExploreLineResult] {
+        var results: [ExploreLineResult] = []
+        for line in favorites.favoriteLines {
+            switch line.operator {
+            case FavoriteLine.metro:
+                if let metro = MetroLine.line(forCode: line.code) {
+                    results.append(ExploreLineResult(kind: .metro(metro), rank: 0))
+                }
+            case FavoriteLine.fgc:
+                if let fgcLine = fgcLines.first(where: { $0.code == line.code }) {
+                    results.append(ExploreLineResult(kind: .fgc(fgcLine), rank: 0))
+                }
+            default:
+                break
+            }
+        }
+        for code in busStore.favorites {
+            if let busLine = busStore.lines.first(where: { $0.code == code }) {
+                results.append(ExploreLineResult(kind: .bus(busLine), rank: 0))
+            }
+        }
+        return results
+    }
+}
+
 /// Small line pill in the line's own colors (spec S12). The metro catalog
 /// publishes no text color, so black or white is decided by luminance, exactly
 /// as the arrival pills do.
