@@ -55,58 +55,13 @@ enum NearbyStops {
 
     // MARK: - Empty-arrival text
 
-    /// Shared wording for an empty arrival section (spec UX-13). Returns
-    /// "Cap arribada prevista" for the normal case and the full terminus
-    /// message when the stop is last in every line's route.
-    ///
-    /// - Parameters:
-    ///   - isBusStop: whether the place is a bus stop (only bus stops can
-    ///     be route termini).
-    ///   - lineCodes: the line codes the place carries (line names for bus,
-    ///     display names or codes for metro/FGC).
-    ///   - busDirections: for bus stops, the directions of the lines that
-    ///     serve this stop, keyed by line code. The caller is expected to
-    ///     build this map from `BusLineState.directions`. Nil for non-bus
-    ///     places or when direction data is unavailable.
-    ///
-    /// Returns the appropriate display text. The terminus check looks at
-    /// whether the place is the stop with the highest `order` in every
-    /// direction it serves.
-    static func emptyArrivalText(
-        isBusStop: Bool,
-        lineCodes: [String],
-        busDirections: [String: [BusDirection]]?
-    ) -> String {
-        guard isBusStop, let busDirections else {
-            return "Cap arribada prevista"
-        }
-        // A bus stop is a terminus when ALL its lines list this stop as
-        // the last one on every direction. If at least one line reaches
-        // this stop before its final stop, riders can still board.
-        let busLinesForCodes = lineCodes.filter { code in
-            busDirections.keys.contains(code)
-        }
-        guard !busLinesForCodes.isEmpty else {
-            return "Cap arribada prevista"
-        }
-        for lineCode in busLinesForCodes {
-            guard let directions = busDirections[lineCode] else {
-                continue
-            }
-            for dir in directions {
-                guard !dir.stops.isEmpty else { continue }
-                let maxOrder = dir.stops.map(\.order).max() ?? 0
-                let isLastStop = dir.stops.contains {
-                    $0.order == maxOrder
-                }
-                guard !isLastStop else { continue }
-                // This line reaches the stop before its final stop.
-                return "Cap arribada prevista"
-            }
-        }
-        // Every direction of every line has this stop as the last one.
-        return "Final de trajecte — cap bus surt d'aquesta parada en aquesta direcció"
-    }
+    /// The one wording for "this place answered and nothing is due", shared
+    /// by the nearby cards and Explora's favourites (UX-13).
+    // ponytail: no terminus wording. Telling "no bus ever leaves from here"
+    // apart needs the stop's position in each direction, which these call
+    // sites do not have; add it when a caller can pass it.
+    static let noArrivalsText = "Cap arribada prevista"
+
     /// Flat walking speed in meters per minute the walking minutes assume.
     static let walkingSpeedMetersPerMinute: Double = 80
 

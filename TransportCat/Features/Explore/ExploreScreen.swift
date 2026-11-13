@@ -337,11 +337,7 @@ struct ExploreScreen: View {
         guard arrivalsLoaded else { return "Carregant arribades…" }
         return failedFavoriteIDs.contains(place.id)
             ? "No s'han pogut carregar les arribades."
-            : NearbyStops.emptyArrivalText(
-                isBusStop: place.kind == .busStop,
-                lineCodes: place.lineCodes,
-                busDirections: nil
-            )
+            : NearbyStops.noArrivalsText
     }
 
     /// Mode word for a place: "Metro", "Bus", or "FGC". Empty for unknown

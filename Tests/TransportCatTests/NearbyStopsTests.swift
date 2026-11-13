@@ -311,36 +311,4 @@ final class NearbyStopsTests: XCTestCase {
         )
         XCTAssertEqual(rows.map(\.lineLabel), ["H12", "D20", "X1", "V1"])
     }
-
-    // MARK: - emptyArrivalText (UX-13)
-
-    func testEmptyArrivalText_nonBusStopReturnsGeneral() {
-        let text = NearbyStops.emptyArrivalText(
-            isBusStop: false,
-            lineCodes: ["L1"],
-            busDirections: nil
-        )
-        XCTAssertEqual(text, "Cap arribada prevista")
-    }
-
-    func testEmptyArrivalText_noBusDirectionsReturnsGeneral() {
-        let text = NearbyStops.emptyArrivalText(
-            isBusStop: true,
-            lineCodes: ["H12"],
-            busDirections: nil
-        )
-        XCTAssertEqual(text, "Cap arribada prevista")
-    }
-
-    func testEmptyArrivalText_busStopWithLineNotInMapReturnsGeneral() {
-        let text = NearbyStops.emptyArrivalText(
-            isBusStop: true,
-            lineCodes: ["H12", "missing"],
-            busDirections: ["H12": []]  // empty directions = line code exists but no dir data
-        )
-        // The stop has a line with directions but no stop data
-        // (empty array), so the guard !busLinesForCodes.isEmpty succeeds
-        // but the direction check finds no stops — returns general.
-        XCTAssertEqual(text, "Cap arribada prevista")
-    }
 }

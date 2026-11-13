@@ -242,11 +242,7 @@ private struct NearbyStopCard: View {
                 NearbyLineRowView(row: row)
             }
             if entry.rows.isEmpty {
-                let text = NearbyStops.emptyArrivalText(
-                    isBusStop: entry.place.kind == .busStop,
-                    lineCodes: entry.place.lineCodes,
-                    busDirections: nil
-                )
+                let text = NearbyStops.noArrivalsText
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(.secondary)
