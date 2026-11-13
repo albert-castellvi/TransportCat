@@ -43,13 +43,31 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count)
     }
 
-    /// The tour opens on what the app is, and the permissions — the only page
-    /// with buttons of its own — close it, right before "Comença".
-    func testTheTourStartsOnTheWelcomePageAndEndsOnPermissions() {
+    /// The tour is the nine screens the app already had plus "Sempre
+    /// millorant": ten pages that explain, and the permissions page — the only
+    /// one with buttons of its own — still closes it right before "Comença".
+    func testTheTourIsInformationalAndClosesOnPermissions() {
+        XCTAssertEqual(OnboardingPage.all.count, 10)
         XCTAssertEqual(OnboardingPage.all.first?.id, "welcome")
-        XCTAssertEqual(OnboardingPage.all.last?.id, "permissions")
+        XCTAssertEqual(OnboardingPage.all.suffix(2).map(\.id), ["improving", "permissions"])
         XCTAssertEqual(OnboardingPage.all.filter(\.requestsPermissions).count, 1)
         XCTAssertTrue(OnboardingPage.all.last?.requestsPermissions ?? false)
+    }
+
+    /// "Sempre millorant" is words only: four bullets that say where the data
+    /// comes from, where to write and where to support. It embeds no form and
+    /// no jar — the tour never asks the rider for anything.
+    func testTheAlwaysImprovingPageIsWordsOnly() {
+        let page = OnboardingPage.all.first { $0.id == "improving" }
+        XCTAssertEqual(page?.title, "Sempre millorant")
+        XCTAssertEqual(page?.artwork, .improving)
+        XCTAssertEqual(page?.bullets.map(\.text), [
+            "L'app millora amb les dades de TMB, FGC i Renfe, i s'afina amb l'ús que en fem tots.",
+            "Si hi ha res que no va o que hi falta, escriu-nos des de Configuració › Suport i millores.",
+            "Si l'app et serveix bé, pots donar-li suport des de Configuració › Dona suport al desenvolupament.",
+            "És gratis, sense anuncis i sense compte.",
+        ])
+        XCTAssertEqual(page?.requestsPermissions, false)
     }
 
     // MARK: - Page arithmetic

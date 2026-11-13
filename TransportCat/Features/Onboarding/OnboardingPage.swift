@@ -19,6 +19,7 @@ struct OnboardingPage: Identifiable, Equatable {
         case explore
         case widget
         case permissions
+        case improving
     }
 
     /// One explained feature: an icon and one sentence that says what it is,
@@ -41,7 +42,12 @@ struct OnboardingPage: Identifiable, Equatable {
 extension OnboardingPage {
     /// The tour, in the order the rider sees it: the app itself, the map, one
     /// vehicle, the line timeline, a station, the alerts, Explora, the widget
-    /// and the watch, and finally the two permissions it may ask for.
+    /// and the watch, what keeps the app improving, and finally the two
+    /// permissions it may ask for.
+    ///
+    /// Every page explains; none asks for anything. Writing to the team and
+    /// supporting the work live in Configuració, and the tour only says where
+    /// they are.
     ///
     /// Every sentence is written against the real screens; when one of them
     /// changes its wording, this list changes with it.
@@ -227,6 +233,29 @@ extension OnboardingPage {
                 Bullet(
                     systemImage: "applewatch",
                     text: String(localized: "L'app de l'Apple Watch amb els teus preferits i les properes arribades.")
+                ),
+            ]
+        ),
+        OnboardingPage(
+            id: "improving",
+            title: String(localized: "Sempre millorant"),
+            artwork: .improving,
+            bullets: [
+                Bullet(
+                    systemImage: "arrow.triangle.2.circlepath",
+                    text: String(localized: "L'app millora amb les dades de TMB, FGC i Renfe, i s'afina amb l'ús que en fem tots.")
+                ),
+                Bullet(
+                    systemImage: "envelope.fill",
+                    text: String(localized: "Si hi ha res que no va o que hi falta, escriu-nos des de Configuració › Suport i millores.")
+                ),
+                Bullet(
+                    systemImage: "heart.fill",
+                    text: String(localized: "Si l'app et serveix bé, pots donar-li suport des de Configuració › Dona suport al desenvolupament.")
+                ),
+                Bullet(
+                    systemImage: "hand.raised.fill",
+                    text: String(localized: "És gratis, sense anuncis i sense compte.")
                 ),
             ]
         ),

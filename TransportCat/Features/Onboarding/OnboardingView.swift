@@ -235,6 +235,8 @@ struct OnboardingIllustration: View {
             widgetMotif
         case .permissions:
             iconCluster(["location.fill", "bell.fill", "hand.raised.fill"])
+        case .improving:
+            iconCluster(["arrow.triangle.2.circlepath", "envelope.fill", "heart.fill"])
         }
     }
 
