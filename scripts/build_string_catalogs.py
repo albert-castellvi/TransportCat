@@ -208,7 +208,8 @@ def main() -> int:
     catalogs, errors = build_catalogs(
         dict(xliff_tables), load_translations(args.translations)
     )
-    for error in errors:
+    # The same key appears in several catalogs; report each problem once.
+    for error in dict.fromkeys(errors):
         print(error, file=sys.stderr)
     if errors:
         return 1
