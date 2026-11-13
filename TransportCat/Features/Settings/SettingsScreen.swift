@@ -38,6 +38,8 @@ struct SettingsScreen: View {
             alertsSection
             mapSection
             permissionSection
+            feedbackSection
+            supportSection
             dataSection
             introductionSection
         }
@@ -178,6 +180,39 @@ struct SettingsScreen: View {
             for: await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
         )
         #endif
+    }
+
+    // MARK: - Suport i millores
+
+    /// The report form (unit `support`), pushed like the rest of this screen:
+    /// "Escriu-nos" is the only way in, and the tour does not embed it.
+    private var feedbackSection: some View {
+        Section {
+            NavigationLink {
+                FeedbackScreen(screen: "settings")
+            } label: {
+                Label(FeedbackCopy.rowTitle, systemImage: "bubble.left.and.text.bubble.right")
+            }
+        } header: {
+            Text(FeedbackCopy.sectionTitle)
+        } footer: {
+            Text("Escriu-nos des de l'app: què no ha funcionat, què hi falta o què milloraries. Ho arriba tot a l'equip.")
+        }
+    }
+
+    // MARK: - Suport al desenvolupament
+
+    /// The tip jar (unit `support`): the three consumables sit right here, with
+    /// their prices, because this is where the rider looks for them. The
+    /// Explora heart opens the same view in a sheet, never a second jar.
+    private var supportSection: some View {
+        Section {
+            TipJarView()
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+        } header: {
+            Text(TipCopy.sectionTitle)
+        }
     }
 
     // MARK: - Dades i privacitat

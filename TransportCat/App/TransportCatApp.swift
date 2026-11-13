@@ -124,6 +124,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Launch runs on the main thread; the actors below need the isolation.
         MainActor.assumeIsolated {
+            // Records the first launch the tip badge's seven-day rule counts
+            // from (unit `support`), so it runs even for a rider who never
+            // opens Explora.
+            _ = TipBadgeStore.shared
             // Creating the reminder installs its foreground delegate, so
             // notifications while the app is open show as banners (S13).
             _ = ArrivalReminder.shared

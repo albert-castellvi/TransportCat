@@ -52,6 +52,9 @@ targets:
           - Resources/Info.plist
           # Referenced by CODE_SIGN_ENTITLEMENTS, not a bundle resource.
           - Resources/TransportCat.entitlements
+          # Local StoreKit test configuration: referenced by the scheme's run
+          # action, a development file that never ships in the bundle.
+          - Resources/Support.storekit
     dependencies:
       - package: Sentry
         product: Sentry
@@ -248,12 +251,17 @@ targets:
     platform: iOS
     sources:
       - path: Tests
+      # `SKTestSession` looks the local catalogue up in the test bundle: this
+      # is the only target that carries it, so it never ships in the app.
+      - path: TransportCat/Resources/Support.storekit
+        buildPhase: resources
     settings:
       base:
         # The test bundle needs no custom plist; let the build generate it.
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: TransportCat
+      - sdk: StoreKitTest.framework
 
   # Local-only UI driver (UITests/TourUITests.swift): taps through the real
   # app in the simulator and saves screenshots. It has its own scheme, so the
@@ -277,6 +285,10 @@ schemes:
         TransportCatTests: [test]
     run:
       config: Debug
+      # The three tips exist locally, without App Store Connect, while the app
+      # is launched from this scheme (XcodeGen writes the reference into the
+      # run action only).
+      storeKitConfiguration: TransportCat/Resources/Support.storekit
     test:
       config: Debug
       targets:

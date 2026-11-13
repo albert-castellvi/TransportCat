@@ -1,0 +1,108 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "ca_ES",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "3C7A1E52",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.00",
+      "familyShareable" : false,
+      "internalID" : "1001",
+      "localizations" : [
+        {
+          "description" : "Un cafè per donar suport al desenvolupament de TransportCat. No desbloqueja res.",
+          "displayName" : "Cafè 1 €",
+          "locale" : "ca_ES"
+        },
+        {
+          "description" : "Un café para apoyar el desarrollo de TransportCat. No desbloqueja nada.",
+          "displayName" : "Café 1 €",
+          "locale" : "es_ES"
+        },
+        {
+          "description" : "A coffee to support TransportCat's development. It unlocks nothing.",
+          "displayName" : "Coffee 1 €",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "cat.transport.app.tip.small",
+      "referenceName" : "Cafè 1 €",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "3.00",
+      "familyShareable" : false,
+      "internalID" : "1002",
+      "localizations" : [
+        {
+          "description" : "Un doble per donar suport al desenvolupament de TransportCat. No desbloqueja res.",
+          "displayName" : "Doble 3 €",
+          "locale" : "ca_ES"
+        },
+        {
+          "description" : "Un doble para apoyar el desarrollo de TransportCat. No desbloqueja nada.",
+          "displayName" : "Doble 3 €",
+          "locale" : "es_ES"
+        },
+        {
+          "description" : "A double to support TransportCat's development. It unlocks nothing.",
+          "displayName" : "Double 3 €",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "cat.transport.app.tip.medium",
+      "referenceName" : "Doble 3 €",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "5.00",
+      "familyShareable" : false,
+      "internalID" : "1003",
+      "localizations" : [
+        {
+          "description" : "Una ronda per donar suport al desenvolupament de TransportCat. No desbloqueja res.",
+          "displayName" : "Ronda 5 €",
+          "locale" : "ca_ES"
+        },
+        {
+          "description" : "Una ronda para apoyar el desarrollo de TransportCat. No desbloqueja nada.",
+          "displayName" : "Ronda 5 €",
+          "locale" : "es_ES"
+        },
+        {
+          "description" : "A round to support TransportCat's development. It unlocks nothing.",
+          "displayName" : "Round 5 €",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "cat.transport.app.tip.large",
+      "referenceName" : "Ronda 5 €",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ca_ES",
+    "_storefront" : "ESP",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

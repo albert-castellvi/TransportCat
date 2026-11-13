@@ -30,6 +30,12 @@ struct ExploreScreen: View {
     /// Under metro and bus that task is cancelled, so this screen refreshes the
     /// shared FGC snapshot itself (spec S12).
     @AppStorage("appMode") private var modeRaw = AppMode.metro.rawValue
+    /// Whether the occasional tip heart is drawn (unit `support`): decided by
+    /// `TipBadgePolicy` from the first launch, the last appearance and the last
+    /// tip, never by a badge or a red dot.
+    @State private var showsTipBadge = false
+    /// The same jar Configuració shows, over the screen instead of in a tab.
+    @State private var isTipJarPresented = false
 
     /// Refresh period of the favorites' arrivals (spec S12), in nanoseconds.
     private static let arrivalsRefreshIntervalNanoseconds: UInt64 = 30_000_000_000
@@ -102,8 +108,21 @@ struct ExploreScreen: View {
             .searchable(text: $query, prompt: "Cerca estacions, parades o línies")
             // Configuració (unit `settings`) is pushed from here: Explora is
             // the tab that holds the rider's own things, so the gear lives in
-            // its top-trailing corner.
+            // its top-trailing corner. The heart, when the policy allows it,
+            // opens the tip jar in a sheet: quiet, 44 pt, no badge.
             .toolbar {
+                if showsTipBadge {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            isTipJarPresented = true
+                        } label: {
+                            Image(systemName: "heart")
+                        }
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel(TipCopy.sectionTitle)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         SettingsScreen()
@@ -121,7 +140,19 @@ struct ExploreScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        // The heart's sheet is the tip jar itself, the same view Configuració
+        // embeds, so the three products and the wording cannot diverge.
+        .sheet(isPresented: $isTipJarPresented) {
+            NavigationStack {
+                TipJarScreen()
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .task {
+            // Asked once per appearance: a positive answer records the day, so
+            // the icon disappears for the next fourteen.
+            showsTipBadge = TipBadgeStore.shared.shouldShow()
             await bootstrapAndRefresh()
         }
         // Location updates start and stop with the screen (spec S12); the last
