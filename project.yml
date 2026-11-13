@@ -116,6 +116,12 @@ targets:
       - path: TransportCat/Core/FGC/FGCClient.swift
       - path: TransportCat/Core/FGC/FGCModels.swift
       - path: TransportCat/Core/FGC/FGCParsers.swift
+      # The Rodalies station and topology models, shared because the place
+      # catalog builds Rodalies places in every target. The client, the parsers
+      # and the network state stay app-only.
+      - path: TransportCat/Core/Rodalies/RodaliesModels.swift
+      - path: TransportCat/Core/Rodalies/RodaliesTopology.swift
+      - path: TransportCat/Resources/rodalies-topology.json
       - path: TransportCat/Core/Models/Arrival.swift
       - path: TransportCat/Core/Models/LineGeometry.swift
       - path: TransportCat/Core/Models/MetroLine.swift
@@ -190,6 +196,12 @@ targets:
       - path: TransportCat/Core/FGC/FGCClient.swift
       - path: TransportCat/Core/FGC/FGCModels.swift
       - path: TransportCat/Core/FGC/FGCParsers.swift
+      # The Rodalies station and topology models, shared because the place
+      # catalog builds Rodalies places in every target. The client, the parsers
+      # and the network state stay app-only.
+      - path: TransportCat/Core/Rodalies/RodaliesModels.swift
+      - path: TransportCat/Core/Rodalies/RodaliesTopology.swift
+      - path: TransportCat/Resources/rodalies-topology.json
       - path: TransportCat/Core/Models/Arrival.swift
       - path: TransportCat/Core/Models/LineGeometry.swift
       - path: TransportCat/Core/Models/MetroLine.swift

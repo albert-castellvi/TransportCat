@@ -143,6 +143,9 @@ struct ExplorePlaceDetailSheet: View {
             case .fgcStation:
                 FGCStationSheet(place: place)
                     .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
+            case .rodaliesStation:
+                RodaliesStationSheet(place: place)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { mapLinkBar }
             }
         }
     }

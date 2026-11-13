@@ -195,6 +195,10 @@ struct NearbyStopsList: View {
                 busLines: busStore.lines
             )
             fgc = fetched.arrivals[place.id] ?? []
+        case .rodaliesStation:
+            // Part 2 wires the Rodalies board here. Until then the card still
+            // shows the station, its line and its walking time, with no rows.
+            break
         }
 
         return NearbyStops.lineRows(
@@ -274,6 +278,7 @@ private struct NearbyStopCard: View {
         case .metroStation: mode = String(localized: "Metro")
         case .busStop: mode = String(localized: "Bus")
         case .fgcStation: mode = String(localized: "FGC")
+        case .rodaliesStation: mode = String(localized: "Rodalies")
         }
         guard let direction = entry.rows.first?.firstDestination,
               !direction.isEmpty, direction != "—" else { return mode }

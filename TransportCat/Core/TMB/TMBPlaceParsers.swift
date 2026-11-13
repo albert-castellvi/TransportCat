@@ -297,6 +297,29 @@ enum TMBPlaceParser {
         return (minLatitude, maxLatitude, minLongitude, maxLongitude)
     }
 
+    // MARK: - Rodalies
+
+    /// Rodalies stations as places: the station id, its name, its coordinates,
+    /// the line codes of the lines that call there and its GTFS accessibility
+    /// (spec S1 of the Rodalies mode).
+    ///
+    /// Unlike the FGC side there is no geometry join to do: the topology pack
+    /// already lists, per line and direction, which stations each line serves,
+    /// so `lineCodes` is the station's own list.
+    static func rodaliesPlaces(stations: [RodaliesStation]) -> [Place] {
+        stations.map { station in
+            Place(
+                kind: .rodaliesStation,
+                code: station.id,
+                name: station.name,
+                position: station.point,
+                lineCodes: station.lineCodes,
+                accessible: station.isAccessible
+            )
+        }
+        .sorted(by: placeOrder)
+    }
+
     // MARK: - Ordering
 
     /// Alphabetical by folded name, then by id: deterministic for tests and

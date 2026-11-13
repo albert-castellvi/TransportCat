@@ -174,6 +174,7 @@ struct WatchSearchView: View {
         case .metroStation: return String(localized: "Metro")
         case .busStop: return String(localized: "Bus")
         case .fgcStation: return String(localized: "FGC")
+        case .rodaliesStation: return String(localized: "Rodalies")
         }
     }
 }

@@ -1,9 +1,9 @@
 import Foundation
 import Observation
 
-/// The whole place catalog: every metro station, every TMB bus stop and every
-/// FGC station, loaded once per launch and persisted with `DiskCache`
-/// (spec S2, S3).
+/// The whole place catalog: every metro station, every TMB bus stop, every FGC
+/// station and every Rodalies station, loaded once per launch and persisted
+/// with `DiskCache` (spec S2, S3).
 ///
 /// The screens only ever read `places`; loading is explicit so the app decides
 /// when to spend the TMB quota. A failed load falls back to the cached copy, so
@@ -38,6 +38,7 @@ final class PlaceCatalogStore {
     var metroPlaces: [Place] { places.filter { $0.kind == .metroStation } }
     var busPlaces: [Place] { places.filter { $0.kind == .busStop } }
     var fgcPlaces: [Place] { places.filter { $0.kind == .fgcStation } }
+    var rodaliesPlaces: [Place] { places.filter { $0.kind == .rodaliesStation } }
 
     func place(id: String) -> Place? {
         places.first { $0.id == id }
@@ -45,12 +46,21 @@ final class PlaceCatalogStore {
 
     // MARK: - Loading
 
-    /// Loads the three networks in parallel. A second call returns at once,
+    /// Loads the four networks in parallel. A second call returns at once,
     /// keeping the catalog already on screen.
+    ///
+    /// The Rodalies stations come from the topology bundled with the app, so
+    /// they cost no request; the parameter exists so the caller (or a test) can
+    /// supply a different topology, and an empty list simply keeps them out of
+    /// the catalog.
     ///
     /// - Returns: whether the catalog ended up usable (fresh or cached).
     @discardableResult
-    func load(client: TMBClient, fgcClient: FGCClient = FGCClient()) async -> Bool {
+    func load(
+        client: TMBClient,
+        fgcClient: FGCClient = FGCClient(),
+        rodaliesStations: [RodaliesStation] = RodaliesTopology.bundled?.stations ?? []
+    ) async -> Bool {
         guard !hasAttemptedLoad, !isLoading else { return !places.isEmpty }
         hasAttemptedLoad = true
         isLoading = true
@@ -82,6 +92,7 @@ final class PlaceCatalogStore {
             let loaded = TMBPlaceParser.metroPlaces(from: loadedMetro)
                 + TMBPlaceParser.busPlaces(stops: loadedBusStops, lines: busLineStops)
                 + TMBPlaceParser.fgcPlaces(stations: fgcTopology, lines: loadedFGCRoutes)
+                + TMBPlaceParser.rodaliesPlaces(stations: rodaliesStations)
 
             guard !loaded.isEmpty else { throw PlaceCatalogError.empty }
             places = loaded.sorted(by: placeOrder)
@@ -97,9 +108,17 @@ final class PlaceCatalogStore {
 
     /// Clears the launch guard so a retry button can load again.
     @discardableResult
-    func reload(client: TMBClient, fgcClient: FGCClient = FGCClient()) async -> Bool {
+    func reload(
+        client: TMBClient,
+        fgcClient: FGCClient = FGCClient(),
+        rodaliesStations: [RodaliesStation] = RodaliesTopology.bundled?.stations ?? []
+    ) async -> Bool {
         hasAttemptedLoad = false
-        return await load(client: client, fgcClient: fgcClient)
+        return await load(
+            client: client,
+            fgcClient: fgcClient,
+            rodaliesStations: rodaliesStations
+        )
     }
 
     /// Reads the cached catalog, if any, without touching the network. Also

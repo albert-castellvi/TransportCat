@@ -39,6 +39,9 @@ enum Destination: Hashable {
             case .metroStation: return AppModeCode.metro
             case .busStop: return AppModeCode.bus
             case .fgcStation: return AppModeCode.fgc
+            // Rodalies has no mode of its own yet (part 2 of the operator), so
+            // its places route to the FGC mode as a placeholder.
+            case .rodaliesStation: return AppModeCode.fgc
             }
         case .line(let `operator`, _): return `operator`
         case .vehicle(let `operator`, _, _): return `operator`

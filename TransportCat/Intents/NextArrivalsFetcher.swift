@@ -108,6 +108,11 @@ enum NextArrivalsFetcher {
             return .answered(
                 fgcSelection(trains, stationCode: place.code, now: now, limit: limit)
             )
+        case .rodaliesStation:
+            // Part 2 answers this from Renfe's timetable and realtime delays.
+            // An empty board today is the honest answer: the extension cannot
+            // reach the Rodalies client yet.
+            return .answered([])
         }
     }
 
