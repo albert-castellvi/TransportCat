@@ -94,10 +94,7 @@ struct StationDetailView: View {
                 timetableSection
             }
             .navigationTitle(station.name)
-            // Inline-large keeps the title on the leading edge and lets it
-            // shrink before truncating: centred, a short name sits off-centre
-            // next to the star and a long one truncates.
-            .toolbarTitleDisplayMode(.inlineLarge)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Tancar") { dismiss() }
