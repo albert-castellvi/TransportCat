@@ -54,3 +54,28 @@ Environment secrets.
 Local build for development: create `Support/secrets.xcconfig`-style values
 via `xcodegen generate` and pass
 `TMB_APP_ID=<id> TMB_APP_KEY=<key>` to `xcodebuild` (or set them in Xcode).
+
+## Translations
+
+Catalan is the source language; Spanish and English live in String Catalogs
+(`*.xcstrings`, one per target: `TransportCat`, `TransportCatWidgets` and
+`TransportCatWatch`). The catalogs are generated, never edited by hand: the
+source of truth is `scripts/translations.json`, a map from the Catalan key to
+its `es` and `en` values (an App Shortcuts phrase is a list of phrases).
+
+To add or change a translation:
+
+1. Edit the Catalan string in the code, or add the key with its `es`/`en`
+   values to `scripts/translations.json`.
+2. Build on the Mac, then export the keys Xcode finds:
+   `xcodebuild -exportLocalizations -project TransportCat.xcodeproj -localizationPath /tmp/loc -exportLanguage es`
+3. Regenerate the catalogs:
+   `python3 scripts/build_string_catalogs.py "/tmp/loc/es.xcloc/Localized Contents/es.xliff"`
+   The script fails when a key has no translation or when a translation's
+   format specifiers (`%@`, `%lld`, ...) do not match the key's.
+4. Build again and check the app in all three languages
+   (`-AppleLanguages (es)` / `(en)` / `(ca)`).
+
+Keys are the Catalan strings verbatim, so changing a source string means
+renaming its key. Station names, TMB/FGC/Renfe data and alert bodies coming
+from the API are not translated.
