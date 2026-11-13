@@ -171,9 +171,9 @@ struct WatchSearchView: View {
 
     private func kindLabel(_ kind: PlaceKind) -> String {
         switch kind {
-        case .metroStation: return "Metro"
-        case .busStop: return "Bus"
-        case .fgcStation: return "FGC"
+        case .metroStation: return String(localized: "Metro")
+        case .busStop: return String(localized: "Bus")
+        case .fgcStation: return String(localized: "FGC")
         }
     }
 }

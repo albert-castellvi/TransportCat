@@ -77,10 +77,10 @@ struct WatchPlaceDetailView: View {
 
         let age = Freshness.ageText(since: fetchedAt, now: now)
         if board.lastAttemptFailed {
-            return "Sense connexió · dades de \(age)"
+            return String(localized: "Sense connexió · dades de \(age)")
         }
         if board.freshness(now: now) == .stale {
-            return "Dades de \(age)"
+            return String(localized: "Dades de \(age)")
         }
         return nil
     }

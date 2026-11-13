@@ -62,6 +62,6 @@ struct WatchArrivalRow: View {
 
     private var accessibilityLabel: String {
         let spoken = WatchArrivalFormatting.spokenCountdown(until: arrival.date, now: now)
-        return "\(arrival.line) cap a \(arrival.destination), \(spoken)"
+        return String(localized: "\(arrival.line) cap a \(arrival.destination), \(spoken)")
     }
 }
