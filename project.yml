@@ -25,6 +25,12 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     SUPPORTS_MACCATALYST: NO
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # The UI source language is Catalan; the string catalogs in each target
+    # carry the Spanish and English translations. Every `String(localized:)`
+    # literal is emitted as a key so `xcodebuild -exportLocalizations` lists
+    # the full set.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     # DEVELOPMENT_TEAM is unset on purpose: simulator builds need no team; the
     # signed CI archive injects it on the command line.
     # TMB public API credentials are injected at build time (CI secrets or a
@@ -291,6 +297,11 @@ schemes:
       storeKitConfiguration: TransportCat/Resources/Support.storekit
     test:
       config: Debug
+      # The unit tests assert the Catalan source text: pin the test run to
+      # Catalan in Spain so a simulator set to another language cannot change
+      # the expected strings.
+      language: ca
+      region: ES
       targets:
         - TransportCatTests
   TransportCatTour:
