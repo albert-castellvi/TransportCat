@@ -1,0 +1,33 @@
+# Publishes website/ as a Cloudflare Pages PREVIEW, never as production: pushing
+# the branch `web-dev` deploys it to https://web-dev.transportcat.pages.dev so
+# a change can be checked before it reaches main. Production stays with
+# deploy-web.yml, which only runs from main.
+name: deploy-web-dev
+
+on:
+  push:
+    branches: [web-dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.repository == 'albert-castellvi/TransportCat' && github.ref == 'refs/heads/web-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Publish the preview to Cloudflare Pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website --project-name=transportcat --branch=web-dev --commit-dirty=true
