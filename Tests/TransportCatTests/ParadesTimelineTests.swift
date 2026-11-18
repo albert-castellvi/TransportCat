@@ -154,7 +154,7 @@ final class ParadesTimelineTests: XCTestCase {
     func testNearestStationWithoutFixIsNil() {
         let stations = [station(10, order: 1)]
         XCTAssertNil(ParadesTimeline.nearestStation(stations: stations, userLocation: nil))
-        XCTAssertNil(ParadesTimeline.nearestStation(stations: [], userLocation: GeoPoint(latitude: 41.38, longitude: 2.17)))
+        XCTAssertNil(ParadesTimeline.nearestStation(stations: [] as [Station], userLocation: GeoPoint(latitude: 41.38, longitude: 2.17)))
     }
 
     /// Two stations at exactly the same distance: the lower code wins, so the
