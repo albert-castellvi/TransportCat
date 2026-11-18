@@ -20,12 +20,14 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.repository == 'albert-castellvi/TransportCat'
+    if: github.repository == 'albert-castellvi/TransportCat' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: website
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
