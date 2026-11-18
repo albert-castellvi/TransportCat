@@ -179,10 +179,6 @@ struct RodaliesVehiclePositionSource: View {
 
     private var state: RodaliesNetworkState { RodaliesNetworkState.shared }
 
-    private var isEstimated: Bool {
-        state.isEstimated(vehicleID: vehicleID)
-    }
-
     var body: some View {
         // The age and the estimate flag come from the motion bookkeeping, which
         // is deliberately not observed (it mutates at 10 Hz). Reading the
@@ -190,13 +186,18 @@ struct RodaliesVehiclePositionSource: View {
         // every poll, so the wording can cross the stale threshold while the
         // sheet stays open.
         let _ = state.trains
+        let now = Date()
+        let estimate = state.positionEstimate(vehicleID: vehicleID, now: now)
+        let isEstimated = estimate != nil || state.isEstimated(vehicleID: vehicleID, now: now)
         VehiclePositionSource(
             isEstimated: isEstimated,
             estimatedText: isEstimated
-                ? RodaliesPositionSourceText.estimated(
-                    age: state.positionAge(vehicleID: vehicleID),
-                    now: Date()
-                )
+                ? (estimate != nil
+                    ? RodaliesPositionSourceText.interpolated
+                    : RodaliesPositionSourceText.estimated(
+                        age: state.positionAge(vehicleID: vehicleID, now: now),
+                        now: now
+                    ))
                 : ""
         )
     }

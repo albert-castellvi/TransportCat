@@ -237,6 +237,7 @@ final class RodaliesListModelTests: XCTestCase {
     private func train(_ id: String) -> RodaliesLiveTrain {
         RodaliesLiveTrain(
             id: id,
+            tripID: "5116V\(id)R1",
             lineCode: "R1",
             direction: 0,
             headsign: "Maçanet-Massanes",

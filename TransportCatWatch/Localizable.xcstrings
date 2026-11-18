@@ -5121,6 +5121,22 @@
         }
       }
     },
+    "Posició estimada amb l'horari i l'ETA de Renfe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición estimada con el horario y la ETA de Renfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated position from the timetable and Renfe's ETA"
+          }
+        }
+      }
+    },
     "Posició teòrica segons l'horari": {
       "localizations": {
         "es": {

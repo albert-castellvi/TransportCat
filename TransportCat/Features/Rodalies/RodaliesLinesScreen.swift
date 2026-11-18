@@ -223,6 +223,9 @@ struct RodaliesLinesScreen: View {
                         directionNames: directionNames,
                         scheduleAvailable: state.schedule != nil,
                         trains: stationTrains,
+                        markerIsEstimated: stationTrains.first.map {
+                            state.isEstimated(vehicleID: $0.id)
+                        } ?? false,
                         timeZone: timeZone,
                         now: now,
                         hereText: isNearest
@@ -435,6 +438,9 @@ private struct RodaliesLinesRow: View {
     let directionNames: [Int: String]
     let scheduleAvailable: Bool
     let trains: [RodaliesLiveTrain]
+    /// Whether the row's single train marker is an estimate (stop coordinate or
+    /// timetable/ETA interpolation) and must draw the dashed ring.
+    let markerIsEstimated: Bool
     let timeZone: TimeZone
     let now: Date
     let hereText: String?
@@ -667,7 +673,7 @@ private struct RodaliesLinesRow: View {
                 colorHex: lineColorHex,
                 glyph: .train,
                 headingDegrees: nil,
-                isEstimated: false,
+                isEstimated: markerIsEstimated,
                 isSelected: false,
                 size: 22
             )

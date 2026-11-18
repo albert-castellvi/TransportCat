@@ -92,6 +92,14 @@ struct RodaliesPositionTracking: Equatable {
 /// Kept beside the tracking rules so both surfaces say the same thing: the
 /// caller supplies the age and the wording is decided once, in Catalan.
 enum RodaliesPositionSourceText {
+    /// The wording of a position interpolated between two stops from the
+    /// timetable and Renfe's predicted arrival. It is an estimate by
+    /// construction, so it never grows an age: the feed's stop coordinate being
+    /// still is exactly what the estimate is working around.
+    static var interpolated: String {
+        String(localized: "Posició estimada amb l'horari i l'ETA de Renfe")
+    }
+
     /// The estimate wording at `age`. Before the freshness threshold it only
     /// names the source; afterwards it says how long the position has been
     /// unchanged, which is the honest thing the feed can tell.

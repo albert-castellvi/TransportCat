@@ -220,6 +220,7 @@ enum RodaliesParser {
             }
             return RodaliesLiveTrain(
                 id: position.vehicleID,
+                tripID: position.tripID,
                 lineCode: lineCode,
                 direction: direction,
                 headsign: info?.headsign,

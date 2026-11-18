@@ -113,6 +113,15 @@ final class RodaliesPositionTrackingTests: XCTestCase {
         XCTAssertTrue(stale.contains("fa 3 min"))
     }
 
+    /// A position interpolated between two stops names both sources, so the
+    /// rider is not told it is a live fix.
+    func testInterpolatedWordingNamesTheTimetableAndTheEta() {
+        XCTAssertEqual(
+            RodaliesPositionSourceText.interpolated,
+            "Posició estimada amb l'horari i l'ETA de Renfe"
+        )
+    }
+
     /// A snapped point is an interpolation of the track, whatever the status.
     func testSnappedPositionsAreEstimates() {
         XCTAssertTrue(

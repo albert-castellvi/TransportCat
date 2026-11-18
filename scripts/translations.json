@@ -1287,6 +1287,10 @@
     "en": "Estimated position from arrivals (iBus)",
     "es": "Posición estimada a partir de las llegadas (iBus)"
   },
+  "Posició estimada amb l'horari i l'ETA de Renfe": {
+    "en": "Estimated position from the timetable and Renfe's ETA",
+    "es": "Posición estimada con el horario y la ETA de Renfe"
+  },
   "Posició teòrica segons l'horari": {
     "en": "Theoretical position from the timetable",
     "es": "Posición teórica según el horario"
