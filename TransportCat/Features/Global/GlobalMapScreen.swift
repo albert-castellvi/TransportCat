@@ -357,9 +357,11 @@ struct GlobalMapScreen: View {
                 cameraHeading = context.camera.heading
             }
         }
-        // Attribution of the feeds drawn here (spec S10 wording).
+        // Attribution of the feeds drawn here (spec S10 wording). TMB is not
+        // CC BY, so no licence is attached here: the full terms live in the
+        // Configuració data section.
         .overlay(alignment: .bottomTrailing) {
-            Text("Dades: TMB · FGC (CC BY 4.0)")
+            Text("Dades: TMB · FGC")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)

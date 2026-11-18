@@ -81,4 +81,26 @@ final class ScheduleStoreTests: XCTestCase {
         let line = await store.line(mode: .metro, code: 94)
         XCTAssertNil(line, "a file of another feed must be downloaded again")
     }
+
+    /// The Configuració screen dates the timetable with the cached pack's
+    /// `generatedAt` (spec S3): a cached index answers, even one with no
+    /// line entries.
+    func testCachedGeneratedAtReadsTheCachedIndex() throws {
+        try write(
+            """
+            {"v":1,"generatedAt":"2026-10-30T00:00:00Z","feedVersion":"",\
+            "feedStart":"20261030","feedEnd":"20261105","timezone":"Europe/Madrid",\
+            "lines":[]}
+            """,
+            as: "index.json"
+        )
+        let store = ScheduleStore(directory: directory, fetch: { _ in nil })
+        XCTAssertEqual(store.cachedGeneratedAt(), "2026-10-30T00:00:00Z")
+    }
+
+    /// An empty cache means no date: the screen leaves the row out.
+    func testCachedGeneratedAtIsNilWithoutACachedPack() throws {
+        let store = ScheduleStore(directory: directory, fetch: { _ in nil })
+        XCTAssertNil(store.cachedGeneratedAt())
+    }
 }

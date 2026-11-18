@@ -83,6 +83,37 @@ enum SettingsSupport {
         return name.prefix(1).uppercased(with: locale) + name.dropFirst()
     }
 
+    /// The schedule-update row: "Horaris de TMB actualitzats el <date>" from
+    /// the cached pack's ISO8601 `generatedAt`, formatted as a medium date in
+    /// the app's locale. Nil when the string is missing, blank or not a valid
+    /// instant, so the screen hides the row instead of showing a placeholder.
+    static func scheduleUpdatedText(
+        generatedAt: String?,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String? {
+        guard let instant = instant(fromISO8601: generatedAt) else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        let day = formatter.string(from: instant)
+        return String(localized: "Horaris de TMB actualitzats el \(day)")
+    }
+
+    /// The instant of a pack's `generatedAt`: the plain ISO8601 form the
+    /// builder writes, with fractional seconds accepted too in case a future
+    /// builder adds them. Nil for anything else.
+    static func instant(fromISO8601 text: String?) -> Date? {
+        guard let text = nonEmpty(text) else { return nil }
+        let plain = ISO8601DateFormatter()
+        if let date = plain.date(from: text) { return date }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: text)
+    }
+
     /// The version row: "Versió 0.1.0 (101)" from the bundle's short version
     /// and build number. A missing value is left out instead of printed as
     /// "nil"; with neither, the row says so rather than showing an empty gap.

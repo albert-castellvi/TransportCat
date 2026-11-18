@@ -78,6 +78,57 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(SettingsSupport.versionString(shortVersion: " 0.1.0 ", build: " 101\n"), "Versió 0.1.0 (101)")
     }
 
+    // MARK: - Schedule update row
+
+    /// The row dates the cached pack with a medium date. The locale and time
+    /// zone are pinned, so the expected text is exact whatever the device is.
+    func testScheduleUpdateRowFormatsThePackDate() {
+        let text = SettingsSupport.scheduleUpdatedText(
+            generatedAt: "2025-04-15T04:30:00Z",
+            locale: Locale(identifier: "en_US"),
+            timeZone: TimeZone.gmt
+        )
+        XCTAssertEqual(text, "Horaris de TMB actualitzats el Apr 15, 2025")
+    }
+
+    /// Fractional seconds are accepted, in case a future builder adds them.
+    func testScheduleUpdateRowAcceptsFractionalSeconds() {
+        let text = SettingsSupport.scheduleUpdatedText(
+            generatedAt: "2025-04-15T04:30:00.500Z",
+            locale: Locale(identifier: "en_US"),
+            timeZone: TimeZone.gmt
+        )
+        XCTAssertEqual(text, "Horaris de TMB actualitzats el Apr 15, 2025")
+    }
+
+    /// No valid instant, no row: the screen hides it instead of showing a
+    /// placeholder.
+    func testScheduleUpdateRowIsNilWithoutAValidInstant() {
+        let locale = Locale(identifier: "en_US")
+        let timeZone = TimeZone.gmt
+        XCTAssertNil(SettingsSupport.scheduleUpdatedText(generatedAt: nil, locale: locale, timeZone: timeZone))
+        XCTAssertNil(SettingsSupport.scheduleUpdatedText(generatedAt: "", locale: locale, timeZone: timeZone))
+        XCTAssertNil(SettingsSupport.scheduleUpdatedText(generatedAt: "  ", locale: locale, timeZone: timeZone))
+        XCTAssertNil(SettingsSupport.scheduleUpdatedText(generatedAt: "not a date", locale: locale, timeZone: timeZone))
+    }
+
+    /// The instant parser the row is built on: plain ISO8601 in, fractional
+    /// seconds in, garbage and blanks out.
+    func testInstantParsing() {
+        XCTAssertEqual(
+            SettingsSupport.instant(fromISO8601: "2025-04-15T04:30:00Z"),
+            Date(timeIntervalSince1970: 1_744_691_400)
+        )
+        XCTAssertEqual(
+            SettingsSupport.instant(fromISO8601: "2025-04-15T04:30:00.500Z"),
+            Date(timeIntervalSince1970: 1_744_691_400.5)
+        )
+        XCTAssertNil(SettingsSupport.instant(fromISO8601: nil))
+        XCTAssertNil(SettingsSupport.instant(fromISO8601: "  "))
+        XCTAssertNil(SettingsSupport.instant(fromISO8601: "2025-04-15"))
+        XCTAssertNil(SettingsSupport.instant(fromISO8601: "2025-04-15T04:30:00"))
+    }
+
     // MARK: - Mode names
 
     /// The Configuració picker lists every mode by the same word the bottom

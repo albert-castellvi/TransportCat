@@ -24,6 +24,11 @@ struct SettingsScreen: View {
     /// Notification authorization as the last `.task` read it. Location comes
     /// from the shared service, which already publishes it.
     @State private var notificationPermission: SettingsSupport.Permission = .notAsked
+    /// The timetable's update date, worded from the cached schedule pack's
+    /// `generatedAt`. Nil means there is no cached pack (or it carries no
+    /// valid date): the row is hidden entirely instead of showing a
+    /// placeholder.
+    @State private var scheduleUpdatedText: String?
 
     private var favorites: FavoritesStore { FavoritesStore.shared }
     private var busStore: BusCatalogStore { BusCatalogStore.shared }
@@ -45,7 +50,10 @@ struct SettingsScreen: View {
         }
         .navigationTitle("Configuració")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadNotificationPermission() }
+        .task {
+            await loadNotificationPermission()
+            loadScheduleUpdatedText()
+        }
     }
 
     // MARK: - Idioma
@@ -217,14 +225,35 @@ struct SettingsScreen: View {
 
     // MARK: - Dades i privacitat
 
+    /// Attribution of the feeds (unit `settings`): TMB under its developer
+    /// portal's terms of use (not CC BY, and it obliges citing the source with
+    /// its last-update date, which the schedule row below carries), FGC and
+    /// Renfe under CC BY 4.0. Delay, regularity and the theoretical fleet are
+    /// the app's own estimates, computed from TMB's schedules, so they are
+    /// marked as such.
     private var dataSection: some View {
         Section {
-            Text("Dades de TMB, FGC i Renfe (CC BY 4.0)")
-            Text("TransportCat no recull dades personals. La ubicació només es fa servir al dispositiu.")
+            Text("TMB (segons les condicions d'ús del seu portal de desenvolupadors), FGC i Renfe (CC BY 4.0).")
+            Text("Dades adaptades per TransportCat; les estimacions de retard i regularitat són pròpies.")
+            if let scheduleUpdatedText {
+                Text(scheduleUpdatedText)
+            }
+            Text("Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.")
+            Text("Els missatges d'Escriu-nos, amb el correu opcional, arriben a Sentry.")
             Text(versionString)
         } header: {
             Text("Dades i privacitat")
         }
+    }
+
+    /// Reads the cached schedule pack once per visit: a row that appeared is
+    /// kept even if the cache is evicted mid-screen, and one that finds no
+    /// pack stays hidden.
+    private func loadScheduleUpdatedText() {
+        guard scheduleUpdatedText == nil else { return }
+        scheduleUpdatedText = SettingsSupport.scheduleUpdatedText(
+            generatedAt: ScheduleStore.shared.cachedGeneratedAt()
+        )
     }
 
     /// "Versió 0.1.0 (101)" from the bundle, so the row follows the build.
