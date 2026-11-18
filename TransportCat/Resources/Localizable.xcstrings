@@ -449,6 +449,22 @@
         }
       }
     },
+    "%lld trens a l'estació": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trenes en la estación"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trains at the station"
+          }
+        }
+      }
+    },
     "%lld trens de la %@": {
       "localizations": {
         "es": {
@@ -493,6 +509,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld,%lld km"
+          }
+        }
+      }
+    },
+    "+%lld": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
           }
         }
       }
@@ -621,6 +653,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 change"
+          }
+        }
+      }
+    },
+    "1 tren a l'estació": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 tren en la estación"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 train at the station"
           }
         }
       }
@@ -4289,6 +4337,22 @@
         }
       }
     },
+    "Mostra la llista de trens": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra la lista de trenes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the list of trains"
+          }
+        }
+      }
+    },
     "Mostra o amaga la llista d'avisos": {
       "localizations": {
         "es": {
@@ -6477,6 +6541,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Train on the %@ towards %@"
+          }
+        }
+      }
+    },
+    "Trens a %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trenes en %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trains at %@"
           }
         }
       }
