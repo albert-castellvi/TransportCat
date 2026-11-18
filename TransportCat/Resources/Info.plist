@@ -54,7 +54,7 @@
 	<string>$(SENTRY_DSN)</string>
 	<!-- Spec S6: when-in-use location for nearby stations and stops. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TransportCat fa servir la teva ubicació per mostrar-te les estacions i parades properes.</string>
+	<string>TransportCat fa servir la teva ubicació per mostrar-te les estacions i parades properes i per planificar viatges des d'on ets.</string>
 	<!-- Spec S14: best-effort background refresh of incident alerts; iOS
 	     decides when the fetch task actually runs. -->
 	<key>UIBackgroundModes</key>

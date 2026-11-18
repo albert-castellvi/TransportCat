@@ -1080,8 +1080,8 @@
     "es": "Más paradas"
   },
   "NSLocationWhenInUseUsageDescription": {
-    "en": "TransportCat uses your location to show you nearby stations and stops.",
-    "es": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas."
+    "es": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas y para planificar viajes desde donde estás.",
+    "en": "TransportCat uses your location to show you nearby stations and stops and to plan trips from where you are."
   },
   "No accessible": {
     "en": "Not step-free",
@@ -1446,10 +1446,6 @@
   "Sense arribades ara mateix": {
     "en": "No arrivals right now",
     "es": "Sin llegadas ahora mismo"
-  },
-  "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
-    "en": "No account and no tracking; location is only used on your device.",
-    "es": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
   },
   "Sense connexió": {
     "en": "No connection",
@@ -1826,5 +1822,9 @@
   "↓ %@": {
     "en": "↓ %@",
     "es": "↓ %@"
+  },
+  "Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.": {
+    "es": "Sin cuenta ni rastreo. La ubicación se usa en el dispositivo; solo se envía a TMB si planificas un viaje desde donde estás.",
+    "en": "No account and no tracking. Location is used on your device; it is only sent to TMB if you plan a trip from where you are."
   }
 }

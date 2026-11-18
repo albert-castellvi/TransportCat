@@ -238,7 +238,7 @@ struct SettingsScreen: View {
             if let scheduleUpdatedText {
                 Text(scheduleUpdatedText)
             }
-            Text("Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.")
+            Text("Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.")
             Text("Els missatges d'Escriu-nos, amb el correu opcional, arriben a Sentry.")
             Text(versionString)
         } header: {
