@@ -121,9 +121,12 @@ struct BusMapScreen: View {
                     .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
-                locationButton
-                    .padding(.trailing, 16)
-                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    MapSettingsButton()
+                    locationButton
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
             }
             .overlay(alignment: .top) {
                 if let state = lineState, state.hasNoBuses {

@@ -2177,6 +2177,22 @@
         }
       }
     },
+    "Dades adaptades per TransportCat; les estimacions de retard i regularitat són pròpies.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos adaptados por TransportCat; las estimaciones de retraso y regularidad son propias."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data adapted by TransportCat; the delay and regularity estimates are TransportCat's own."
+          }
+        }
+      }
+    },
     "Dades antigues": {
       "localizations": {
         "es": {
@@ -2221,22 +2237,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Data from %@. Refresh it."
-          }
-        }
-      }
-    },
-    "Dades de TMB, FGC i Renfe (CC BY 4.0)": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Datos de TMB, FGC y Renfe (CC BY 4.0)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Data from TMB, FGC and Renfe (CC BY 4.0)"
           }
         }
       }
@@ -2289,18 +2289,18 @@
         }
       }
     },
-    "Dades: TMB · FGC (CC BY 4.0)": {
+    "Dades: TMB · FGC": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Datos: TMB · FGC (CC BY 4.0)"
+            "value": "Datos: TMB · FGC"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Data: TMB · FGC (CC BY 4.0)"
+            "value": "Data: TMB · FGC"
           }
         }
       }
@@ -2733,6 +2733,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Metro and bus service alerts, with the affected lines."
+          }
+        }
+      }
+    },
+    "Els missatges d'Escriu-nos, amb el correu opcional, arriben a Sentry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los mensajes de Escríbenos, con el correo opcional, llegan a Sentry."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages sent from Write to us, with the optional email, reach Sentry."
           }
         }
       }
@@ -3309,6 +3325,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Timetable"
+          }
+        }
+      }
+    },
+    "Horaris de TMB actualitzats el %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horarios de TMB actualizados el %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TMB timetable updated on %@"
           }
         }
       }
@@ -5681,6 +5713,22 @@
         }
       }
     },
+    "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No account and no tracking; location is only used on your device."
+          }
+        }
+      }
+    },
     "Sense connexió": {
       "localizations": {
         "es": {
@@ -6001,6 +6049,22 @@
         }
       }
     },
+    "TMB (segons les condicions d'ús del seu portal de desenvolupadors), FGC i Renfe (CC BY 4.0).": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TMB (según las condiciones de uso de su portal de desarrolladores), FGC y Renfe (CC BY 4.0)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TMB (under the terms of use of its developer portal), FGC and Renfe (CC BY 4.0)."
+          }
+        }
+      }
+    },
     "TMB no publica les arribades d'aquesta línia ara mateix.": {
       "localizations": {
         "es": {
@@ -6237,22 +6301,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "TransportCat"
-          }
-        }
-      }
-    },
-    "TransportCat no recull dades personals. La ubicació només es fa servir al dispositiu.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "TransportCat no recoge datos personales. La ubicación solo se usa en el dispositivo."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "TransportCat collects no personal data. Location is only used on your device."
           }
         }
       }

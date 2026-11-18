@@ -113,9 +113,12 @@ struct GlobalMapScreen: View {
                     .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
-                locationButton
-                    .padding(.trailing, 16)
-                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    MapSettingsButton()
+                    locationButton
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
             }
             // The one global poller, alive only while this mode is the one on
             // screen (specs S8, S13): the task is keyed on `isActive`, so
@@ -354,9 +357,11 @@ struct GlobalMapScreen: View {
                 cameraHeading = context.camera.heading
             }
         }
-        // Attribution of the feeds drawn here (spec S10 wording).
+        // Attribution of the feeds drawn here (spec S10 wording). TMB is not
+        // CC BY, so no licence is attached here: the full terms live in the
+        // Configuració data section.
         .overlay(alignment: .bottomTrailing) {
-            Text("Dades: TMB · FGC (CC BY 4.0)")
+            Text("Dades: TMB · FGC")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)

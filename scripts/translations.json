@@ -547,6 +547,10 @@
     "en": "Data updated %@.",
     "es": "Datos actualizados %@."
   },
+  "Dades adaptades per TransportCat; les estimacions de retard i regularitat són pròpies.": {
+    "en": "Data adapted by TransportCat; the delay and regularity estimates are TransportCat's own.",
+    "es": "Datos adaptados por TransportCat; las estimaciones de retraso y regularidad son propias."
+  },
   "Dades antigues": {
     "en": "Stale data",
     "es": "Datos antiguos"
@@ -558,10 +562,6 @@
   "Dades de %@. Actualitza-les.": {
     "en": "Data from %@. Refresh it.",
     "es": "Datos de %@. Actualízalos."
-  },
-  "Dades de TMB, FGC i Renfe (CC BY 4.0)": {
-    "en": "Data from TMB, FGC and Renfe (CC BY 4.0)",
-    "es": "Datos de TMB, FGC y Renfe (CC BY 4.0)"
   },
   "Dades i privacitat": {
     "en": "Data and privacy",
@@ -575,9 +575,9 @@
     "en": "Data: Renfe · CC BY 4.0",
     "es": "Datos: Renfe · CC BY 4.0"
   },
-  "Dades: TMB · FGC (CC BY 4.0)": {
-    "en": "Data: TMB · FGC (CC BY 4.0)",
-    "es": "Datos: TMB · FGC (CC BY 4.0)"
+  "Dades: TMB · FGC": {
+    "en": "Data: TMB · FGC",
+    "es": "Datos: TMB · FGC"
   },
   "Deixar de seguir": {
     "en": "Stop following",
@@ -686,6 +686,10 @@
   "Els avisos de servei del metro i del bus, amb les línies afectades.": {
     "en": "Metro and bus service alerts, with the affected lines.",
     "es": "Los avisos de servicio del metro y del bus, con las líneas afectadas."
+  },
+  "Els missatges d'Escriu-nos, amb el correu opcional, arriben a Sentry.": {
+    "en": "Messages sent from Write to us, with the optional email, reach Sentry.",
+    "es": "Los mensajes de Escríbenos, con el correo opcional, llegan a Sentry."
   },
   "Els preferits surten amb les properes arribades; pots canviar-los l'ordre i treure'ls.": {
     "en": "Favourites show the next arrivals; you can reorder them and remove them.",
@@ -830,6 +834,10 @@
   "Horari teòric": {
     "en": "Timetable",
     "es": "Horario teórico"
+  },
+  "Horaris de TMB actualitzats el %@": {
+    "en": "TMB timetable updated on %@",
+    "es": "Horarios de TMB actualizados el %@"
   },
   "Idioma": {
     "en": "Language",
@@ -1439,6 +1447,10 @@
     "en": "No arrivals right now",
     "es": "Sin llegadas ahora mismo"
   },
+  "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
+    "en": "No account and no tracking; location is only used on your device.",
+    "es": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
+  },
   "Sense connexió": {
     "en": "No connection",
     "es": "Sin conexión"
@@ -1519,6 +1531,10 @@
     "en": "Leave now",
     "es": "Sal ahora"
   },
+  "TMB (segons les condicions d'ús del seu portal de desenvolupadors), FGC i Renfe (CC BY 4.0).": {
+    "en": "TMB (under the terms of use of its developer portal), FGC and Renfe (CC BY 4.0).",
+    "es": "TMB (según las condiciones de uso de su portal de desarrolladores), FGC y Renfe (CC BY 4.0)."
+  },
   "TMB no publica les arribades d'aquesta línia ara mateix.": {
     "en": "TMB isn't publishing arrivals for this line right now.",
     "es": "TMB no publica las llegadas de esta línea ahora mismo."
@@ -1578,10 +1594,6 @@
   "TransportCat": {
     "en": "TransportCat",
     "es": "TransportCat"
-  },
-  "TransportCat no recull dades personals. La ubicació només es fa servir al dispositiu.": {
-    "en": "TransportCat collects no personal data. Location is only used on your device.",
-    "es": "TransportCat no recoge datos personales. La ubicación solo se usa en el dispositivo."
   },
   "TransportCat és gratis i ho seguirà sent. Si vols donar suport al desenvolupament, ho agrairem molt — no desbloqueja res, és només suport.": {
     "en": "TransportCat is free and will stay free. If you'd like to support development, we'd really appreciate it — it unlocks nothing, it's just support.",

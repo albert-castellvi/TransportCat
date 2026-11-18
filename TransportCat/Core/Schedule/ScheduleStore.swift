@@ -87,6 +87,13 @@ final class ScheduleStore: Sendable {
         return line
     }
 
+    /// `generatedAt` of the cached pack, when there is one and it decodes. The
+    /// Configuració screen shows it as the timetable's update date; nil means
+    /// there is nothing cached to date, which the screen then leaves out.
+    func cachedGeneratedAt() -> String? {
+        cachedPack()?.generatedAt
+    }
+
     /// Plain GET of `index.json`, once per launch: it is a few kilobytes, and a
     /// release asset redirects to a CDN, which makes conditional requests
     /// unreliable. When the feed identity did not change nothing is rewritten;

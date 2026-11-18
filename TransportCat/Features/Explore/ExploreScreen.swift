@@ -10,7 +10,13 @@ import UIKit
 struct ExploreScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var query = ""
+    /// Whether the system search UI is presented (spec S2). The search-role tab
+    /// owns the field and its "Tanca", so this is the closest public handle on
+    /// the focused state: while it is on, the title, the gear and the tab bar
+    /// are gone and `mapButton` rides next to the field.
+    @State private var isSearchPresented = false
     /// Place whose detail sheet is open.
     @State private var selectedPlace: Place?
     /// Next arrivals of the favorite places, keyed by `Place.id`, refreshed on
@@ -39,6 +45,32 @@ struct ExploreScreen: View {
 
     /// Refresh period of the favorites' arrivals (spec S12), in nanoseconds.
     private static let arrivalsRefreshIntervalNanoseconds: UInt64 = 30_000_000_000
+
+    // MARK: Search-field geometry (spec S2)
+    //
+    // While the search is focused the results list's bottom edge is the
+    // keyboard's top, and the system field row sits right above it. All three
+    // values are measured from that bottom edge — never from the screen — so
+    // the numbers hold on every device.
+
+    /// Height of the system search field row that rides above the list.
+    private static let searchFieldRowHeight: CGFloat = 48
+    /// Gap the spec asks for between the map button and the field row's top.
+    private static let mapButtonFieldGap: CGFloat = 8
+    /// Margin between the field row's bottom and the list's bottom edge (the
+    /// keyboard's top while the search is focused).
+    private static let fieldRowKeyboardMargin: CGFloat = 10
+    /// Distance from the list's bottom edge to the map button's bottom edge,
+    /// so the button sits immediately above the field row.
+    private static let mapButtonFieldClearance: CGFloat =
+        searchFieldRowHeight + mapButtonFieldGap + fieldRowKeyboardMargin
+    /// Side inset of the system field row, so the button's trailing edge lines
+    /// up with the "Tanca" button's.
+    private static let searchFieldRowInset: CGFloat = 8
+    /// Bottom content margin that keeps the last result rows reachable above
+    /// the button while it rides over the list: the clearance plus the
+    /// button's own 44 pt hit target.
+    private static let mapButtonScrollMargin: CGFloat = mapButtonFieldClearance + 44
 
     init() {}
 
@@ -104,9 +136,30 @@ struct ExploreScreen: View {
                     nearbySection
                 }
             }
+            // Spec S2: while the search UI owns the screen the only chrome
+            // left is the field and its "Tanca", so the way back to the map
+            // rides immediately above that field, trailing-aligned with its
+            // "Tanca" button. Pinned to the list's bottom-trailing corner
+            // (the list's bottom is the keyboard's top while focused), so the
+            // spot stays next to the field on every device.
+            .overlay(alignment: .bottomTrailing) {
+                mapButton
+            }
+            // The button rides over the list's last rows: the margin lets the
+            // rider scroll them clear of the button while searching.
+            .contentMargins(
+                .bottom,
+                isSearchPresented ? Self.mapButtonScrollMargin : 0,
+                for: .scrollContent
+            )
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: isSearchPresented)
             .navigationTitle("Explora")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "Cerca estacions, parades o línies")
+            .searchable(
+                text: $query,
+                isPresented: $isSearchPresented,
+                prompt: "Cerca estacions, parades o línies"
+            )
             // Configuració (unit `settings`) is pushed from here: Explora is
             // the tab that holds the rider's own things, so the gear lives in
             // its top-trailing corner. The heart, when the policy allows it,
@@ -169,6 +222,41 @@ struct ExploreScreen: View {
         // "loading" into departures.
         .onChange(of: rodalies.scheduleLoadedAt) { _, _ in
             Task { await refreshFavoriteArrivals() }
+        }
+    }
+
+    // MARK: - Map button while searching (spec S2)
+
+    /// Way back to the map while the system search UI owns the screen (spec
+    /// S2). The search field is hosted by the search-role tab and cannot host
+    /// extra controls, so the button is pinned just above that field, on the
+    /// list's bottom-trailing corner: the trailing inset matches the "Tanca"
+    /// button's and the bottom clearance is the field row plus a gap, both
+    /// measured from the list's bottom edge (the keyboard's top), so the
+    /// button stays next to the field without overlapping it or any row.
+    ///
+    /// It ends the search as well as switching tabs — `isPresented` back to
+    /// false and the query cleared, so coming back to Explora shows the normal
+    /// screen instead of stale results with no field above them.
+    @ViewBuilder
+    private var mapButton: some View {
+        if isSearchPresented {
+            Button {
+                isSearchPresented = false
+                query = ""
+                AppRouter.shared.selectedTab = .map
+            } label: {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 44, height: 44)
+                    .glassEffect(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Mapa")
+            .padding(.trailing, Self.searchFieldRowInset)
+            .padding(.bottom, Self.mapButtonFieldClearance)
+            .transition(AppMotion.chipTransition)
         }
     }
 
