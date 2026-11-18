@@ -3,14 +3,14 @@
     {
       "idiom": "universal",
       "filename": "icon-escalator@3x.png",
-      "scale": "3x",
-        "properties": {
-          "template-rendering-intent": "template"
-        }
+      "scale": "3x"
     }
   ],
   "info": {
     "author": "xcode",
     "version": 1
+  },
+  "properties": {
+    "template-rendering-intent": "template"
   }
 }

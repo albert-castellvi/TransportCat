@@ -80,7 +80,7 @@ struct RootView: View {
         // The visible tab is the router's (spec S5): `AppRouter.open` switches
         // to the map, and a tab tap writes back, so both stay in sync. iOS 26
         // Tab API (spec S5): one `Tab` per tab, selection values typed like
-        // `router.selectedTab`, and the search role hosting Explora.
+        // `router.selectedTab`.
         @Bindable var router = AppRouter.shared
         TabView(selection: $router.selectedTab) {
             Tab("Mapa", image: "tab-map", value: AppTab.map) {
@@ -139,9 +139,12 @@ struct RootView: View {
             Tab("Avisos", image: "tab-alert", value: AppTab.alerts) {
                 AlertsScreen()
             }
-            // The fourth tab (spec S12): search, favorites and nearby places,
-            // moved into the tab bar's own search role for the v2 redesign.
-            Tab("Explora", systemImage: "magnifyingglass", value: AppTab.explore, role: .search) {
+            // The fourth tab (spec S12): search, favorites and nearby places.
+            // A regular tab since the 2026-11 pass: the collapsing search role
+            // showed the last tab's icon in a low-contrast glass circle over
+            // the map (S1), so Explora is now always visible as a normal tab,
+            // with its search field inside the screen's navigation bar.
+            Tab("Explora", systemImage: "magnifyingglass", value: AppTab.explore) {
                 ExploreScreen()
             }
         }
