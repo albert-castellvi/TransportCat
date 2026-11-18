@@ -111,6 +111,10 @@
     "en": "%lld changes",
     "es": "%lld transbordos"
   },
+  "%lld trens de la %@": {
+    "en": "%lld trains on %@",
+    "es": "%lld trenes de la %@"
+  },
   "%lld%%": {
     "en": "%lld%%",
     "es": "%lld%%"
@@ -823,6 +827,10 @@
     "en": "Thanks! We've got it.",
     "es": "¡Gracias! Lo hemos recibido."
   },
+  "Ha sortit de %@": {
+    "en": "Left %@",
+    "es": "Ha salido de %@"
+  },
   "Horari": {
     "en": "Timetable",
     "es": "Horario"
@@ -1247,6 +1255,14 @@
     "en": "Collapsed",
     "es": "Plegado"
   },
+  "Posició de Renfe": {
+    "en": "Renfe position",
+    "es": "Posición de Renfe"
+  },
+  "Posició de Renfe · sense canvi %@": {
+    "en": "Renfe position · unchanged %@",
+    "es": "Posición de Renfe · sin cambios %@"
+  },
   "Posició estimada a partir de l'horari": {
     "en": "Estimated position from the timetable",
     "es": "Posición estimada a partir del horario"
@@ -1622,6 +1638,10 @@
   "Trens ara mateix": {
     "en": "Trains right now",
     "es": "Trenes ahora mismo"
+  },
+  "Trens de la %@": {
+    "en": "%@ trains",
+    "es": "Trenes de la %@"
   },
   "Trens i busos es mouen al mapa a mesura que avancen.": {
     "en": "Trains and buses move on the map as they go.",

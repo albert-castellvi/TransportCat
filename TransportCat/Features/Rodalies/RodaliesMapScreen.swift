@@ -28,6 +28,8 @@ struct RodaliesMapScreen: View {
     @State private var lineCoordinates: [CLLocationCoordinate2D] = []
     /// The train whose glass card is open.
     @State private var selectedVehicle: MapVehicle?
+    /// The group of co-located trains whose list is open, nil when none.
+    @State private var vehicleGroup: RodaliesVehicleGroup?
     /// The train whose sheet is open. A snapshot copy: the sheet reads the live
     /// train from the shared state by id.
     @State private var sheetVehicle: MapVehicle?
@@ -128,6 +130,7 @@ struct RodaliesMapScreen: View {
                 .onChange(of: selectedLineCode) { _, _ in
                     // A new line is a new subject: drop the old train and refit.
                     selectedVehicle = nil
+                    vehicleGroup = nil
                     sheetVehicle = nil
                     followingVehicleID = nil
                     fitCamera()
@@ -162,6 +165,11 @@ struct RodaliesMapScreen: View {
             )
             .presentationDetents([.fraction(0.35), .medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $vehicleGroup) { group in
+            RodaliesVehicleGroupSheet(group: group)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: $selectedPlace) { place in
             RodaliesStationSheet(place: place)
@@ -318,25 +326,32 @@ struct RodaliesMapScreen: View {
                     .buttonStyle(.plain)
                 }
             }
-            ForEach(state.vehicles.filter { $0.lineCode == line.code }) { vehicle in
+            ForEach(RodaliesVehicleGrouping.groups(state.vehicles.filter { $0.lineCode == line.code })) { group in
                 Annotation(
                     "",
                     coordinate: CLLocationCoordinate2D(
-                        latitude: vehicle.position.latitude,
-                        longitude: vehicle.position.longitude
+                        latitude: group.representative.position.latitude,
+                        longitude: group.representative.position.longitude
                     )
                 ) {
                     Button {
-                        selectedVehicle = vehicle
+                        if group.count > 1 {
+                            vehicleGroup = group
+                        } else {
+                            selectedVehicle = group.representative
+                        }
                     } label: {
                         RodaliesVehicleMarker(
-                            vehicle: vehicle,
+                            vehicle: group.representative,
+                            count: group.count,
+                            isEstimated: state.isEstimated(vehicleID: group.representative.id),
                             cameraHeading: cameraHeading,
-                            isSelected: selectedVehicle?.id == vehicle.id
+                            isSelected: selectedVehicle?.id == group.representative.id
+                                || vehicleGroup?.id == group.id
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(markerAccessibilityLabel(vehicle))
+                    .accessibilityLabel(markerAccessibilityLabel(group))
                 }
             }
         }
@@ -382,8 +397,13 @@ struct RodaliesMapScreen: View {
     }
 
     /// VoiceOver text of a train marker: line, and the destination only when
-    /// the timetable knows it.
-    private func markerAccessibilityLabel(_ vehicle: MapVehicle) -> String {
+    /// the timetable knows it. A grouped marker also says how many trains are
+    /// under it, so the count is not colour-only information.
+    private func markerAccessibilityLabel(_ group: RodaliesVehicleGroup) -> String {
+        let vehicle = group.representative
+        if group.count > 1 {
+            return String(localized: "\(group.count) trens de la \(vehicle.lineCode)")
+        }
         if vehicle.label.isEmpty {
             return String(localized: "Tren de la \(vehicle.lineCode)")
         }
@@ -562,6 +582,10 @@ private struct RodaliesStationDot: View {
 /// the body.
 private struct RodaliesVehicleMarker: View, Equatable {
     let vehicle: MapVehicle
+    /// How many trains share this point; 1 draws the ordinary marker.
+    let count: Int
+    /// Dashed ring: the drawn point is a stop coordinate or an interpolation.
+    let isEstimated: Bool
     let cameraHeading: Double
     let isSelected: Bool
 
@@ -570,10 +594,25 @@ private struct RodaliesVehicleMarker: View, Equatable {
             colorHex: vehicle.colorHex,
             glyph: .code(vehicle.lineCode),
             headingDegrees: vehicle.heading - cameraHeading,
-            isEstimated: false,
+            isEstimated: isEstimated,
             isSelected: isSelected,
             size: 30
         )
+        // A busy stop is one marker with its train count, never a dozen markers
+        // stacked on the same pixel (review A.6.1). The count is not localised:
+        // "×7" reads the same in every language.
+        .overlay(alignment: .topTrailing) {
+            if count > 1 {
+                Text(verbatim: "×\(count)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(hex: "2C2E34").opacity(0.92)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                    .offset(x: 9, y: -9)
+            }
+        }
         .overlay(alignment: .bottom) {
             if isSelected, !vehicle.label.isEmpty {
                 Text(vehicle.label)
@@ -592,9 +631,9 @@ private struct RodaliesVehicleMarker: View, Equatable {
 }
 
 /// Rows of the selected train's glass card, read live from the shared state by
-/// the marker id: the stop the feed says it is heading to, its punctuality and
-/// where the position comes from. Renfe positions are GPS fixes, never
-/// estimates.
+/// the marker id: the stop the feed honestly knows, its punctuality and where
+/// the position comes from. Renfe mostly publishes stop coordinates, so the
+/// position row says so and ages with the last real change.
 private struct RodaliesVehicleCardRows: View {
     let vehicleID: String
 
@@ -603,21 +642,124 @@ private struct RodaliesVehicleCardRows: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let train = state.liveTrain(id: vehicleID) {
-                if let stopID = train.nextStopID {
-                    Label(
-                        "Pròxima: \(state.stationName(id: stopID))",
-                        systemImage: "arrow.right.circle"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
+                stopRow(train)
                 let status = RodaliesDepartureText.delay(seconds: train.delaySeconds)
                 Text(status.text)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(delayColor(status))
             }
-            VehiclePositionSource(isEstimated: false, estimatedText: "")
+            RodaliesVehiclePositionSource(vehicleID: vehicleID)
         }
+    }
+
+    /// The stop line of the card: where the train is or has just left, and the
+    /// real next stop only when the feed knows one. It never labels the stop
+    /// behind an `IN_TRANSIT_TO` train as "Pròxima" (review A.4).
+    @ViewBuilder
+    private func stopRow(_ train: RodaliesLiveTrain) -> some View {
+        if let stopID = train.currentStopID, train.status == "STOPPED_AT" {
+            Label(
+                "Aturat a \(state.stationName(id: stopID))",
+                systemImage: "pause.circle.fill"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        } else if let stopID = train.nextStopID {
+            Label(
+                "Pròxima: \(state.stationName(id: stopID))",
+                systemImage: "arrow.right.circle"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        } else if let stopID = train.currentStopID, train.status == "IN_TRANSIT_TO" {
+            Label(
+                "Ha sortit de \(state.stationName(id: stopID))",
+                systemImage: "arrow.right.circle"
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Amber for a delay, green for a train the feed confirms on time, and the
+    /// secondary ink when the feed says nothing about this one.
+    private func delayColor(_ status: RodaliesDelayStatus) -> Color {
+        if status.isDelayed { return Color(hex: "F59E0B") }
+        if case .onTime = status { return .green }
+        return .secondary
+    }
+}
+
+/// Sheet listing the trains under one grouped marker (review A.6.1): a busy
+/// stop is one marker with a count, and tapping it shows every train that the
+/// count stands for. A row opens the same detail the marker's own sheet shows.
+private struct RodaliesVehicleGroupSheet: View {
+    let group: RodaliesVehicleGroup
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(group.members) { vehicle in
+                    NavigationLink {
+                        RodaliesTrainDetail(
+                            vehicleID: vehicle.id,
+                            allowFollow: false,
+                            followingVehicleID: .constant(nil)
+                        )
+                        .navigationTitle("Tren")
+                        .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        RodaliesVehicleGroupRow(vehicle: vehicle)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle(String(localized: "Trens de la \(group.representative.lineCode)"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Tancar") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// One train of the grouped sheet: line, destination and punctuality, the same
+/// three facts the map card leads with.
+private struct RodaliesVehicleGroupRow: View {
+    let vehicle: MapVehicle
+
+    private var state: RodaliesNetworkState { RodaliesNetworkState.shared }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            RodaliesLineBadge(
+                code: vehicle.lineCode,
+                colorHex: state.colorHex(for: vehicle.lineCode),
+                textColorHex: state.lines.first { $0.code == vehicle.lineCode }?.textColorHex
+                    ?? FGCNetwork.neutralTextColorHex
+            )
+            VStack(alignment: .leading, spacing: 2) {
+                Text(
+                    vehicle.label.isEmpty
+                        ? String(localized: "Destí desconegut")
+                        : String(localized: "Cap a \(vehicle.label)")
+                )
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+                if let train = state.liveTrain(id: vehicle.id) {
+                    let status = RodaliesDepartureText.delay(seconds: train.delaySeconds)
+                    Text(status.text)
+                        .font(.footnote)
+                        .foregroundStyle(delayColor(status))
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
     }
 
     /// Amber for a delay, green for a train the feed confirms on time, and the

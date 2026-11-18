@@ -449,6 +449,22 @@
         }
       }
     },
+    "%lld trens de la %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trenes de la %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trains on %@"
+          }
+        }
+      }
+    },
     "%lld%%": {
       "localizations": {
         "es": {
@@ -3281,6 +3297,22 @@
         }
       }
     },
+    "Ha sortit de %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ha salido de %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left %@"
+          }
+        }
+      }
+    },
     "Horari": {
       "localizations": {
         "es": {
@@ -4961,6 +4993,38 @@
         }
       }
     },
+    "Posició de Renfe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de Renfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renfe position"
+          }
+        }
+      }
+    },
+    "Posició de Renfe · sense canvi %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de Renfe · sin cambios %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renfe position · unchanged %@"
+          }
+        }
+      }
+    },
     "Posició estimada a partir de l'horari": {
       "localizations": {
         "es": {
@@ -6429,6 +6493,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trains right now"
+          }
+        }
+      }
+    },
+    "Trens de la %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trenes de la %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ trains"
           }
         }
       }
