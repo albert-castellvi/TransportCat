@@ -131,9 +131,12 @@ struct FGCMapScreen: View {
                     .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
-                locationButton
-                    .padding(.trailing, 16)
-                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    MapSettingsButton()
+                    locationButton
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
             }
             // Spec S6: the selected vehicle's glass card, above the bottom
             // accessory (the safe-area alignment keeps it clear of it).

@@ -113,9 +113,12 @@ struct GlobalMapScreen: View {
                     .padding(.top, 8)
             }
             .overlay(alignment: .topTrailing) {
-                locationButton
-                    .padding(.trailing, 16)
-                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    MapSettingsButton()
+                    locationButton
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
             }
             // The one global poller, alive only while this mode is the one on
             // screen (specs S8, S13): the task is keyed on `isActive`, so
