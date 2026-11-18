@@ -22,13 +22,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas."
+            "value": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas y para planificar viajes desde donde estás."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "TransportCat uses your location to show you nearby stations and stops."
+            "value": "TransportCat uses your location to show you nearby stations and stops and to plan trips from where you are."
           }
         }
       }

@@ -449,6 +449,38 @@
         }
       }
     },
+    "%lld trens a l'estació": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trenes en la estación"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trains at the station"
+          }
+        }
+      }
+    },
+    "%lld trens de la %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trenes de la %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld trains on %@"
+          }
+        }
+      }
+    },
     "%lld%%": {
       "localizations": {
         "es": {
@@ -477,6 +509,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld,%lld km"
+          }
+        }
+      }
+    },
+    "+%lld": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld"
           }
         }
       }
@@ -605,6 +653,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "1 change"
+          }
+        }
+      }
+    },
+    "1 tren a l'estació": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 tren en la estación"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 train at the station"
           }
         }
       }
@@ -3281,6 +3345,22 @@
         }
       }
     },
+    "Ha sortit de %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ha salido de %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left %@"
+          }
+        }
+      }
+    },
     "Horari": {
       "localizations": {
         "es": {
@@ -4257,6 +4337,22 @@
         }
       }
     },
+    "Mostra la llista de trens": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra la lista de trenes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the list of trains"
+          }
+        }
+      }
+    },
     "Mostra o amaga la llista d'avisos": {
       "localizations": {
         "es": {
@@ -4961,6 +5057,38 @@
         }
       }
     },
+    "Posició de Renfe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de Renfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renfe position"
+          }
+        }
+      }
+    },
+    "Posició de Renfe · sense canvi %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición de Renfe · sin cambios %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renfe position · unchanged %@"
+          }
+        }
+      }
+    },
     "Posició estimada a partir de l'horari": {
       "localizations": {
         "es": {
@@ -4989,6 +5117,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Estimated position from arrivals (iBus)"
+          }
+        }
+      }
+    },
+    "Posició estimada amb l'horari i l'ETA de Renfe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición estimada con el horario y la ETA de Renfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated position from the timetable and Renfe's ETA"
           }
         }
       }
@@ -5713,18 +5857,18 @@
         }
       }
     },
-    "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
+    "Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
+            "value": "Sin cuenta ni rastreo. La ubicación se usa en el dispositivo; solo se envía a TMB si planificas un viaje desde donde estás."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No account and no tracking; location is only used on your device."
+            "value": "No account and no tracking. Location is used on your device; it is only sent to TMB if you plan a trip from where you are."
           }
         }
       }
@@ -6417,6 +6561,22 @@
         }
       }
     },
+    "Trens a %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trenes en %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trains at %@"
+          }
+        }
+      }
+    },
     "Trens ara mateix": {
       "localizations": {
         "es": {
@@ -6429,6 +6589,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trains right now"
+          }
+        }
+      }
+    },
+    "Trens de la %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trenes de la %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ trains"
           }
         }
       }

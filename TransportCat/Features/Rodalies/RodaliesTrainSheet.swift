@@ -18,24 +18,13 @@ struct RodaliesTrainSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private var state: RodaliesNetworkState { RodaliesNetworkState.shared }
-
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let train = state.liveTrain(id: vehicleID) {
-                        trainContent(train)
-                    } else {
-                        // The feed dropped this train while the sheet was open.
-                        Text("El tren ja no circula per la xarxa ara mateix.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            RodaliesTrainDetail(
+                vehicleID: vehicleID,
+                allowFollow: allowFollow,
+                followingVehicleID: $followingVehicleID
+            )
             .navigationTitle("Tren")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -43,6 +32,38 @@ struct RodaliesTrainSheet: View {
                     Button("Tancar") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+/// The body of the train sheet, shared by the sheet and the grouped-trains list
+/// so a train opened from a group shows exactly the rows of one opened from the
+/// map. It is not a `NavigationStack` itself; the caller owns the title and the
+/// close button.
+struct RodaliesTrainDetail: View {
+    /// `MapVehicle.id` of the train on screen.
+    let vehicleID: String
+    /// Whether the follow button is offered; the map passes `true`.
+    var allowFollow = false
+    /// The id the map follows.
+    @Binding var followingVehicleID: String?
+
+    private var state: RodaliesNetworkState { RodaliesNetworkState.shared }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let train = state.liveTrain(id: vehicleID) {
+                    trainContent(train)
+                } else {
+                    // The feed dropped this train while the sheet was open.
+                    Text("El tren ja no circula per la xarxa ara mateix.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -69,21 +90,7 @@ struct RodaliesTrainSheet: View {
                 Spacer(minLength: 0)
             }
 
-            if let stopID = train.currentStopID, train.status == "STOPPED_AT" {
-                Label(
-                    "Aturat a \(state.stationName(id: stopID))",
-                    systemImage: "pause.circle.fill"
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            } else if let stopID = train.nextStopID {
-                Label(
-                    "Pròxima: \(state.stationName(id: stopID))",
-                    systemImage: "arrow.right.circle"
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
+            stopRows(for: train)
 
             if allowFollow {
                 Button {
@@ -104,8 +111,39 @@ struct RodaliesTrainSheet: View {
                 .sensoryFeedback(.selection, trigger: followingVehicleID)
             }
 
-            // Renfe positions are GPS fixes: never an estimate.
-            VehiclePositionSource(isEstimated: false, estimatedText: "")
+            RodaliesVehiclePositionSource(vehicleID: vehicleID)
+        }
+    }
+
+    /// The stops the feed honestly knows: where the train is (or stopped), and
+    /// the real next stop when there is one. A train that already left its
+    /// `stopId` says so instead of claiming the stop behind it as "Pròxima".
+    @ViewBuilder
+    private func stopRows(for train: RodaliesLiveTrain) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let stopID = train.currentStopID, train.status == "STOPPED_AT" {
+                Label(
+                    "Aturat a \(state.stationName(id: stopID))",
+                    systemImage: "pause.circle.fill"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+            if let stopID = train.nextStopID {
+                Label(
+                    "Pròxima: \(state.stationName(id: stopID))",
+                    systemImage: "arrow.right.circle"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            } else if let stopID = train.currentStopID, train.status == "IN_TRANSIT_TO" {
+                Label(
+                    "Ha sortit de \(state.stationName(id: stopID))",
+                    systemImage: "arrow.right.circle"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -124,5 +162,43 @@ struct RodaliesTrainSheet: View {
         if status.isDelayed { return Color(hex: "F59E0B") }
         if case .onTime = status { return .green }
         return .secondary
+    }
+}
+
+/// Where a Rodalies train's drawn position comes from, shared by the map card
+/// and the train sheet.
+///
+/// Renfe mostly publishes the stop coordinate, not a GPS fix, and the positions
+/// are interpolated along the track between polls: the green "Posició en
+/// directe" dot would be a lie. The dashed ring says "estimated", and once the
+/// position has been unchanged for longer than `Freshness.staleAfter` the row
+/// also says for how long, which is the only honest answer the feed supports.
+struct RodaliesVehiclePositionSource: View {
+    /// `MapVehicle.id` of the train.
+    let vehicleID: String
+
+    private var state: RodaliesNetworkState { RodaliesNetworkState.shared }
+
+    var body: some View {
+        // The age and the estimate flag come from the motion bookkeeping, which
+        // is deliberately not observed (it mutates at 10 Hz). Reading the
+        // observed live trains gives this row a dependency that refreshes it on
+        // every poll, so the wording can cross the stale threshold while the
+        // sheet stays open.
+        let _ = state.trains
+        let now = Date()
+        let estimate = state.positionEstimate(vehicleID: vehicleID, now: now)
+        let isEstimated = estimate != nil || state.isEstimated(vehicleID: vehicleID, now: now)
+        VehiclePositionSource(
+            isEstimated: isEstimated,
+            estimatedText: isEstimated
+                ? (estimate != nil
+                    ? RodaliesPositionSourceText.interpolated
+                    : RodaliesPositionSourceText.estimated(
+                        age: state.positionAge(vehicleID: vehicleID, now: now),
+                        now: now
+                    ))
+                : ""
+        )
     }
 }

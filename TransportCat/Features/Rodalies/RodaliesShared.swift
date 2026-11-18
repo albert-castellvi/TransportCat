@@ -76,3 +76,24 @@ struct RodaliesLineBadge: View {
             .accessibilityLabel("Línia \(code)")
     }
 }
+
+/// The interchange capsule of a Rodalies row (spec B.3): the white pill Metro
+/// uses for its own other lines, with dark ink and the line code only. Used
+/// for the other Rodalies lines that call at a station and for the "+N"
+/// overflow pill. Decorative: the row's combined VoiceOver label names every
+/// line, so the capsules are not announced twice.
+struct RodaliesOtherLineBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Color(hex: "1C1C1E"))
+            .lineLimit(1)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 24, minHeight: 18)
+            .fixedSize(horizontal: true, vertical: false)
+            .background(Capsule().fill(.white))
+            .accessibilityHidden(true)
+    }
+}

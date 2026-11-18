@@ -111,6 +111,14 @@
     "en": "%lld changes",
     "es": "%lld transbordos"
   },
+  "%lld trens a l'estació": {
+    "en": "%lld trains at the station",
+    "es": "%lld trenes en la estación"
+  },
+  "%lld trens de la %@": {
+    "en": "%lld trains on %@",
+    "es": "%lld trenes de la %@"
+  },
   "%lld%%": {
     "en": "%lld%%",
     "es": "%lld%%"
@@ -118,6 +126,10 @@
   "%lld,%lld km": {
     "en": "%lld,%lld km",
     "es": "%lld,%lld km"
+  },
+  "+%lld": {
+    "en": "+%lld",
+    "es": "+%lld"
   },
   "+%lld min tard · estimat": {
     "en": "+%lld min late · estimated",
@@ -150,6 +162,10 @@
   "1 transbord": {
     "en": "1 change",
     "es": "1 transbordo"
+  },
+  "1 tren a l'estació": {
+    "en": "1 train at the station",
+    "es": "1 tren en la estación"
   },
   "<1 min": {
     "en": "<1 min",
@@ -823,6 +839,10 @@
     "en": "Thanks! We've got it.",
     "es": "¡Gracias! Lo hemos recibido."
   },
+  "Ha sortit de %@": {
+    "en": "Left %@",
+    "es": "Ha salido de %@"
+  },
   "Horari": {
     "en": "Timetable",
     "es": "Horario"
@@ -1067,6 +1087,10 @@
     "en": "Mode: %@. Change mode",
     "es": "Modo: %@. Cambiar de modo"
   },
+  "Mostra la llista de trens": {
+    "en": "Shows the list of trains",
+    "es": "Muestra la lista de trenes"
+  },
   "Mostra o amaga la llista d'avisos": {
     "en": "Show or hide the alerts list",
     "es": "Muestra u oculta la lista de avisos"
@@ -1080,8 +1104,8 @@
     "es": "Más paradas"
   },
   "NSLocationWhenInUseUsageDescription": {
-    "en": "TransportCat uses your location to show you nearby stations and stops.",
-    "es": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas."
+    "en": "TransportCat uses your location to show you nearby stations and stops and to plan trips from where you are.",
+    "es": "TransportCat usa tu ubicación para mostrarte las estaciones y paradas cercanas y para planificar viajes desde donde estás."
   },
   "No accessible": {
     "en": "Not step-free",
@@ -1247,6 +1271,14 @@
     "en": "Collapsed",
     "es": "Plegado"
   },
+  "Posició de Renfe": {
+    "en": "Renfe position",
+    "es": "Posición de Renfe"
+  },
+  "Posició de Renfe · sense canvi %@": {
+    "en": "Renfe position · unchanged %@",
+    "es": "Posición de Renfe · sin cambios %@"
+  },
   "Posició estimada a partir de l'horari": {
     "en": "Estimated position from the timetable",
     "es": "Posición estimada a partir del horario"
@@ -1254,6 +1286,10 @@
   "Posició estimada a partir de les arribades (iBus)": {
     "en": "Estimated position from arrivals (iBus)",
     "es": "Posición estimada a partir de las llegadas (iBus)"
+  },
+  "Posició estimada amb l'horari i l'ETA de Renfe": {
+    "en": "Estimated position from the timetable and Renfe's ETA",
+    "es": "Posición estimada con el horario y la ETA de Renfe"
   },
   "Posició teòrica segons l'horari": {
     "en": "Theoretical position from the timetable",
@@ -1447,9 +1483,9 @@
     "en": "No arrivals right now",
     "es": "Sin llegadas ahora mismo"
   },
-  "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
-    "en": "No account and no tracking; location is only used on your device.",
-    "es": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
+  "Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.": {
+    "en": "No account and no tracking. Location is used on your device; it is only sent to TMB if you plan a trip from where you are.",
+    "es": "Sin cuenta ni rastreo. La ubicación se usa en el dispositivo; solo se envía a TMB si planificas un viaje desde donde estás."
   },
   "Sense connexió": {
     "en": "No connection",
@@ -1623,9 +1659,17 @@
     "en": "Train on the %@ towards %@",
     "es": "Tren de la %@ hacia %@"
   },
+  "Trens a %@": {
+    "en": "Trains at %@",
+    "es": "Trenes en %@"
+  },
   "Trens ara mateix": {
     "en": "Trains right now",
     "es": "Trenes ahora mismo"
+  },
+  "Trens de la %@": {
+    "en": "%@ trains",
+    "es": "Trenes de la %@"
   },
   "Trens i busos es mouen al mapa a mesura que avancen.": {
     "en": "Trains and buses move on the map as they go.",

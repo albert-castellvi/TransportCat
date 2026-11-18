@@ -141,9 +141,14 @@ final class RodaliesParserTests: XCTestCase {
             from: try fixture("rodalies-trip-updates"),
             knownLines: fixtureLines
         )
+        let updates = RodaliesParser.tripUpdates(
+            from: try fixture("rodalies-trip-updates"),
+            knownLines: fixtureLines
+        )
         let trains = RodaliesParser.trains(
             from: RodaliesParser.vehicles(from: try fixture("rodalies-vehicles"), knownLines: fixtureLines),
             delays: delays,
+            updates: updates,
             tripIndex: try schedule().tripIndex()
         )
         XCTAssertEqual(trains.count, 4)
@@ -162,7 +167,9 @@ final class RodaliesParserTests: XCTestCase {
         XCTAssertEqual(stopped.headsign, "Barcelona-Sants")
         XCTAssertEqual(stopped.delaySeconds, 1800)
         XCTAssertEqual(stopped.currentStopID, "65405")
-        XCTAssertNil(stopped.nextStopID)
+        // The trip update names the real next stop, which the stopped train
+        // now carries instead of nil (review A.4).
+        XCTAssertEqual(stopped.nextStopID, "65404")
 
         let forward = try XCTUnwrap(trains.first { $0.id == "25731" })
         XCTAssertEqual(forward.lineCode, "R1")
@@ -294,5 +301,116 @@ final class RodaliesParserTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(geometry.stationIDs.count, 2)
             }
         }
+    }
+
+    // MARK: - Stop semantics (review A.4)
+
+    private func syntheticTopology(line: String, stations: [String]) throws -> RodaliesTopology {
+        let stationObjects = stations.enumerated().map { index, id in
+            "{\"id\":\"\(id)\",\"name\":\"Estació \(index)\",\"lat\":41.42,\"lon\":2.23,\"lines\":[\"\(line)\"],\"wheelchair\":0}"
+        }.joined(separator: ",")
+        let stationIDs = stations.map { "\"\($0)\"" }.joined(separator: ",")
+        let json = """
+        {"v":1,
+         "lines":[{"code":"\(line)","name":"Línia \(line)","colorHex":"7DBCEC","textColorHex":"000000"}],
+         "stations":[\(stationObjects)],
+         "directions":[{"line":"\(line)","dir":0,"stations":[\(stationIDs)],"points":[[41.42,2.23],[41.43,2.24],[41.44,2.25]]}]}
+        """
+        return try XCTUnwrap(RodaliesTopology.decode(Data(json.utf8)))
+    }
+
+    private func syntheticVehicles(_ json: String) -> [RodaliesVehiclePosition] {
+        RodaliesParser.vehicles(from: Data(json.utf8), knownLines: ["R1", "R4"])
+    }
+
+    /// The trip update's first `stopTimeUpdate` is the real next stop, and its
+    /// arrival time is kept for the ETA work of a later task.
+    func testTripUpdateKeepsNextStopAndPredictedArrival() throws {
+        let payload = """
+        {"entity":[{"tripUpdate":{"trip":{"tripId":"5116V25661R1"},"delay":90,"stopTimeUpdate":[
+          {"stopId":"79404","arrival":{"time":"1795022000","delay":90}},
+          {"stopId":"79405"}]}}]}
+        """
+        let updates = RodaliesParser.tripUpdates(from: Data(payload.utf8), knownLines: ["R1"])
+        let update = try XCTUnwrap(updates["5116V25661R1"])
+        XCTAssertEqual(update.delaySeconds, 90)
+        XCTAssertEqual(update.nextStopID, "79404")
+        XCTAssertEqual(update.predictedArrival, Date(timeIntervalSince1970: 1_795_022_000))
+    }
+
+    /// Train 25661: `IN_TRANSIT_TO` with `stopId=79403` has already left Sant
+    /// Adrià de Besòs; the trip update says Badalona (79404) is next.
+    func testInTransitStopIDIsTheStopLeft() throws {
+        let topology = try syntheticTopology(line: "R1", stations: ["79403", "79404", "79405"])
+        let positions = syntheticVehicles("""
+        {"entity":[{"vehicle":{"trip":{"tripId":"5116V25661R1"},"vehicle":{"id":"25661"},
+          "position":{"latitude":41.43172,"longitude":2.23675},
+          "stopId":"79403","currentStatus":"IN_TRANSIT_TO"}}]}
+        """)
+        let updates = RodaliesParser.tripUpdates(from: Data("""
+        {"entity":[{"tripUpdate":{"trip":{"tripId":"5116V25661R1"},"stopTimeUpdate":[
+          {"stopId":"79404","arrival":{"time":"1795022000"}}]}}]}
+        """.utf8), knownLines: ["R1"])
+        let trains = RodaliesParser.trains(
+            from: positions,
+            delays: [:],
+            updates: updates,
+            tripIndex: [
+                "5116V25661R1": RodaliesTripInfo(lineCode: "R1", direction: 0, headsign: "Badalona"),
+            ],
+            topology: topology
+        )
+        let train = try XCTUnwrap(trains.first)
+        XCTAssertEqual(train.currentStopID, "79403")
+        XCTAssertEqual(train.nextStopID, "79404")
+    }
+
+    /// Train 77550 (R4): with no trip update the direction order still knows
+    /// Sant Joan Despí (72302) follows Cornellà (72303).
+    func testInTransitWithoutTripUpdateUsesTheDirectionOrder() throws {
+        let topology = try syntheticTopology(line: "R4", stations: ["72303", "72302"])
+        let positions = syntheticVehicles("""
+        {"entity":[{"vehicle":{"trip":{"tripId":"5116V77550R4"},"vehicle":{"id":"77550"},
+          "position":{"latitude":41.35,"longitude":2.07},
+          "stopId":"72303","currentStatus":"IN_TRANSIT_TO"}}]}
+        """)
+        let trains = RodaliesParser.trains(
+            from: positions,
+            delays: [:],
+            tripIndex: [
+                "5116V77550R4": RodaliesTripInfo(lineCode: "R4", direction: 0, headsign: "Sant Vicenç"),
+            ],
+            topology: topology
+        )
+        let train = try XCTUnwrap(trains.first)
+        XCTAssertEqual(train.currentStopID, "72303")
+        XCTAssertEqual(train.nextStopID, "72302")
+    }
+
+    /// An `INCOMING_AT` vehicle is arriving at its `stopId`, so that stays the
+    /// next stop even when a trip update points past it.
+    func testIncomingStopIsTheNextOneEvenWithATripUpdate() throws {
+        let topology = try syntheticTopology(line: "R1", stations: ["79403", "79404", "79405"])
+        let positions = syntheticVehicles("""
+        {"entity":[{"vehicle":{"trip":{"tripId":"5116V25661R1"},"vehicle":{"id":"25661"},
+          "position":{"latitude":41.44,"longitude":2.24},
+          "stopId":"79404","currentStatus":"INCOMING_AT"}}]}
+        """)
+        let updates = RodaliesParser.tripUpdates(from: Data("""
+        {"entity":[{"tripUpdate":{"trip":{"tripId":"5116V25661R1"},"stopTimeUpdate":[
+          {"stopId":"79405"}]}}]}
+        """.utf8), knownLines: ["R1"])
+        let trains = RodaliesParser.trains(
+            from: positions,
+            delays: [:],
+            updates: updates,
+            tripIndex: [
+                "5116V25661R1": RodaliesTripInfo(lineCode: "R1", direction: 0, headsign: "Badalona"),
+            ],
+            topology: topology
+        )
+        let train = try XCTUnwrap(trains.first)
+        XCTAssertNil(train.currentStopID)
+        XCTAssertEqual(train.nextStopID, "79404")
     }
 }

@@ -112,6 +112,10 @@ struct RodaliesTripInfo: Equatable {
 struct RodaliesLiveTrain: Equatable, Identifiable {
     /// The vehicle id the feed publishes (Renfe's train number, `18122`).
     let id: String
+    /// GTFS trip id (`5116V18122R16`). It joins the live train to the
+    /// timetable pack (scheduled departure and leg duration) and to the
+    /// trip-update ETA.
+    let tripID: String
     /// Line the trip belongs to; nil when its trip id names no known line.
     let lineCode: String
     /// Direction from the timetable, nil when the trip is not in today's pack.
@@ -127,9 +131,13 @@ struct RodaliesLiveTrain: Equatable, Identifiable {
     let delaySeconds: Int?
     /// Timestamp of the GPS fix.
     let timestamp: Date?
-    /// Stop the train is at or leaving, when the feed names it.
+    /// Stop the train is at (`STOPPED_AT`, `INCOMING_AT`) or has just left
+    /// (`IN_TRANSIT_TO`, where the feed's `stopId` is the stop behind it).
     let currentStopID: String?
-    /// Next stop the feed reports.
+    /// The next stop the feed really points at: the approaching stop for
+    /// `INCOMING_AT`, and the trip update's (or the direction order's) next
+    /// stop for a train that already left its `stopId`. Nil when unknown, and
+    /// the UI must then not claim a "Pròxima".
     let nextStopID: String?
     /// GTFS-Realtime `currentStatus` (`INCOMING_AT`, `STOPPED_AT`...).
     let status: String?
