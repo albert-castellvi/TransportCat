@@ -17,6 +17,21 @@ struct RodaliesVehiclePosition: Equatable {
     let status: String?
 }
 
+/// What one nucleus trip's `trip_updates.json` entity says, after the feed's
+/// own filtering: the delay, the real next stop and, when the feed sends it,
+/// the predicted arrival there.
+struct RodaliesTripUpdate: Equatable {
+    /// Trip-level delay in seconds, or the first stop's delay when the trip
+    /// carries none. Nil means the feed says nothing about this trip's timing.
+    let delaySeconds: Int?
+    /// The first `stopTimeUpdate` stop: GTFS-Realtime's next stop for the trip.
+    /// This is the real next stop, unlike the vehicle's `stopId` for an
+    /// `IN_TRANSIT_TO` vehicle, which is the stop it just left.
+    let nextStopID: String?
+    /// Predicted arrival at `nextStopID`, when the feed sends `arrival.time`.
+    let predictedArrival: Date?
+}
+
 /// Tolerant parsers for the two Renfe GTFS-Realtime JSON feeds.
 ///
 /// Every payload is decoded with `JSONSerialization`, the same path the TMB and
@@ -99,59 +114,121 @@ enum RodaliesParser {
 
     /// Trip id -> delay in seconds of `trip_updates.json`, nucleus trips only.
     ///
+    /// Kept as the delay-only view of `tripUpdates` for the boards that do not
+    /// need the next stop; both share one parse so they cannot disagree.
+    static func tripDelays(from data: Data, knownLines: [String]) -> [String: Int] {
+        tripUpdates(from: data, knownLines: knownLines).compactMapValues { $0.delaySeconds }
+    }
+
+    /// Trip id -> what `trip_updates.json` says about the trip, nucleus trips
+    /// only.
+    ///
     /// The feed reports the delay at trip level, and beside it per stop. The
     /// trip level wins; when it is absent the first stop that carries one is
-    /// used. A trip with no delay at all is not in the map, which is what makes
-    /// "no delay known" different from "on time".
-    static func tripDelays(from data: Data, knownLines: [String]) -> [String: Int] {
+    /// used. The first `stopTimeUpdate` supplies the real next stop, which is
+    /// how an `IN_TRANSIT_TO` vehicle (whose `stopId` is the stop it left) gets
+    /// an honest "Pròxima" instead of the station behind it.
+    static func tripUpdates(from data: Data, knownLines: [String]) -> [String: RodaliesTripUpdate] {
         guard let entities = entities(from: data) else { return [:] }
-        var delays: [String: Int] = [:]
+        var updates: [String: RodaliesTripUpdate] = [:]
         for entity in entities {
             guard let update = JSONValue.dictionary(from: entity["tripUpdate"]),
                   let trip = JSONValue.dictionary(from: update["trip"]),
                   let tripID = JSONValue.string(from: trip["tripId"]), !tripID.isEmpty,
                   lineCode(fromTripID: tripID, knownLines: knownLines) != nil else { continue }
-            if let delay = seconds(update["delay"]) {
-                delays[tripID] = delay
-                continue
-            }
+            var delay = seconds(update["delay"])
+            var nextStopID: String?
+            var predictedArrival: Date?
             for entry in JSONValue.array(from: update["stopTimeUpdate"]) ?? [] {
-                guard let entry = JSONValue.dictionary(from: entry),
-                      let arrival = JSONValue.dictionary(from: entry["arrival"]),
-                      let delay = seconds(arrival["delay"]) else { continue }
-                delays[tripID] = delay
-                break
+                guard let entry = JSONValue.dictionary(from: entry) else { continue }
+                if delay == nil,
+                   let arrival = JSONValue.dictionary(from: entry["arrival"]),
+                   let stopDelay = seconds(arrival["delay"]) {
+                    delay = stopDelay
+                }
+                if nextStopID == nil,
+                   let stopID = JSONValue.string(from: entry["stopId"]),
+                   !stopID.isEmpty {
+                    nextStopID = stopID
+                    if let arrival = JSONValue.dictionary(from: entry["arrival"]) {
+                        predictedArrival = timestamp(from: arrival["time"])
+                    } else if let departure = JSONValue.dictionary(from: entry["departure"]) {
+                        predictedArrival = timestamp(from: departure["time"])
+                    }
+                }
             }
+            updates[tripID] = RodaliesTripUpdate(
+                delaySeconds: delay,
+                nextStopID: nextStopID,
+                predictedArrival: predictedArrival
+            )
         }
-        return delays
+        return updates
     }
 
     // MARK: - Join
 
-    /// Joins the positions with the delays and the timetable.
+    /// Joins the positions with the delays, the trip updates and the timetable.
     ///
     /// The trip id gives the line; the timetable gives the direction and the
     /// destination. A trip missing from the pack (a trip id is date-coded, so a
     /// stale pack breaks the join for one day at most) still becomes a train:
     /// the map draws it on its line and the sheet says what it knows.
+    ///
+    /// The stop fields follow the feed's semantics instead of the convenient
+    /// reading (review A.4): an `IN_TRANSIT_TO` vehicle has already left
+    /// `stopId`, so it is the current stop and the real next one comes from the
+    /// trip update or, failing that, from the direction's stop order. An
+    /// `INCOMING_AT` vehicle is at `stopId`, so that stays its next stop.
     static func trains(
         from positions: [RodaliesVehiclePosition],
         delays: [String: Int],
-        tripIndex: [String: RodaliesTripInfo]
+        updates: [String: RodaliesTripUpdate] = [:],
+        tripIndex: [String: RodaliesTripInfo],
+        topology: RodaliesTopology? = nil
     ) -> [RodaliesLiveTrain] {
         positions.map { position in
             let info = tripIndex[position.tripID]
+            let lineCode = info?.lineCode ?? position.lineCode
+            let direction = info?.direction
+            let update = updates[position.tripID]
+            // A trip update that still names the stop the train just left is
+            // stale news: the topology's next stop is a better answer.
+            let updateNext: String? = update?.nextStopID == position.stopID
+                ? nil
+                : update?.nextStopID
+            let topologyNext = position.stopID.flatMap {
+                stopAfter($0, lineCode: lineCode, direction: direction, topology: topology)
+            }
+            let currentStopID: String?
+            let nextStopID: String?
+            switch position.status {
+            case "INCOMING_AT":
+                currentStopID = nil
+                // The vehicle is arriving at this stop: it is the next one,
+                // whatever else the trip update says.
+                nextStopID = position.stopID
+            case "IN_TRANSIT_TO":
+                currentStopID = position.stopID
+                nextStopID = updateNext ?? topologyNext
+            case "STOPPED_AT":
+                currentStopID = position.stopID
+                nextStopID = updateNext ?? topologyNext
+            default:
+                currentStopID = nil
+                nextStopID = position.stopID
+            }
             return RodaliesLiveTrain(
                 id: position.vehicleID,
-                lineCode: info?.lineCode ?? position.lineCode,
-                direction: info?.direction,
+                lineCode: lineCode,
+                direction: direction,
                 headsign: info?.headsign,
                 position: position.position,
                 bearingDegrees: position.bearingDegrees,
                 delaySeconds: delays[position.tripID],
                 timestamp: position.timestamp,
-                currentStopID: position.status == "STOPPED_AT" ? position.stopID : nil,
-                nextStopID: position.status == "STOPPED_AT" ? nil : position.stopID,
+                currentStopID: currentStopID,
+                nextStopID: nextStopID,
                 status: position.status
             )
         }
@@ -159,6 +236,23 @@ enum RodaliesParser {
     }
 
     // MARK: - Helpers
+
+    /// The stop after `stopID` in the trip's direction, from the bundled
+    /// topology. Nil when the pack does not know the trip, the direction or
+    /// the stop, or the stop is the terminus.
+    private static func stopAfter(
+        _ stopID: String,
+        lineCode: String,
+        direction: Int?,
+        topology: RodaliesTopology?
+    ) -> String? {
+        guard let topology, let direction else { return nil }
+        let stationIDs = topology.stationIDs(line: lineCode, direction: direction)
+        guard let index = stationIDs.firstIndex(of: stopID), index + 1 < stationIDs.count else {
+            return nil
+        }
+        return stationIDs[index + 1]
+    }
 
     /// A delay in seconds, which may be a number or a numeric string and may be
     /// negative (a train ahead of time). `JSONValue.int` drops the sign of a

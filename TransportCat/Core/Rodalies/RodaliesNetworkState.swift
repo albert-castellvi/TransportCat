@@ -17,6 +17,13 @@ private struct RodaliesMotion {
     let targetDistance: Double
     let rawHeading: Double
     let startedAt: Date
+    /// How long the glide from `startDistance` to `targetDistance` takes. A
+    /// stop reassignment (hundreds of metres in one poll) gets a short
+    /// transition; a small real move keeps the full poll glide.
+    let glideDuration: TimeInterval
+    /// Whether the drawn point is a stop coordinate or an interpolation of the
+    /// track rather than a live GPS fix. The marker draws a dashed ring on it.
+    let isEstimated: Bool
 }
 
 /// State of the Rodalies de Catalunya mode: the bundled topology, the daily
@@ -89,6 +96,10 @@ final class RodaliesNetworkState {
     @ObservationIgnored private var geometryByDirection: [String: FGCLineGeometry] = [:]
     /// Train number -> motion state. Not observed: `vehicles` is what the UI reads.
     @ObservationIgnored private var motions: [String: RodaliesMotion] = [:]
+    /// Train number -> when its reported position last actually changed. The
+    /// feed's own per-entity timestamp is the block generation time, so it
+    /// cannot answer this; see `RodaliesPositionTracking`.
+    @ObservationIgnored private var positionTracking = RodaliesPositionTracking()
     /// trip_id -> line, direction and destination, from the timetable.
     @ObservationIgnored private var tripIndex: [String: RodaliesTripInfo] = [:]
     /// trip_id -> delay in seconds of the last successful trip-updates read.
@@ -226,12 +237,21 @@ final class RodaliesNetworkState {
 
             let positions = RodaliesParser.vehicles(from: positionsData, knownLines: knownLines)
             // A delay read that fails keeps the previous delays: a missing
-            // delay is worse than a slightly old one for a rider waiting.
-            let loadedDelays = RodaliesParser.tripDelays(from: updatesData, knownLines: knownLines)
+            // delay is worse than a slightly old one for a rider waiting. The
+            // next stop is read from this poll only, so a trip update that
+            // disappeared falls back to the topology instead of going stale.
+            let loadedUpdates = RodaliesParser.tripUpdates(from: updatesData, knownLines: knownLines)
+            let loadedDelays = loadedUpdates.compactMapValues { $0.delaySeconds }
             if !loadedDelays.isEmpty {
                 delays = loadedDelays
             }
-            let loaded = RodaliesParser.trains(from: positions, delays: delays, tripIndex: tripIndex)
+            let loaded = RodaliesParser.trains(
+                from: positions,
+                delays: delays,
+                updates: loadedUpdates,
+                tripIndex: tripIndex,
+                topology: topology
+            )
             let now = Date()
             trains = loaded
             arrivalsUpdatedAt = now
@@ -284,10 +304,29 @@ final class RodaliesNetworkState {
     /// The live train behind a drawable vehicle, or nil when the feed dropped it
     /// while a sheet was open.
     func liveTrain(id vehicleID: String) -> RodaliesLiveTrain? {
-        let trainID = vehicleID.hasPrefix(Self.vehicleIDPrefix)
-            ? String(vehicleID.dropFirst(Self.vehicleIDPrefix.count))
-            : vehicleID
+        let trainID = Self.trainID(fromVehicleID: vehicleID)
         return trains.first { $0.id == trainID }
+    }
+
+    /// Whether the drawn position of a vehicle is a stop coordinate or an
+    /// interpolation of the track, never a live GPS fix. Unknown trains answer
+    /// `true`: the UI must not claim a GPS it cannot prove.
+    func isEstimated(vehicleID: String) -> Bool {
+        motions[Self.trainID(fromVehicleID: vehicleID)]?.isEstimated ?? true
+    }
+
+    /// Seconds since the train's reported position last changed, or nil for a
+    /// train not in the current feed. This is the client's own age, not the
+    /// feed's per-entity timestamp (which is the block generation time).
+    func positionAge(vehicleID: String, now: Date = Date()) -> TimeInterval? {
+        positionTracking.age(for: Self.trainID(fromVehicleID: vehicleID), now: now)
+    }
+
+    /// The train number behind a `MapVehicle.id`.
+    static func trainID(fromVehicleID vehicleID: String) -> String {
+        vehicleID.hasPrefix(vehicleIDPrefix)
+            ? String(vehicleID.dropFirst(vehicleIDPrefix.count))
+            : vehicleID
     }
 
     /// Stations of one line in travel order, forward direction first.
@@ -304,35 +343,55 @@ final class RodaliesNetworkState {
 
     // MARK: - Motion
 
-    /// Records the new GPS points as glide targets. A train already on the same
+    /// Records the new points as glide targets. A train already on the same
     /// polyline starts from its current drawn distance; a new train, a line
-    /// change or a point that no longer snaps starts at the target.
+    /// change or a point that no longer snaps starts at the target. A point
+    /// more than 5 km from its line is not a train of that line (a corrupted
+    /// feed record) and is not drawn at all.
     private func anchorMotions(_ loaded: [RodaliesLiveTrain], now: Date) {
         var next: [String: RodaliesMotion] = [:]
         next.reserveCapacity(loaded.count)
+        var drawableIDs: Set<String> = []
         for train in loaded {
             let colorHex = colorHex(for: train.lineCode)
-            if let snapped = snap(train) {
+            let projection = nearestProjection(for: train)
+            let placement = RodaliesPositionSanity.placement(offsetMeters: projection?.offsetMeters)
+            guard placement != .hidden else { continue }
+            if placement == .snapped, let projection {
                 let previous = motions[train.id].flatMap { motion -> RodaliesMotion? in
-                    motion.geometry?.polylines == snapped.geometry.polylines ? motion : nil
+                    motion.geometry?.polylines == projection.geometry.polylines ? motion : nil
                 }
                 let start = previous.map { motion in
                     FGCNetwork.glide(
                         from: motion.startDistance,
                         to: motion.targetDistance,
                         elapsed: now.timeIntervalSince(motion.startedAt),
-                        duration: TimeInterval(Self.pollIntervalSeconds)
+                        duration: motion.glideDuration
                     )
-                } ?? snapped.distance
+                } ?? projection.distance
                 next[train.id] = RodaliesMotion(
                     train: train,
                     lineCode: train.lineCode,
                     colorHex: colorHex,
-                    geometry: snapped.geometry,
+                    geometry: projection.geometry,
                     startDistance: start,
-                    targetDistance: snapped.distance,
-                    rawHeading: snapped.heading,
-                    startedAt: now
+                    targetDistance: projection.distance,
+                    rawHeading: projection.heading,
+                    startedAt: now,
+                    glideDuration: RodaliesMotionTransition.duration(
+                        forJumpMeters: projection.distance - start,
+                        pollDuration: TimeInterval(Self.pollIntervalSeconds)
+                    ),
+                    isEstimated: RodaliesPositionEstimate.isEstimated(
+                        status: train.status,
+                        isSnapped: true
+                    )
+                )
+                positionTracking.update(
+                    trainID: train.id,
+                    position: train.position,
+                    projectedDistance: projection.distance,
+                    now: now
                 )
             } else {
                 next[train.id] = RodaliesMotion(
@@ -343,17 +402,33 @@ final class RodaliesNetworkState {
                     startDistance: 0,
                     targetDistance: 0,
                     rawHeading: train.bearingDegrees ?? 0,
-                    startedAt: now
+                    startedAt: now,
+                    glideDuration: 0,
+                    // A raw point that is not arriving at or stopped at a
+                    // stop is the feed's own coordinate, not an estimate.
+                    isEstimated: RodaliesPositionEstimate.isEstimated(
+                        status: train.status,
+                        isSnapped: false
+                    )
+                )
+                positionTracking.update(
+                    trainID: train.id,
+                    position: train.position,
+                    projectedDistance: nil,
+                    now: now
                 )
             }
+            drawableIDs.insert(train.id)
         }
         motions = next
+        positionTracking.prune(keeping: drawableIDs)
     }
 
     /// Projects a train onto the track of its direction, or onto both
-    /// directions of its line when the timetable does not know the trip. Nil
-    /// when no track is close enough, which means the train is drawn raw.
-    private func snap(_ train: RodaliesLiveTrain) -> (geometry: FGCLineGeometry, distance: Double, heading: Double)? {
+    /// directions of its line when the timetable does not know the trip,
+    /// choosing the nearest foot. The offset is uncapped so the caller can tell
+    /// "draw raw" from "this record is not on the line at all".
+    private func nearestProjection(for train: RodaliesLiveTrain) -> RodaliesProjection? {
         var candidates: [String] = []
         if let direction = train.direction {
             candidates.append("\(train.lineCode):\(direction)")
@@ -361,16 +436,30 @@ final class RodaliesNetworkState {
         candidates.append("\(train.lineCode):0")
         candidates.append("\(train.lineCode):1")
 
-        var best: (geometry: FGCLineGeometry, projection: FGCProjection)?
+        var best: RodaliesProjection?
         var seen: Set<String> = []
         for key in candidates where seen.insert(key).inserted {
             guard let geometry = geometryByDirection[key],
-                  let projection = FGCNetwork.snap(train.position, in: geometry) else { continue }
-            if let current = best, current.projection.offsetMeters <= projection.offsetMeters { continue }
-            best = (geometry, projection)
+                  let projection = RodaliesPositionSanity.nearestProjection(of: train.position, in: geometry)
+            else { continue }
+            if let current = best, current.offsetMeters <= projection.offsetMeters { continue }
+            best = RodaliesProjection(
+                geometry: geometry,
+                distance: projection.distance,
+                heading: projection.heading,
+                offsetMeters: projection.offsetMeters
+            )
         }
-        guard let best else { return nil }
-        return (best.geometry, best.projection.distance, best.projection.heading)
+        return best
+    }
+
+    /// One train's point projected on a line geometry, with the geometry it
+    /// belongs to so the glide can be drawn on the same track.
+    private struct RodaliesProjection {
+        let geometry: FGCLineGeometry
+        let distance: Double
+        let heading: Double
+        let offsetMeters: Double
     }
 
     /// Draws every motion at `now`: snapped trains glide along their polyline
@@ -398,7 +487,7 @@ final class RodaliesNetworkState {
                 from: motion.startDistance,
                 to: motion.targetDistance,
                 elapsed: now.timeIntervalSince(motion.startedAt),
-                duration: TimeInterval(Self.pollIntervalSeconds)
+                duration: motion.glideDuration
             )
             guard let position = GeoMath.point(at: distance, points: points, cumulative: cumulative) else {
                 return nil
