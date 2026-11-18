@@ -10,7 +10,13 @@ import UIKit
 struct ExploreScreen: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var query = ""
+    /// Whether the system search UI is presented (spec S2). The search-role tab
+    /// owns the field and its "Tanca", so this is the closest public handle on
+    /// the focused state: while it is on, the title, the gear and the tab bar
+    /// are gone and `mapButton` rides next to the field.
+    @State private var isSearchPresented = false
     /// Place whose detail sheet is open.
     @State private var selectedPlace: Place?
     /// Next arrivals of the favorite places, keyed by `Place.id`, refreshed on
@@ -104,9 +110,20 @@ struct ExploreScreen: View {
                     nearbySection
                 }
             }
+            // Spec S2: while the search UI owns the screen the only chrome left
+            // is the field and its "Tanca", so the way back to the map rides
+            // over the results, next to the field.
+            .overlay(alignment: .topTrailing) {
+                mapButton
+            }
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: isSearchPresented)
             .navigationTitle("Explora")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "Cerca estacions, parades o línies")
+            .searchable(
+                text: $query,
+                isPresented: $isSearchPresented,
+                prompt: "Cerca estacions, parades o línies"
+            )
             // Configuració (unit `settings`) is pushed from here: Explora is
             // the tab that holds the rider's own things, so the gear lives in
             // its top-trailing corner. The heart, when the policy allows it,
@@ -169,6 +186,39 @@ struct ExploreScreen: View {
         // "loading" into departures.
         .onChange(of: rodalies.scheduleLoadedAt) { _, _ in
             Task { await refreshFavoriteArrivals() }
+        }
+    }
+
+    // MARK: - Map button while searching (spec S2)
+
+    /// Way back to the map while the system search UI owns the screen (spec
+    /// S2). The search field is hosted by the search-role tab and cannot host
+    /// extra controls, so the button is pinned to the results list's top
+    /// trailing corner: the closest spot to the field the framework leaves
+    /// open.
+    ///
+    /// It ends the search as well as switching tabs — `isPresented` back to
+    /// false and the query cleared, so coming back to Explora shows the normal
+    /// screen instead of stale results with no field above them.
+    @ViewBuilder
+    private var mapButton: some View {
+        if isSearchPresented {
+            Button {
+                isSearchPresented = false
+                query = ""
+                AppRouter.shared.selectedTab = .map
+            } label: {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 44, height: 44)
+                    .glassEffect(in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Mapa")
+            .padding(.trailing, 16)
+            .padding(.top, 8)
+            .transition(AppMotion.chipTransition)
         }
     }
 
