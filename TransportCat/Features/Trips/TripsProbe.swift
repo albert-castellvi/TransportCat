@@ -186,14 +186,14 @@ enum TripsProbe {
         try? handle.write(contentsOf: Data("\(Date().ISO8601Format())  \(message)\n".utf8))
     }
 
-    /// The probe arguments. iOS turns `-key value` into a default only when a
-    /// value follows, so the usage above always passes one.
+    /// The probe arguments, `-key value` pairs read straight from the launch
+    /// arguments (the defaults domain missed them next to `-AppleLanguages`).
     private static var arguments: [String: String] {
-        let defaults = UserDefaults.standard
+        let launch = ProcessInfo.processInfo.arguments
         var values: [String: String] = [:]
         for key in [tripKey, sheetKey, plannerKey] {
-            if let value = defaults.string(forKey: key) {
-                values[key] = value
+            if let index = launch.firstIndex(of: "-\(key)"), launch.indices.contains(index + 1) {
+                values[key] = launch[index + 1]
             }
         }
         return values
