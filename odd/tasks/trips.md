@@ -16,9 +16,9 @@ Design: canvas https://claude.ai/artifact/WuF4CJtKvAB7QKBcwo9isZ (artboards 1-5 
 |----|------|-------|-------|--------|
 | T0 | Verify planner coverage (B1) with a real call | S4 | inline (Mac) | done: multimodal, see L2 |
 | T1 | Core: planner stop ids, SavedTrip/SavedTripLeg, TripsStore, TripTiming, Itinerary→SavedTrip, tests | S4 | dsh deepseek-v4-flash | done: 904 tests green on the Mac (7 wrong test expectations fixed inline) |
-| T2 | Core: TripLiveState (per-leg live status from metro/bus/FGC/Rodalies sources + alerts + phase), tests | S1 S4 | dsh flash | pending |
-| T3 | UI: trip pill on every map, trips sheet, active-trip card + capsule, global map pinning | S1 S4 | dsh glm5.3-flash | pending |
-| T4 | UI: planner detail actions, Explora "Els teus trajectes" | S1 S4 | dsh flash | pending |
+| T2 | Core: TripLiveState (per-leg live status from metro/bus/FGC/Rodalies sources + alerts + phase), tests | S1 S4 | dsh deepseek-v4-flash | done: 4 compile errors + 3 real bugs fixed inline, 23 tests green |
+| T3 | UI: trip pill on every map, trips sheet, active-trip card + capsule, global map pinning | S1 S4 | dsh glm5.3-flash | in progress |
+| T4 | UI: planner detail actions, Explora "Els teus trajectes" | S1 S4 | dsh glm5.3-flash | done: builds; simulator check in T6 |
 | T5 | Localization ca/es/en for the new strings | S4 | dsh flash | pending |
 | T6 | Mac: build, full tests, simulator tour of the whole flow, fixes | S3 | inline + workers | pending |
 | T7 | Screenshots: web chapter (ca/es/en) + ASC captures/panorama panel | S3 | inline + worker | pending |
@@ -30,3 +30,5 @@ Design: canvas https://claude.ai/artifact/WuF4CJtKvAB7QKBcwo9isZ (artboards 1-5 
 - L2: decision (T0, 2026-11-19): the TMB planner is multimodal. Rocafort → Sant Cugat returned SUBWAY L1/L3 (`agencyName` TMB, `stopId` `3:1.123`, `stopCode` 123 = CODI_ESTACIO), RAIL S1/S2 (`agencyName` FGC, `stopId` `2:GR1` = FGC station code `GR` + platform digit, `routeShortName` S1); Sants → Aeroport returned RAIL R2N (`agencyName` Renfe Cercanias, `stopId` `4:71801` = Rodalies GTFS stop_id) and buses of other operators (Monbus A1, Avanza). So trips are created from the planner; the "Crea'l per trams" manual builder from the mockup is dropped (YAGNI).
 - L3: discovery: FGC has no per-station ETA or timetable in the app, only live train positions (`FGCTrain.nextStopCodes`, `stoppedAtStopCode`, `isOnTime`). Pl. Catalunya is the S1/S2 terminus. FGC legs show live position wording only; an FGC GTFS pack is a later improvement.
 - L4: T1 worker wrote the code in ~7 min, then spent its time building a Linux harness to run XCTest; it was stopped and verified on the Mac instead. Workers now report progress to a log file (headless panes show nothing until exit) and are told not to build Linux harnesses.
+- L5: T2 review on the Mac found real bugs the worker's tests encoded: "després 7 min i 11 min min"; an invented alias rule that made line "11" match "1" (L1 alerts on L11 trips); FGC legs counted only the planner's line. Decision: an FGC leg counts every train that stops at the boarding station and then at the destination (Gràcia → Sant Cugat: S1 and S2); aliases go through `FGCNetwork.baseLineCode(for:)`; line codes otherwise match exactly. The FGC feed lists all remaining stops and omits the station a stopped train is at (checked on `fgc-positions.json`).
+- L6: alert coverage: metro and TMB bus yes; FGC none (no alert feed in the app); Rodalies none today (model exists, no poller). Cards show no alert for those legs rather than a fake "sense incidències".
