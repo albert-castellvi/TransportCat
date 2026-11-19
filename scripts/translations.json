@@ -51,6 +51,14 @@
     "en": "%@ → %@",
     "es": "%@ → %@"
   },
+  "%@ → %@ · direcció %@": {
+    "en": "%1$@ → %2$@ · towards %3$@",
+    "es": "%1$@ → %2$@ · dirección %3$@"
+  },
+  "%@, de %@ a %@, %@": {
+    "en": "%1$@, from %2$@ to %3$@, %4$@",
+    "es": "%1$@, de %2$@ a %3$@, %4$@"
+  },
   "%@, servei afectat": {
     "en": "%@, service affected",
     "es": "%@, servicio afectado"
@@ -58,6 +66,10 @@
   "%@. %@": {
     "en": "%@. %@",
     "es": "%@. %@"
+  },
+  "%@. %@, %@": {
+    "en": "%1$@. %2$@, %3$@",
+    "es": "%1$@. %2$@, %3$@"
   },
   "%lld afectades": {
     "en": "%lld affected",
@@ -170,6 +182,10 @@
   "<1 min": {
     "en": "<1 min",
     "es": "<1 min"
+  },
+  "A bord": {
+    "en": "On board",
+    "es": "A bordo"
   },
   "A peu": {
     "en": "Walk",
@@ -319,6 +335,18 @@
     "en": "Arrival at %@",
     "es": "Llegada a %@"
   },
+  "Arribada aprox. %@": {
+    "en": "Arrival approx. %@",
+    "es": "Llegada aprox. %@"
+  },
+  "Arribada per calcular": {
+    "en": "Arrival to be calculated",
+    "es": "Llegada por calcular"
+  },
+  "Arribat": {
+    "en": "Arrived",
+    "es": "Llegada"
+  },
   "Ascensor fora de servei": {
     "en": "Lift out of service",
     "es": "Ascensor fuera de servicio"
@@ -387,6 +415,10 @@
     "en": "Cancel",
     "es": "Cancelar"
   },
+  "Canvia el nom": {
+    "en": "Rename",
+    "es": "Cambiar el nombre"
+  },
   "Canvia l'idioma": {
     "en": "Change language",
     "es": "Cambia el idioma"
@@ -450,6 +482,10 @@
   "Cap sortida prevista": {
     "en": "No departures expected",
     "es": "Ninguna salida prevista"
+  },
+  "Cap trajecte desat": {
+    "en": "No saved trips",
+    "es": "Ningún trayecto guardado"
   },
   "Cap tren proper ara mateix.": {
     "en": "No trains nearby right now.",
@@ -611,6 +647,18 @@
     "en": "From %@",
     "es": "Desde %@"
   },
+  "Desa": {
+    "en": "Save",
+    "es": "Guardar"
+  },
+  "Desat": {
+    "en": "Saved",
+    "es": "Guardado"
+  },
+  "Desats i recents": {
+    "en": "Saved and recent",
+    "es": "Guardados y recientes"
+  },
   "Desconegut": {
     "en": "Unknown",
     "es": "Desconocido"
@@ -695,6 +743,10 @@
     "en": "The “Next arrivals” widget on the Home Screen, in three sizes and on the Lock Screen.",
     "es": "El widget «Próximas llegadas» en la pantalla de inicio, en tres tamaños y en la pantalla bloqueada."
   },
+  "Elimina": {
+    "en": "Delete",
+    "es": "Eliminar"
+  },
   "Els ascensors i les escales mecàniques fora de servei, amb l'estació.": {
     "en": "Lifts and escalators out of service, with the station.",
     "es": "Los ascensores y las escaleras mecánicas fuera de servicio, con la estación."
@@ -711,6 +763,10 @@
     "en": "Favourites show the next arrivals; you can reorder them and remove them.",
     "es": "Los favoritos salen con las próximas llegadas; puedes cambiarles el orden y quitarlos."
   },
+  "Els teus trajectes": {
+    "en": "Your trips",
+    "es": "Tus trayectos"
+  },
   "Els trens de FGC també diuen quanta gent hi ha a cada cotxe.": {
     "en": "FGC trains also show how busy each carriage is.",
     "es": "Los trenes de FGC también dicen cuánta gente hay en cada coche."
@@ -718,6 +774,10 @@
   "Els trens que hi ha ara mateix es dibuixen sobre la línia.": {
     "en": "The trains running right now are drawn on the line.",
     "es": "Los trenes que hay ahora mismo se dibujan sobre la línea."
+  },
+  "En curs": {
+    "en": "In progress",
+    "es": "En curso"
   },
   "En directe": {
     "en": "Live",
@@ -758,6 +818,10 @@
   "Escriu-nos des de l'app: què no ha funcionat, què hi falta o què milloraries. Ho arriba tot a l'equip.": {
     "en": "Write to us from the app: what didn't work, what's missing or what you'd improve. It all reaches the team.",
     "es": "Escríbenos desde la app: qué no ha funcionado, qué falta o qué mejorarías. Le llega todo al equipo."
+  },
+  "Esperant": {
+    "en": "Waiting",
+    "es": "Esperando"
   },
   "Estacions i parades": {
     "en": "Stations and stops",
@@ -807,6 +871,14 @@
     "en": "TMB credentials are missing (TMBAppId/TMBAppKey). Check the build configuration.",
     "es": "Faltan las credenciales TMB (TMBAppId/TMBAppKey). Comprueba la configuración de compilación."
   },
+  "Fase del trajecte: %@": {
+    "en": "Trip stage: %@",
+    "es": "Fase del trayecto: %@"
+  },
+  "Fes-lo habitual": {
+    "en": "Make it regular",
+    "es": "Hazlo habitual"
+  },
   "Final": {
     "en": "End",
     "es": "Final"
@@ -814,6 +886,10 @@
   "Final del trajecte": {
     "en": "End of journey",
     "es": "Final del trayecto"
+  },
+  "Finalitza": {
+    "en": "End",
+    "es": "Finalizar"
   },
   "Fins al %@": {
     "en": "To %@",
@@ -842,6 +918,18 @@
   "Ha sortit de %@": {
     "en": "Left %@",
     "es": "Ha salido de %@"
+  },
+  "Habitual": {
+    "en": "Regular",
+    "es": "Habitual"
+  },
+  "Habituals": {
+    "en": "Regular",
+    "es": "Habituales"
+  },
+  "Has arribat": {
+    "en": "You've arrived",
+    "es": "Has llegado"
   },
   "Horari": {
     "en": "Timetable",
@@ -915,6 +1003,10 @@
     "en": "Start of journey",
     "es": "Inicio del trayecto"
   },
+  "Inicia": {
+    "en": "Start",
+    "es": "Iniciar"
+  },
   "Instal·lacions": {
     "en": "Facilities",
     "es": "Instalaciones"
@@ -930,6 +1022,10 @@
   "Invertir la direcció": {
     "en": "Reverse direction",
     "es": "Invertir la dirección"
+  },
+  "Ja hi és": {
+    "en": "It's here",
+    "es": "Ya está aquí"
   },
   "L'API TMB ha respost amb l'estat %lld.": {
     "en": "The TMB API responded with status %lld.",
@@ -1039,6 +1135,10 @@
     "en": "Lines",
     "es": "Líneas"
   },
+  "Línies %@": {
+    "en": "Lines %@",
+    "es": "Líneas %@"
+  },
   "Línies de bus": {
     "en": "Bus lines",
     "es": "Líneas de bus"
@@ -1123,6 +1223,10 @@
     "en": "No buses expected on this line right now.",
     "es": "No hay ningún bus previsto en esta línea ahora mismo."
   },
+  "No s'ha pogut actualitzar el trajecte. Torna-ho a provar.": {
+    "en": "Couldn't update the trip. Try again.",
+    "es": "No se ha podido actualizar el trayecto. Vuelve a intentarlo."
+  },
   "No s'ha pogut calcular la ruta. Torna-ho a provar.": {
     "en": "Couldn't work out the route. Try again.",
     "es": "No se ha podido calcular la ruta. Inténtalo de nuevo."
@@ -1190,6 +1294,10 @@
   "No tens cap estació ni parada a menys d'un quilòmetre.": {
     "en": "You have no station or stop within a kilometre.",
     "es": "No tienes ninguna estación ni parada a menos de un kilómetro."
+  },
+  "Nom del trajecte": {
+    "en": "Trip name",
+    "es": "Nombre del trayecto"
   },
   "Notificacions": {
     "en": "Notifications",
@@ -1266,6 +1374,14 @@
   "Planifica un viatge": {
     "en": "Plan a trip",
     "es": "Planifica un viaje"
+  },
+  "Planifica un viatge i desa’l per tenir-lo aquí.": {
+    "en": "Plan a journey and save it to keep it here.",
+    "es": "Planifica un viaje y guárdalo para tenerlo aquí."
+  },
+  "Planifica’n un": {
+    "en": "Plan one",
+    "es": "Planifica uno"
   },
   "Plegat": {
     "en": "Collapsed",
@@ -1419,6 +1535,10 @@
     "en": "Reload",
     "es": "Recargar"
   },
+  "Recent": {
+    "en": "Recent",
+    "es": "Reciente"
+  },
   "Recorregut modificat": {
     "en": "Route diverted",
     "es": "Recorrido modificado"
@@ -1467,6 +1587,10 @@
     "en": "Follow a vehicle",
     "es": "Sigue un vehículo"
   },
+  "Segueix-lo al mapa": {
+    "en": "Follow on the map",
+    "es": "Síguelo en el mapa"
+  },
   "Seguir": {
     "en": "Follow",
     "es": "Seguir"
@@ -1486,6 +1610,10 @@
   "Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.": {
     "en": "No account and no tracking. Location is used on your device; it is only sent to TMB if you plan a trip from where you are.",
     "es": "Sin cuenta ni rastreo. La ubicación se usa en el dispositivo; solo se envía a TMB si planificas un viaje desde donde estás."
+  },
+  "Sense compte ni rastreig; la ubicació només es fa servir al dispositiu.": {
+    "en": "No account and no tracking; location is only used on your device.",
+    "es": "Sin cuenta ni rastreo; la ubicación solo se usa en el dispositivo."
   },
   "Sense connexió": {
     "en": "No connection",
@@ -1579,6 +1707,10 @@
     "en": "TMB doesn't publish arrivals for this line.",
     "es": "TMB no publica las llegadas de esta línea."
   },
+  "Tanca": {
+    "en": "Close",
+    "es": "Cerrar"
+  },
   "Tancar": {
     "en": "Close",
     "es": "Cerrar"
@@ -1598,6 +1730,10 @@
   "Torna a explicar què fa cada pantalla, pàgina a pàgina.": {
     "en": "Walks through what each screen does again, page by page.",
     "es": "Vuelve a explicar qué hace cada pantalla, página a página."
+  },
+  "Torna a planificar": {
+    "en": "Plan again",
+    "es": "Volver a planificar"
   },
   "Torna a veure la introducció": {
     "en": "See the introduction again",
@@ -1623,9 +1759,21 @@
     "en": "All lines",
     "es": "Todas las líneas"
   },
+  "Trajectes": {
+    "en": "Trips",
+    "es": "Trayectos"
+  },
   "Tramvia": {
     "en": "Tram",
     "es": "Tranvía"
+  },
+  "Transbord": {
+    "en": "Transfer",
+    "es": "Transbordo"
+  },
+  "Transbord a %@ · %@ a peu": {
+    "en": "Transfer at %1$@ · %2$@ walk",
+    "es": "Transbordo en %1$@ · %2$@ a pie"
   },
   "TransportCat": {
     "en": "TransportCat",
@@ -1682,6 +1830,10 @@
   "Treu de preferits": {
     "en": "Remove from favourites",
     "es": "Quitar de favoritos"
+  },
+  "Treu dels habituals": {
+    "en": "Remove from regular",
+    "es": "Quitar de habituales"
   },
   "Tria estacions de metro o FGC, o parades d'autobús.": {
     "en": "Choose metro or FGC stations, or bus stops.",
@@ -1743,6 +1895,26 @@
     "en": "View on map",
     "es": "Ver en el mapa"
   },
+  "a %lld parades": {
+    "en": "%lld stops away",
+    "es": "a %lld paradas"
+  },
+  "a 1 parada": {
+    "en": "1 stop away",
+    "es": "a 1 parada"
+  },
+  "a l'andana · amb retard": {
+    "en": "at the platform · delayed",
+    "es": "en el andén · con retraso"
+  },
+  "a l'andana · en hora": {
+    "en": "at the platform · on time",
+    "es": "en el andén · puntual"
+  },
+  "amb retard": {
+    "en": "delayed",
+    "es": "con retraso"
+  },
   "ara": {
     "en": "now",
     "es": "ahora"
@@ -1750,6 +1922,10 @@
   "ara mateix": {
     "en": "right now",
     "es": "ahora mismo"
+  },
+  "arribant a l'andana": {
+    "en": "arriving at the platform",
+    "es": "llegando al andén"
   },
   "bus %@": {
     "en": "bus %@",
@@ -1763,6 +1939,10 @@
     "en": "towards %@ in %@",
     "es": "hacia %@ en %@"
   },
+  "cap tren en directe": {
+    "en": "no live train",
+    "es": "ningún tren en directo"
+  },
   "dades desades i horaris teòrics": {
     "en": "saved data and timetable",
     "es": "datos guardados y horarios teóricos"
@@ -1770,6 +1950,10 @@
   "des de les %@": {
     "en": "from %@",
     "es": "desde las %@"
+  },
+  "després %@ min": {
+    "en": "then %@ min",
+    "es": "luego %@ min"
   },
   "destí desconegut": {
     "en": "unknown destination",
@@ -1786,6 +1970,10 @@
   "en 1 minut": {
     "en": "in 1 minute",
     "es": "en 1 minuto"
+  },
+  "en hora": {
+    "en": "on time",
+    "es": "puntual"
   },
   "en menys d'un minut": {
     "en": "in under a minute",
@@ -1834,6 +2022,18 @@
   "rampa operativa": {
     "en": "ramp working",
     "es": "rampa operativa"
+  },
+  "segons horari": {
+    "en": "scheduled",
+    "es": "según horario"
+  },
+  "segons planificació": {
+    "en": "planned",
+    "es": "según planificación"
+  },
+  "seguiment en directe": {
+    "en": "live tracking",
+    "es": "seguimiento en directo"
   },
   "«A prop» llista les parades més properes amb el temps real.": {
     "en": "“Nearby” lists the closest stops with live times.",
