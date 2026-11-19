@@ -67,7 +67,11 @@ enum TripsProbe {
                 date: Date(),
                 arriveBy: false
             )
-            let itinerary = itineraries.first(where: { hasFGCLeg($0) }) ?? itineraries.first
+            // Metro + FGC first (the L1 + S1/S2 trip the feature was asked
+            // for), then any FGC answer, then the first.
+            let itinerary = itineraries.first(where: { hasFGCLeg($0) && hasMetroLeg($0) })
+                ?? itineraries.first(where: { hasFGCLeg($0) })
+                ?? itineraries.first
             guard let itinerary,
                   let trip = SavedTrip(
                       itinerary: itinerary,
@@ -138,6 +142,12 @@ enum TripsProbe {
         note("trips probe seeded \(store.trips.count) trips")
     }
 
+
+    private static func hasMetroLeg(_ itinerary: Itinerary) -> Bool {
+        itinerary.legs.contains { leg in
+            !leg.isWalk && SavedTrip.operatorKind(agencyName: leg.agencyName, mode: leg.mode) == .metro
+        }
+    }
 
     private static func hasFGCLeg(_ itinerary: Itinerary) -> Bool {
         itinerary.legs.contains { leg in
