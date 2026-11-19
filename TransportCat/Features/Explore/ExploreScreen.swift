@@ -124,7 +124,7 @@ struct ExploreScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollViewReader { proxy in
                 exploreList
                     // Typing from a list left at "A prop" would hide the

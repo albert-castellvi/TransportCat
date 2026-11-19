@@ -117,17 +117,20 @@ enum TripsProbe {
 
         // A non-FGC answer where there is one: it gives the "Desats i recents"
         // row a different pair of badges from the two FGC ones.
+        // The first answer that makes a trip: a walk-only answer (Pl.
+        // Catalunya is walkable from Rocafort) does not.
         if let answer = try? await client.plan(from: rocafort, to: plazaCatalunya, date: Date(), arriveBy: false),
-           let itinerary = answer.first(where: { !hasFGCLeg($0) }) ?? answer.first,
-           let trip = SavedTrip(
-               itinerary: itinerary,
-               originName: "Rocafort",
-               destinationName: "Pl. Catalunya",
-               origin: rocafort,
-               destination: plazaCatalunya,
-               kind: .saved,
-               now: Date()
-           ) {
+           let trip = answer.lazy.compactMap({ itinerary in
+               SavedTrip(
+                   itinerary: itinerary,
+                   originName: "Rocafort",
+                   destinationName: "Pl. Catalunya",
+                   origin: rocafort,
+                   destination: plazaCatalunya,
+                   kind: .saved,
+                   now: Date()
+               )
+           }).first {
             store.save(trip, as: .saved)
         } else {
             note("trips probe: no saved itinerary")
