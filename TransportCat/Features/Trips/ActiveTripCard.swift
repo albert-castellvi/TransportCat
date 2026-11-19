@@ -102,11 +102,15 @@ struct ActiveTripCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
+            // The live wording keeps its whole width: the wording is the
+            // card's point, so the ride's names wrap before it truncates.
             Text(wording.big)
                 .font(.title3.weight(.semibold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .foregroundStyle(.primary)
+                .layoutPriority(1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(leg.lineName), de \(leg.fromName) a \(leg.toName), \(wording.big)")

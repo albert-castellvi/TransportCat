@@ -18,6 +18,12 @@ struct PlannerScreen: View {
     @State private var errorMessage: String?
     /// Which endpoint the place picker sheet is editing.
     @State private var picking: PlannerPickerTarget?
+    #if DEBUG
+    /// Set when both endpoints were given up front (the debug planner probe):
+    /// the first search then runs on its own, so the screen opens on its
+    /// results instead of an empty list.
+    @State private var runsInitialSearch = false
+    #endif
 
     /// Read in `body`, so a fix that lands after the push re-evaluates the
     /// origin default below.
@@ -33,6 +39,19 @@ struct PlannerScreen: View {
         _origin = State(initialValue: initialOrigin)
         _destination = State(initialValue: initialDestination)
     }
+
+    #if DEBUG
+    /// The debug `-plannerProbe` variant: both endpoints filled in and the
+    /// search run as soon as the screen appears.
+    init(
+        initialOrigin: PlannerEndpoint?,
+        initialDestination: PlannerEndpoint?,
+        runsInitialSearch: Bool
+    ) {
+        self.init(initialOrigin: initialOrigin, initialDestination: initialDestination)
+        _runsInitialSearch = State(initialValue: runsInitialSearch)
+    }
+    #endif
 
     var body: some View {
         List {
@@ -72,6 +91,12 @@ struct PlannerScreen: View {
             // lands after this task, so `onChange` below takes it too.
             location.start()
             adoptCurrentLocation()
+            #if DEBUG
+            if runsInitialSearch {
+                runsInitialSearch = false
+                await plan()
+            }
+            #endif
         }
         .onChange(of: location.location) { _, _ in
             adoptCurrentLocation()

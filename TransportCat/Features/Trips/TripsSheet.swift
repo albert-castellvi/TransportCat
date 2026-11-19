@@ -164,7 +164,10 @@ struct TripsSheet: View {
             Text(trip.name)
                 .font(.headline)
                 .fixedSize(horizontal: false, vertical: true)
+            // Fixed size: next to the active row's Finalitza the badges were
+            // squeezed to a zero-width column.
             TripLineBadges(legs: trip.legs)
+                .fixedSize()
             Text(kindCaption(trip.kind))
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -271,6 +271,31 @@ final class TripsStoreTests: XCTestCase {
         XCTAssertEqual(store.trip(id: habitual.id)?.kind, .habitual)
     }
 
+    func testStartingAPlannerCopyOfAKnownTripKeepsTheStoredOne() throws {
+        // The planner hands a fresh trip (new id) for the same ride on every
+        // call: starting it again must not store a second recent copy.
+        let store = TripsStore(defaults: defaults)
+        let first = store.start(trip: trip("1"), now: minutes(5))
+        XCTAssertEqual(store.trips.count, 1)
+
+        store.start(trip: trip("1"), now: minutes(10))
+
+        XCTAssertEqual(store.trips.count, 1)
+        XCTAssertEqual(store.trips.first?.id, store.activeTrip?.tripID)
+        XCTAssertNotNil(first)
+    }
+
+    func testStartingAPlannerCopyOfAHabitualTripFollowsTheHabitual() throws {
+        let store = TripsStore(defaults: defaults)
+        let habitual = store.save(trip("1"), as: .habitual)
+
+        store.start(trip: trip("1"), now: minutes(10))
+
+        XCTAssertEqual(store.trips.map(\.id), [habitual.id])
+        XCTAssertEqual(store.trips.first?.kind, .habitual)
+        XCTAssertEqual(store.activeTrip?.tripID, habitual.id)
+    }
+
     func testRemovingTheActiveTripEndsIt() throws {
         let store = TripsStore(defaults: defaults)
         let trip = store.save(trip("1"), as: .saved)

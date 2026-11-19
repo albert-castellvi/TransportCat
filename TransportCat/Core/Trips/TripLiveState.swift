@@ -167,7 +167,17 @@ final class TripLiveState {
         let liveFirst = built[0].flatMap { realCatch(trip: trip, status: $0, startedAt: startedAt, now: now) }
         if let liveFirst {
             estimatedArrival = liveFirst + TimeInterval(trip.plannedDurationSeconds)
-            phase = TripTiming.livePhase(trip: trip, firstDeparture: liveFirst, now: now)
+            // The live phase counts from when the rider boards the catchable
+            // departure, which is the start instant in the common case. It
+            // only replaces the planned phase before the trip begins: a
+            // live departure another minute away is the next vehicle, not a
+            // trip that has already arrived.
+            let planned = TripTiming.plannedPhase(trip: trip, startedAt: startedAt, now: now)
+            if case .waiting = planned {
+                phase = TripTiming.livePhase(trip: trip, firstDeparture: liveFirst, now: now)
+            } else {
+                phase = planned
+            }
         } else {
             estimatedArrival = TripTiming.plannedArrival(trip: trip, startedAt: startedAt)
             phase = TripTiming.plannedPhase(trip: trip, startedAt: startedAt, now: now)

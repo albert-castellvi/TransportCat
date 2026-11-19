@@ -6,6 +6,7 @@ import SwiftUI
 /// trip is being followed.
 struct TripPillButton: View {
     @State private var isSheetPresented = false
+    @State private var detent: PresentationDetent = .medium
 
     private var trips: TripsStore { TripsStore.shared }
 
@@ -34,9 +35,19 @@ struct TripPillButton: View {
             NavigationStack {
                 TripsSheet()
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.medium, .large], selection: $detent)
             .presentationDragIndicator(.visible)
         }
+        #if DEBUG
+        // `-tripsSheet open|large`: present the sheet at launch for a tour,
+        // which cannot tap the map's overlay buttons.
+        .task {
+            guard let mode = TripsProbe.tripsSheetMode else { return }
+            try? await Task.sleep(for: .seconds(3))
+            detent = mode == "large" ? .large : .medium
+            isSheetPresented = true
+        }
+        #endif
     }
 
     /// The planned-route glyph of the mockup.

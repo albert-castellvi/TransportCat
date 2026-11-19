@@ -214,6 +214,13 @@ struct RootView: View {
                 return
             }
         }
+        #if DEBUG
+        // Debug-only trip probes (`-tripProbe`): put the trips feature on
+        // screen for a simulator tour.
+        .task {
+            await TripsProbe.runAtLaunch()
+        }
+        #endif
     }
 
     /// Root visibility is authoritative: retained offscreen maps cannot start sampling.

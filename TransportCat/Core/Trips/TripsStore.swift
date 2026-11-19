@@ -224,11 +224,19 @@ final class TripsStore {
 
     /// Follows a trip straight from the planner: an unknown one is saved as
     /// recent first, then started.
+    ///
+    /// The signature decides whether it is known, not the id: the planner
+    /// builds a fresh `SavedTrip` with a new id on every call, so the last
+    /// opened itinerary used to be stored as recent again on every launch
+    /// (the app reopens the active trip through its plan). A trip already
+    /// kept as saved or habitual is followed as that same trip.
     func start(trip: SavedTrip, now: Date = Date()) {
         expireIfStale(now: now)
-        if self.trip(id: trip.id) == nil {
-            save(trip, as: .recent)
+        if let stored = trips.first(where: { $0.signature == trip.signature }) {
+            start(id: stored.id, now: now)
+            return
         }
+        save(trip, as: .recent)
         start(id: trip.id, now: now)
     }
 
