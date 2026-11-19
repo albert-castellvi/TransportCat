@@ -25,6 +25,15 @@ struct PlannerScreen: View {
 
     init() {}
 
+    /// Opens the planner with endpoints already filled (spec S4): the active
+    /// trip card's "Torna a planificar" re-plans the trip's origin and
+    /// destination. Any endpoint left nil keeps the default behavior — the
+    /// origin adopts the rider's current location.
+    init(initialOrigin: PlannerEndpoint?, initialDestination: PlannerEndpoint?) {
+        _origin = State(initialValue: initialOrigin)
+        _destination = State(initialValue: initialDestination)
+    }
+
     var body: some View {
         List {
             routeSection
