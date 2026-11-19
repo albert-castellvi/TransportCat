@@ -136,7 +136,12 @@ enum PlannerParser {
     private static func legPlace(from any: Any?) -> LegPlace? {
         guard let dict = JSONValue.dictionary(from: any),
               let point = coordinate(from: dict) else { return nil }
-        return LegPlace(name: JSONValue.string(from: dict["name"]) ?? "", position: point)
+        return LegPlace(
+            name: JSONValue.string(from: dict["name"]) ?? "",
+            position: point,
+            stopId: JSONValue.string(from: dict["stopId"]),
+            stopCode: JSONValue.string(from: dict["stopCode"])
+        )
     }
 
     private static func legStop(from any: Any?) -> LegStop? {
