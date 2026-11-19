@@ -117,6 +117,16 @@ final class AppRouter {
         defaults.string(forKey: appModeKey) ?? metroMode
     }
 
+    /// Switches to the map tab on the global mode (spec S4): a trip being
+    /// followed pins its lines on the global map, so starting one from the
+    /// planner or from Explora lands there. Writes the same `appMode` key the
+    /// mode menu writes, so the tab, the screens and the accessory's menu stay
+    /// in agreement through `@AppStorage` alone.
+    func showActiveTripOnMap() {
+        defaults.set(AppMode.global.rawValue, forKey: Self.appModeKey)
+        selectedTab = .map
+    }
+
     /// Marks the focus as handled.
     func clearFocus() {
         pendingFocus = nil

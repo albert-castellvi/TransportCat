@@ -36,7 +36,11 @@ struct PlannerScreen: View {
         .navigationTitle("Planifica un viatge")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: Itinerary.self) { itinerary in
-            PlannerItineraryDetail(itinerary: itinerary)
+            PlannerItineraryDetail(
+                itinerary: itinerary,
+                origin: origin,
+                destination: destination
+            )
         }
         .sheet(item: $picking) { target in
             PlannerPlacePickerSheet(

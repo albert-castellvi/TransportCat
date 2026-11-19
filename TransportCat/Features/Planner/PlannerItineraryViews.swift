@@ -80,9 +80,16 @@ struct PlannerLegBadge: View {
 // MARK: - Detail
 
 /// Itinerary detail (spec S16): the route map on top, then one row per leg
-/// with its stops.
+/// with its stops, and the save/follow actions at the bottom (spec S4). The
+/// planner passes its endpoints in, so a saved trip keeps them for re-planning.
 struct PlannerItineraryDetail: View {
     let itinerary: Itinerary
+    var origin: PlannerEndpoint?
+    var destination: PlannerEndpoint?
+
+    /// Re-read on every render: a save or a start updates the store, and the
+    /// bar's saved-state captions follow.
+    private var trips: TripsStore { TripsStore.shared }
 
     var body: some View {
         ScrollView {
@@ -106,10 +113,103 @@ struct PlannerItineraryDetail: View {
         }
         .navigationTitle(PlannerFormat.totalLabel(seconds: itinerary.duration))
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            tripActionsBar
+        }
     }
 
     private var summary: String {
         "\(PlannerFormat.timeRangeLabel(start: itinerary.startTime, end: itinerary.endTime)) · \(PlannerFormat.transfersLabel(itinerary.transfers)) · \(PlannerFormat.walkingLabel(seconds: itinerary.walkTime))"
+    }
+
+    // MARK: - Save and follow (spec S4)
+
+    /// The trip the itinerary would become, or nil when it has no transit leg
+    /// (a walk-only plan is not a trip to follow) — the bar hides then.
+    private var trip: SavedTrip? {
+        SavedTrip(
+            itinerary: itinerary,
+            originName: originName,
+            destinationName: destinationName,
+            origin: origin?.position ?? firstPosition,
+            destination: destination?.position ?? lastPosition,
+            kind: .recent,
+            now: Date()
+        )
+    }
+
+    /// The endpoint's label; "La meva ubicació" is what the current-location
+    /// endpoint already carries.
+    private var originName: String {
+        origin?.label ?? itinerary.legs.first?.from.name ?? ""
+    }
+
+    private var destinationName: String {
+        destination?.label ?? itinerary.legs.last?.to.name ?? ""
+    }
+
+    private var firstPosition: GeoPoint {
+        itinerary.legs.first?.from.position ?? GeoPoint(latitude: 41.3874, longitude: 2.1686)
+    }
+
+    private var lastPosition: GeoPoint {
+        itinerary.legs.last?.to.position ?? firstPosition
+    }
+
+    /// A stored trip with the same `signature` and this kind or a more
+    /// prominent one: the state the two save buttons show as done.
+    private func isStored(as kind: TripKind) -> Bool {
+        guard let trip else { return false }
+        return trips.ordered.contains {
+            $0.signature == trip.signature && $0.kind.rank <= kind.rank
+        }
+    }
+
+    @ViewBuilder
+    private var tripActionsBar: some View {
+        if let trip {
+            VStack(spacing: 10) {
+                Button {
+                    trips.start(trip: trip)
+                    AppRouter.shared.showActiveTripOnMap()
+                } label: {
+                    Label("Segueix-lo al mapa", systemImage: "map")
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                HStack(spacing: 10) {
+                    Button {
+                        trips.save(trip, as: .habitual)
+                    } label: {
+                        Label(
+                            isStored(as: .habitual) ? String(localized: "Habitual") : String(localized: "Fes-lo habitual"),
+                            systemImage: isStored(as: .habitual) ? "star.fill" : "star"
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isStored(as: .habitual))
+
+                    Button {
+                        trips.save(trip, as: .saved)
+                    } label: {
+                        Label(
+                            isStored(as: .saved) ? String(localized: "Desat") : String(localized: "Desa"),
+                            systemImage: isStored(as: .saved) ? "bookmark.fill" : "bookmark"
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isStored(as: .saved))
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+            .background(.bar)
+        }
     }
 }
 

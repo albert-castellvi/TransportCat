@@ -90,6 +90,11 @@ struct ExploreScreen: View {
     @ViewBuilder
     private var exploreList: some View {
         List {
+            // The rider's trips (spec S4): first section, only once there is
+            // something to show; the full list lives in the map's trips pill.
+            if !TripsStore.shared.ordered.isEmpty {
+                ExploreTripsSection()
+            }
             // Planner entry (spec S16): the only row Explora adds for it.
             Section {
                 NavigationLink {
