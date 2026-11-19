@@ -1,3 +1,4 @@
+import MapKit
 import XCTest
 @testable import TransportCat
 
@@ -307,5 +308,22 @@ final class SavedTripTests: XCTestCase {
         let decoded = try JSONDecoder().decode(SavedTrip.self, from: data)
 
         XCTAssertEqual(decoded, saved)
+    }
+
+    // MARK: - Camera
+
+    func testCameraKeepsTheRouteAboveTheTripCard() throws {
+        let saved = try trip(try itineraries("planner-rocafort-santcugat")[1])
+        let rect = try XCTUnwrap(TripMapGeometry.cameraRect(of: saved))
+        let route = saved.legs.flatMap(\.geometry).map {
+            MKMapPoint(CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude))
+        }
+
+        XCTAssertFalse(route.isEmpty)
+        for point in route {
+            XCTAssertTrue(rect.contains(point))
+            // The lower 60 % of the camera is the trip card's.
+            XCTAssertLessThan((point.y - rect.minY) / rect.height, 0.4)
+        }
     }
 }
