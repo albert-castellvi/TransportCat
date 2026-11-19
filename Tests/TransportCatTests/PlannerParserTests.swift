@@ -84,6 +84,42 @@ final class PlannerParserTests: XCTestCase {
         XCTAssertEqual(metroLeg.intermediateStops[2].position.latitude, 41.3977, accuracy: 1e-6)
     }
 
+    /// Spec S4: saved trips need the stop the live sources know, so the
+    /// endpoint keeps OTP's `stopId` and `stopCode`.
+    func testLegPlacesCarryTheStopIds() throws {
+        let itinerary = try XCTUnwrap(parse("planner-plan").first)
+
+        XCTAssertNil(itinerary.legs[0].from.stopId)
+        XCTAssertNil(itinerary.legs[0].to.stopCode)
+        // This fixture publishes the code only, with no feed-qualified id.
+        XCTAssertEqual(itinerary.legs[1].from.stopCode, "128")
+        XCTAssertNil(itinerary.legs[1].from.stopId)
+        XCTAssertEqual(itinerary.legs[1].to.name, "Glòries")
+        XCTAssertEqual(itinerary.legs[1].to.stopCode, "432")
+    }
+
+    func testRealPlanStopIdsTakeTheOperatorShapes() throws {
+        let rocafort = try parse("planner-rocafort-santcugat")
+        let sants = try parse("planner-sants-aeroport")
+
+        // Metro "3:1.123" with CODI_ESTACIO "123".
+        let l1 = try XCTUnwrap(rocafort[1].legs[1].from)
+        XCTAssertEqual(l1.stopId, "3:1.123")
+        XCTAssertEqual(l1.stopCode, "123")
+        // FGC "2:GR1", platform digit included, and no stop code.
+        let fgc = try XCTUnwrap(rocafort[1].legs.last(where: { $0.mode == "RAIL" })?.from)
+        XCTAssertEqual(fgc.name, "Gràcia")
+        XCTAssertEqual(fgc.stopId, "2:GR1")
+        XCTAssertNil(fgc.stopCode)
+        // Rodalies "4:71801", the GTFS stop id.
+        let rodalies = try XCTUnwrap(sants[0].legs.last(where: { $0.mode == "RAIL" })?.from)
+        XCTAssertEqual(rodalies.stopId, "4:71801")
+        // TMB bus "3:2.319.674897" with CODI_PARADA "319".
+        let bus = try XCTUnwrap(rocafort[0].legs[1].from)
+        XCTAssertEqual(bus.stopId, "3:2.319.674897")
+        XCTAssertEqual(bus.stopCode, "319")
+    }
+
     func testLegGeometryIsDecodedFromTheEncodedPolyline() throws {
         let itinerary = try XCTUnwrap(parse("planner-plan").first)
         let metroLeg = itinerary.legs[1]

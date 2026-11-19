@@ -209,6 +209,38 @@
         }
       }
     },
+    "%@ → %@ · direcció %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ → %2$@ · dirección %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ → %2$@ · towards %3$@"
+          }
+        }
+      }
+    },
+    "%@, de %@ a %@, %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, de %2$@ a %3$@, %4$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, from %2$@ to %3$@, %4$@"
+          }
+        }
+      }
+    },
     "%@, servei afectat": {
       "localizations": {
         "es": {
@@ -237,6 +269,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@. %@"
+          }
+        }
+      }
+    },
+    "%@. %@, %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@, %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@, %3$@"
           }
         }
       }
@@ -685,6 +733,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "<1 min"
+          }
+        }
+      }
+    },
+    "A bord": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A bordo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On board"
           }
         }
       }
@@ -1281,6 +1345,54 @@
         }
       }
     },
+    "Arribada aprox. %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada aprox. %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrival approx. %@"
+          }
+        }
+      }
+    },
+    "Arribada per calcular": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada por calcular"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrival to be calculated"
+          }
+        }
+      }
+    },
+    "Arribat": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrived"
+          }
+        }
+      }
+    },
     "Ascensor fora de servei": {
       "localizations": {
         "es": {
@@ -1537,6 +1649,22 @@
         }
       }
     },
+    "Canvia el nom": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar el nombre"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        }
+      }
+    },
     "Canvia l'idioma": {
       "localizations": {
         "es": {
@@ -1789,6 +1917,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "No departures expected"
+          }
+        }
+      }
+    },
+    "Cap trajecte desat": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún trayecto guardado"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No saved trips"
           }
         }
       }
@@ -2433,6 +2577,54 @@
         }
       }
     },
+    "Desa": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "Desat": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved"
+          }
+        }
+      }
+    },
+    "Desats i recents": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardados y recientes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved and recent"
+          }
+        }
+      }
+    },
     "Desconegut": {
       "localizations": {
         "es": {
@@ -2769,6 +2961,22 @@
         }
       }
     },
+    "Elimina": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        }
+      }
+    },
     "Els ascensors i les escales mecàniques fora de servei, amb l'estació.": {
       "localizations": {
         "es": {
@@ -2833,6 +3041,22 @@
         }
       }
     },
+    "Els teus trajectes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus trayectos"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your trips"
+          }
+        }
+      }
+    },
     "Els trens de FGC també diuen quanta gent hi ha a cada cotxe.": {
       "localizations": {
         "es": {
@@ -2861,6 +3085,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "The trains running right now are drawn on the line."
+          }
+        }
+      }
+    },
+    "En curs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En curso"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In progress"
           }
         }
       }
@@ -3021,6 +3261,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Write to us from the app: what didn't work, what's missing or what you'd improve. It all reaches the team."
+          }
+        }
+      }
+    },
+    "Esperant": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting"
           }
         }
       }
@@ -3217,6 +3473,38 @@
         }
       }
     },
+    "Fase del trajecte: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fase del trayecto: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip stage: %@"
+          }
+        }
+      }
+    },
+    "Fes-lo habitual": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazlo habitual"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make it regular"
+          }
+        }
+      }
+    },
     "Final": {
       "localizations": {
         "es": {
@@ -3245,6 +3533,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "End of journey"
+          }
+        }
+      }
+    },
+    "Finalitza": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalizar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End"
           }
         }
       }
@@ -3357,6 +3661,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Left %@"
+          }
+        }
+      }
+    },
+    "Habitual": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habitual"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regular"
+          }
+        }
+      }
+    },
+    "Habituals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Habituales"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regular"
+          }
+        }
+      }
+    },
+    "Has arribat": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has llegado"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've arrived"
           }
         }
       }
@@ -3649,6 +4001,22 @@
         }
       }
     },
+    "Inicia": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        }
+      }
+    },
     "Instal·lacions": {
       "localizations": {
         "es": {
@@ -3709,6 +4077,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Reverse direction"
+          }
+        }
+      }
+    },
+    "Ja hi és": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya está aquí"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It's here"
           }
         }
       }
@@ -4145,6 +4529,22 @@
         }
       }
     },
+    "Línies %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líneas %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lines %@"
+          }
+        }
+      }
+    },
     "Línies de bus": {
       "localizations": {
         "es": {
@@ -4465,6 +4865,22 @@
         }
       }
     },
+    "No s'ha pogut actualitzar el trajecte. Torna-ho a provar.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido actualizar el trayecto. Vuelve a intentarlo."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update the trip. Try again."
+          }
+        }
+      }
+    },
     "No s'ha pogut calcular la ruta. Torna-ho a provar.": {
       "localizations": {
         "es": {
@@ -4733,6 +5149,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "You have no station or stop within a kilometre."
+          }
+        }
+      }
+    },
+    "Nom del trajecte": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre del trayecto"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trip name"
           }
         }
       }
@@ -5037,6 +5469,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Plan a trip"
+          }
+        }
+      }
+    },
+    "Planifica un viatge i desa’l per tenir-lo aquí.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planifica un viaje y guárdalo para tenerlo aquí."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan a journey and save it to keep it here."
+          }
+        }
+      }
+    },
+    "Planifica’n un": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planifica uno"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan one"
           }
         }
       }
@@ -5601,6 +6065,22 @@
         }
       }
     },
+    "Recent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reciente"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent"
+          }
+        }
+      }
+    },
     "Recorregut modificat": {
       "localizations": {
         "es": {
@@ -5793,6 +6273,22 @@
         }
       }
     },
+    "Segueix-lo al mapa": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Síguelo en el mapa"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow on the map"
+          }
+        }
+      }
+    },
     "Seguir": {
       "localizations": {
         "es": {
@@ -5853,6 +6349,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "No arrivals right now"
+          }
+        }
+      }
+    },
+    "Sense compte ni rastreig. La ubicació es fa servir al dispositiu; només s'envia a TMB si planifiques un viatge des d'on ets.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin cuenta ni rastreo. La ubicación se usa en el dispositivo; solo se envía a TMB si planificas un viaje desde donde estás."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No account and no tracking. Location is used on your device; it is only sent to TMB if you plan a trip from where you are."
           }
         }
       }
@@ -6241,6 +6753,22 @@
         }
       }
     },
+    "Tanca": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        }
+      }
+    },
     "Tancar": {
       "localizations": {
         "es": {
@@ -6317,6 +6845,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Walks through what each screen does again, page by page."
+          }
+        }
+      }
+    },
+    "Torna a planificar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a planificar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan again"
           }
         }
       }
@@ -6417,6 +6961,22 @@
         }
       }
     },
+    "Trajectes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trayectos"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trips"
+          }
+        }
+      }
+    },
     "Tramvia": {
       "localizations": {
         "es": {
@@ -6429,6 +6989,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tram"
+          }
+        }
+      }
+    },
+    "Transbord": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transbordo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer"
+          }
+        }
+      }
+    },
+    "Transbord a %@ · %@ a peu": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transbordo en %1$@ · %2$@ a pie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfer at %1$@ · %2$@ walk"
           }
         }
       }
@@ -6653,6 +7245,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Remove from favourites"
+          }
+        }
+      }
+    },
+    "Treu dels habituals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar de habituales"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from regular"
           }
         }
       }
@@ -6897,6 +7505,86 @@
         }
       }
     },
+    "a %lld parades": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a %lld paradas"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld stops away"
+          }
+        }
+      }
+    },
+    "a 1 parada": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a 1 parada"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 stop away"
+          }
+        }
+      }
+    },
+    "a l'andana · amb retard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en el andén · con retraso"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "at the platform · delayed"
+          }
+        }
+      }
+    },
+    "a l'andana · en hora": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en el andén · puntual"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "at the platform · on time"
+          }
+        }
+      }
+    },
+    "amb retard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "con retraso"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "delayed"
+          }
+        }
+      }
+    },
     "ara": {
       "localizations": {
         "es": {
@@ -6925,6 +7613,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "right now"
+          }
+        }
+      }
+    },
+    "arribant a l'andana": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "llegando al andén"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "arriving at the platform"
           }
         }
       }
@@ -6977,6 +7681,22 @@
         }
       }
     },
+    "cap tren en directe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ningún tren en directo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no live train"
+          }
+        }
+      }
+    },
     "dades desades i horaris teòrics": {
       "localizations": {
         "es": {
@@ -7005,6 +7725,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "from %@"
+          }
+        }
+      }
+    },
+    "després %@ min": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "luego %@ min"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "then %@ min"
           }
         }
       }
@@ -7069,6 +7805,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "in 1 minute"
+          }
+        }
+      }
+    },
+    "en hora": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "puntual"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "on time"
           }
         }
       }
@@ -7261,6 +8013,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "ramp working"
+          }
+        }
+      }
+    },
+    "segons horari": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "según horario"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "scheduled"
+          }
+        }
+      }
+    },
+    "segons planificació": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "según planificación"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "planned"
+          }
+        }
+      }
+    },
+    "seguiment en directe": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seguimiento en directo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "live tracking"
           }
         }
       }

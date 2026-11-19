@@ -36,6 +36,9 @@ struct ExploreScreen: View {
     @State private var showsTipBadge = false
     /// The same jar Configuració shows, over the screen instead of in a tab.
     @State private var isTipJarPresented = false
+    /// Path of the tab's stack: empty unless a debug planner probe pushed the
+    /// planner at launch.
+    @State private var path = NavigationPath()
 
     /// Refresh period of the favorites' arrivals (spec S12), in nanoseconds.
     private static let arrivalsRefreshIntervalNanoseconds: UInt64 = 30_000_000_000
@@ -90,6 +93,11 @@ struct ExploreScreen: View {
     @ViewBuilder
     private var exploreList: some View {
         List {
+            // The rider's trips (spec S4): first section, only once there is
+            // something to show; the full list lives in the map's trips pill.
+            if !TripsStore.shared.ordered.isEmpty {
+                ExploreTripsSection()
+            }
             // Planner entry (spec S16): the only row Explora adds for it.
             Section {
                 NavigationLink {
@@ -116,7 +124,7 @@ struct ExploreScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollViewReader { proxy in
                 exploreList
                     // Typing from a list left at "A prop" would hide the
@@ -133,6 +141,17 @@ struct ExploreScreen: View {
             // the gear and the tip heart instead of replacing them.
             .navigationTitle("Explora")
             .navigationBarTitleDisplayMode(.inline)
+            #if DEBUG
+            // `-plannerProbe` pushes the planner with both endpoints filled
+            // in, so its search runs on appear.
+            .navigationDestination(for: PlannerProbeRoute.self) { route in
+                PlannerScreen(
+                    initialOrigin: route.origin,
+                    initialDestination: route.destination,
+                    runsInitialSearch: true
+                )
+            }
+            #endif
             .searchable(
                 text: $query,
                 placement: .navigationBarDrawer(displayMode: .always),
@@ -185,6 +204,13 @@ struct ExploreScreen: View {
             // Asked once per appearance: a positive answer records the day, so
             // the icon disappears for the next fourteen.
             showsTipBadge = TipBadgeStore.shared.shouldShow()
+            #if DEBUG
+            // `-plannerProbe`: a planner detail with the bottom bar, without
+            // driving the place pickers under the keyboard.
+            if path.isEmpty, let endpoints = TripsProbe.plannerEndpoints {
+                path.append(PlannerProbeRoute(origin: endpoints.origin, destination: endpoints.destination))
+            }
+            #endif
             await bootstrapAndRefresh()
         }
         // Location updates start and stop with the screen (spec S12); the last

@@ -69,6 +69,14 @@ struct Leg: Hashable {
 struct LegPlace: Hashable {
     let name: String
     let position: GeoPoint
+    /// OTP's feed-qualified stop id: "3:1.123" (metro), "2:GR1" (FGC with the
+    /// platform digit), "4:71801" (Rodalies), "3:2.319.674897" (TMB bus). Nil
+    /// on plain walk endpoints.
+    var stopId: String? = nil
+    /// OTP's `stopCode`, when the feed publishes one: metro "123"
+    /// (`CODI_ESTACIO`), TMB bus "319" (`CODI_PARADA`). FGC and Rodalies
+    /// publish none.
+    var stopCode: String? = nil
 }
 
 /// One intermediate stop of a transit leg.

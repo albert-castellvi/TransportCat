@@ -86,6 +86,29 @@ def specifiers(text: str) -> list[str]:
     return [POSITIONAL_RE.sub("%", m.group(0)) for m in SPECIFIER_RE.finditer(text)]
 
 
+def exported_key(unit: ET.Element, namespace: dict[str, str], table: str) -> str | None:
+    """The runtime lookup key of one <trans-unit>.
+
+    Xcode exports the unit's id as the key, except for a catalog entry whose
+    id is not the key it translates (a key renamed after its translation was
+    written): then the id is the old key and the <source> is the actual one.
+    For Localizable that only shows when the source carries positional format
+    specifiers (``%1$@``); an InfoPlist source is its own file's value and
+    never the key.
+    """
+    identifier = unit.get("id")
+    source = unit.find("x:source", namespace)
+    if (
+        table == "Localizable"
+        and identifier is not None
+        and source is not None
+        and source.text
+        and POSITIONAL_RE.search(source.text)
+    ):
+        return source.text
+    return identifier
+
+
 def parse_xliff(path: Path) -> dict[tuple[str, str], list[str]]:
     """Return {(original catalog path, table): [keys]} for one XLIFF file."""
     namespace = {"x": "urn:oasis:names:tc:xliff:document:1.2"}
@@ -96,7 +119,7 @@ def parse_xliff(path: Path) -> dict[tuple[str, str], list[str]]:
         if table is None:
             continue
         for unit in file_node.findall("x:body/x:trans-unit", namespace):
-            key = unit.get("id")
+            key = exported_key(unit, namespace, table)
             if key:
                 tables[(original, table)].append(normalize_key(key))
     return dict(tables)

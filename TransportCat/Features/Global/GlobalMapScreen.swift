@@ -94,6 +94,40 @@ struct GlobalMapScreen: View {
     private var state: GlobalNetworkState { GlobalNetworkState.shared }
     private var fgc: FGCNetworkState { FGCNetworkState.shared }
 
+    /// The trip being followed, when it still exists in the store (spec S4):
+    /// what the map pins, dims the network for, and what runs the live state.
+    /// Height of the bottom overlay (trip card, selection card). With a trip
+    /// pinned it becomes the map's bottom safe area, so the camera frames the
+    /// route in the part of the map the card leaves visible.
+    @State private var bottomOverlayHeight: CGFloat = 0
+
+    private var pinnedTrip: SavedTrip? {
+        TripsStore.shared.activeSavedTrip
+    }
+
+    /// Stroke opacity of the network's lines: full when nothing is pinned
+    /// (the map is byte-for-byte today's), ~0.18 when a trip is, so the trip's
+    /// own lines read strong on top (spec S4).
+    private var tripDimOpacity: CGFloat {
+        pinnedTrip == nil ? 1 : 0.18
+    }
+
+    /// Identity of the followed run, the key of the live-state task: a new
+    /// trip or a restart of the same one restarts the loop.
+    private var activeTripKey: String {
+        guard let active = TripsStore.shared.activeTrip else { return "none" }
+        return "\(active.tripID.uuidString)#\(active.startedAt.timeIntervalSince1970)"
+    }
+
+    /// Fits the camera on the trip's whole route, with air for the map edges
+    /// and the bottom card (spec S4).
+    private func fitCameraToTrip(_ trip: SavedTrip) {
+        guard let rect = TripMapGeometry.cameraRect(of: trip) else { return }
+        withAnimation(AppMotion.smooth(reduceMotion: reduceMotion)) {
+            cameraPosition = .rect(rect)
+        }
+    }
+
     private var selectedOperators: Set<GlobalOperator> {
         GlobalOperatorSelection.decode(operatorsRaw)
     }
@@ -115,6 +149,7 @@ struct GlobalMapScreen: View {
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 8) {
                     MapSettingsButton()
+                    TripPillButton()
                     locationButton
                 }
                 .padding(.trailing, 16)
@@ -128,6 +163,20 @@ struct GlobalMapScreen: View {
             .task(id: isActive) {
                 guard isActive else { return }
                 await state.run()
+            }
+            // The trip's live poller (spec S4): keyed on the followed run, so
+            // a new trip or a restart cancels the previous loop. The screen
+            // going away or the trip ending cancels it too.
+            .task(id: activeTripKey) {
+                guard let active = TripsStore.shared.activeTrip, let trip = pinnedTrip else { return }
+                fitCameraToTrip(trip)
+                await TripLiveState.shared.run(trip: trip, startedAt: active.startedAt)
+            }
+            // Coming back to Tot with a trip already pinned also fits the
+            // camera on the route (spec S4).
+            .onChange(of: isActive) { _, active in
+                guard active, let trip = pinnedTrip else { return }
+                fitCameraToTrip(trip)
             }
             .onAppear {
                 refreshFGCStations()
@@ -185,10 +234,34 @@ struct GlobalMapScreen: View {
         // above the bottom accessory (the safe-area alignment keeps it clear
         // of it).
         .overlay(alignment: .bottom) {
-            selectionCard
-                .padding(.bottom, 8)
-                .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedVehicle)
-                .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedBadge)
+            VStack(spacing: 8) {
+                selectionCard
+                tripBottomContent
+            }
+            .padding(.bottom, 8)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                // Refit only on a real change (the card appearing, a leg's
+                // wording wrapping), not on every few points of layout.
+                let grew = abs(height - bottomOverlayHeight) > 40
+                bottomOverlayHeight = height
+                if grew, let trip = pinnedTrip { fitCameraToTrip(trip) }
+            }
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedVehicle)
+            .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedBadge)
+        }
+    }
+
+    /// The active trip's bottom overlay (spec S4): the full card when nothing
+    /// else is open, its one-line capsule when a vehicle or incident card is.
+    /// Empty — and visually absent — with no trip being followed.
+    @ViewBuilder
+    private var tripBottomContent: some View {
+        if let trip = pinnedTrip, let active = TripsStore.shared.activeTrip {
+            ActiveTripCard(
+                trip: trip,
+                startedAt: active.startedAt,
+                isDimmedBySelection: selectedVehicle != nil || selectedBadge != nil
+            )
         }
     }
 
@@ -313,6 +386,12 @@ struct GlobalMapScreen: View {
         return Map(position: $cameraPosition) {
             linePolylines
 
+            // The pinned trip's own lines, drawn strong on top of the dimmed
+            // network (spec S4).
+            if let trip = pinnedTrip {
+                TripRouteContent(legs: trip.legs)
+            }
+
             // Stations join from 0.25° down (spec S8 and S9: the launch span
             // is above that threshold, so no dots on the first paint).
             if zoomLevel.includesStations {
@@ -333,6 +412,10 @@ struct GlobalMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        // With a trip pinned, the card's height is the map's bottom safe area:
+        // the camera fits the route above it (spec S4). Zero otherwise, so
+        // the map without a trip is unchanged.
+        .safeAreaPadding(.bottom, pinnedTrip == nil ? 0 : bottomOverlayHeight)
         // Spec S1: the map fills the screen under the status bar; the chrome
         // overlays above keep their safe-area insets.
         .ignoresSafeArea(.container, edges: .top)
@@ -387,13 +470,13 @@ struct GlobalMapScreen: View {
     @MapContentBuilder
     private var linePolylines: some MapContent {
         ForEach(shownMetroLayers) { layer in
-            polyline(layer: layer, lineWidth: 4)
+            polyline(layer: layer, lineWidth: 4, opacity: tripDimOpacity)
         }
         ForEach(shownFGCLayers) { layer in
-            polyline(layer: layer, lineWidth: 4)
+            polyline(layer: layer, lineWidth: 4, opacity: tripDimOpacity)
         }
         ForEach(shownBusLayers) { layer in
-            polyline(layer: layer, lineWidth: 3)
+            polyline(layer: layer, lineWidth: 3, opacity: tripDimOpacity)
         }
     }
 
@@ -519,7 +602,7 @@ struct GlobalMapScreen: View {
 
     /// One line's polylines, stroked in the line color.
     @MapContentBuilder
-    private func polyline(layer: MapLineLayer, lineWidth: CGFloat) -> some MapContent {
+    private func polyline(layer: MapLineLayer, lineWidth: CGFloat, opacity: CGFloat) -> some MapContent {
         ForEach(layer.polylines.indices, id: \.self) { index in
             // Coordinates converted once per layer change (spec S8): the 10 Hz
             // tick must not map every line of the network again.
@@ -527,7 +610,7 @@ struct GlobalMapScreen: View {
             if coordinates.count >= 2 {
                 MapPolyline(coordinates: coordinates)
                     .stroke(
-                        Color(hex: layer.colorHex),
+                        Color(hex: layer.colorHex).opacity(opacity),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
                     )
             }
@@ -759,14 +842,22 @@ struct GlobalMapScreen: View {
     }
 
     private var shownStationDots: [GlobalStationDot] {
-        selectedOperators.contains(.metro) ? state.stationDots : []
+        guard selectedOperators.contains(.metro) else { return [] }
+        // With a trip pinned (spec S4) only the stations on the route keep
+        // their dot; the rest would only dim the pinned lines.
+        guard let trip = pinnedTrip else { return state.stationDots }
+        return state.stationDots.filter { TripMapGeometry.isOnTrip(name: $0.name, position: $0.position, trip: trip) }
     }
 
     /// FGC station dots for the map, hidden with the FGC chip. The stored
     /// `fgcStations` list itself is never gated, so flipping the chip back on
-    /// needs no reload.
+    /// needs no reload. With a trip pinned, only the route's own dots stay.
     private var fgcStationsDots: [FGCStation] {
-        selectedOperators.contains(.fgc) ? fgcStations : []
+        guard selectedOperators.contains(.fgc) else { return [] }
+        guard let trip = pinnedTrip else { return fgcStations }
+        return fgcStations.filter { station in
+            station.point.map { TripMapGeometry.isOnTrip(name: station.name, position: $0, trip: trip) } ?? false
+        }
     }
 
     private var shownMetroVehicles: [MapVehicle] {

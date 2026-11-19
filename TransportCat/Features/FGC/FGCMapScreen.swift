@@ -133,6 +133,7 @@ struct FGCMapScreen: View {
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: 8) {
                     MapSettingsButton()
+                    TripPillButton()
                     locationButton
                 }
                 .padding(.trailing, 16)
