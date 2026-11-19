@@ -96,6 +96,11 @@ struct GlobalMapScreen: View {
 
     /// The trip being followed, when it still exists in the store (spec S4):
     /// what the map pins, dims the network for, and what runs the live state.
+    /// Height of the bottom overlay (trip card, selection card). With a trip
+    /// pinned it becomes the map's bottom safe area, so the camera frames the
+    /// route in the part of the map the card leaves visible.
+    @State private var bottomOverlayHeight: CGFloat = 0
+
     private var pinnedTrip: SavedTrip? {
         TripsStore.shared.activeSavedTrip
     }
@@ -234,6 +239,13 @@ struct GlobalMapScreen: View {
                 tripBottomContent
             }
             .padding(.bottom, 8)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                // Refit only on a real change (the card appearing, a leg's
+                // wording wrapping), not on every few points of layout.
+                let grew = abs(height - bottomOverlayHeight) > 40
+                bottomOverlayHeight = height
+                if grew, let trip = pinnedTrip { fitCameraToTrip(trip) }
+            }
             .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedVehicle)
             .animation(AppMotion.smooth(reduceMotion: reduceMotion), value: selectedBadge)
         }
@@ -400,6 +412,10 @@ struct GlobalMapScreen: View {
             }
         }
         .mapStyle(.standard(elevation: .flat))
+        // With a trip pinned, the card's height is the map's bottom safe area:
+        // the camera fits the route above it (spec S4). Zero otherwise, so
+        // the map without a trip is unchanged.
+        .safeAreaPadding(.bottom, pinnedTrip == nil ? 0 : bottomOverlayHeight)
         // Spec S1: the map fills the screen under the status bar; the chrome
         // overlays above keep their safe-area insets.
         .ignoresSafeArea(.container, edges: .top)

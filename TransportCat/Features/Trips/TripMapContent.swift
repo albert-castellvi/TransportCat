@@ -133,16 +133,9 @@ enum TripMapGeometry {
                 size: MKMapSize(width: 0, height: 0)
             ))
         }
-        // Not centred: the trip card covers the lower half of the screen,
-        // so the route goes in the band above it — half its height of air
-        // on top (status capsule, buttons), two and a half below for the card.
-        let width = max(rect.width, rect.height * 0.5)
-        return MKMapRect(
-            x: rect.midX - width * 0.65,
-            y: rect.minY - rect.height * 0.5,
-            width: width * 1.3,
-            height: rect.height * 4
-        )
+        // Air around the route; the map's bottom safe area (the trip card's
+        // height) keeps it clear of the card.
+        return rect.insetBy(dx: -rect.width * 0.15 - 500, dy: -rect.height * 0.15 - 500)
     }
 
     /// Whether a station belongs to the trip: by the stored station names,

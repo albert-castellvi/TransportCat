@@ -312,7 +312,7 @@ final class SavedTripTests: XCTestCase {
 
     // MARK: - Camera
 
-    func testCameraKeepsTheRouteAboveTheTripCard() throws {
+    func testCameraContainsTheWholeRouteWithAir() throws {
         let saved = try trip(try itineraries("planner-rocafort-santcugat")[1])
         let rect = try XCTUnwrap(TripMapGeometry.cameraRect(of: saved))
         let route = saved.legs.flatMap(\.geometry).map {
@@ -322,8 +322,8 @@ final class SavedTripTests: XCTestCase {
         XCTAssertFalse(route.isEmpty)
         for point in route {
             XCTAssertTrue(rect.contains(point))
-            // The lower 60 % of the camera is the trip card's.
-            XCTAssertLessThan((point.y - rect.minY) / rect.height, 0.4)
+            let y = (point.y - rect.minY) / rect.height
+            XCTAssertTrue((0.05...0.95).contains(y))
         }
     }
 }
