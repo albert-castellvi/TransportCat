@@ -19,10 +19,10 @@ Design: canvas https://claude.ai/artifact/WuF4CJtKvAB7QKBcwo9isZ (artboards 1-5 
 | T2 | Core: TripLiveState (per-leg live status from metro/bus/FGC/Rodalies sources + alerts + phase), tests | S1 S4 | dsh deepseek-v4-flash | done: 4 compile errors + 3 real bugs fixed inline, 23 tests green |
 | T3 | UI: trip pill on every map, trips sheet, active-trip card + capsule, global map pinning | S1 S4 | dsh glm5.3-flash | done: compile errors fixed inline (1578daf) |
 | T4 | UI: planner detail actions, Explora "Els teus trajectes" | S1 S4 | dsh glm5.3-flash | done: builds; simulator check in T6 |
-| T5 | Localization ca/es/en for the new strings | S4 | dsh flash | in progress |
+| T5 | Localization ca/es/en for the new strings | S4 | dsh flash | done: 50 keys es/en, catalog script fix |
 | T6 | Mac: build, full tests, simulator tour of the whole flow, fixes | S3 | inline + workers | done: 0eab25b, 757d4a0; 931 tests green; ca captures OK |
-| T7 | Screenshots: web chapter (ca/es/en) + ASC captures/panorama panel | S3 | inline + worker | pending |
-| T8 | Ship: PR, CI, merge, TestFlight | S3 | inline | pending |
+| T7 | Screenshots: web chapter (ca/es/en) + ASC captures/panorama panel | S3 | inline + worker | partial: sheet + planner captures in src2; map captures, panorama slide and web chapter blocked on the Mac's TMB keys |
+| T8 | Ship: PR, CI, merge, TestFlight | S3 | inline | in progress |
 
 ## Log
 
@@ -33,3 +33,4 @@ Design: canvas https://claude.ai/artifact/WuF4CJtKvAB7QKBcwo9isZ (artboards 1-5 
 - L5: T2 review on the Mac found real bugs the worker's tests encoded: "després 7 min i 11 min min"; an invented alias rule that made line "11" match "1" (L1 alerts on L11 trips); FGC legs counted only the planner's line. Decision: an FGC leg counts every train that stops at the boarding station and then at the destination (Gràcia → Sant Cugat: S1 and S2); aliases go through `FGCNetwork.baseLineCode(for:)`; line codes otherwise match exactly. The FGC feed lists all remaining stops and omits the station a stopped train is at (checked on `fgc-positions.json`).
 - L6: alert coverage: metro and TMB bus yes; FGC none (no alert feed in the app); Rodalies none today (model exists, no poller). Cards show no alert for those legs rather than a fake "sense incidències".
 - L7: T6 (2026-11-19): two flash workers spent ~3 h on a "trips sheet draws only its first row" bug that was not one: the probe's saved trip was never stored (Rocafort → Pl. Catalunya's first answer is walk-only) and the medium detent only shows what fits. Their experiments made GlobalMapScreen take 3+ min to type-check (normal build ~17 s). Reverted; kept the real fixes: start(trip:) follows the stored trip by signature, live phase only while waiting, badge sizing. DEBUG probes: -tripProbe seed|plan, -tripsSheet open|large, -plannerProbe open.
+- L8: T7 (2026-11-19): the global map centred the route under the trip card; fixed by giving the map the card's height as bottom safe area (unit-tested camera rect; on-screen check pending). The Mac lost its TMB keys (a worker's build with placeholder keys; tc.sh inherited keys from the last built app): tc.sh now picks a build with real keys and refuses otherwise. Captures blocked until the keys are restored on the Mac.
